@@ -1,17 +1,9 @@
 /**
- * Metro configuration for React Native
- * https://github.com/facebook/react-native
+ * metro.config.js
  *
- * @format
+ * React Native 0.72+ requires this format.
  */
 
-module.exports = {
-  transformer: {
-    getTransformOptions: async () => ({
-      transform: {
-        experimentalImportSupport: false,
-        inlineRequires: true,
-      },
-    }),
-  },
-};
+const { getDefaultConfig } = require("@react-native/metro-config");
+
+module.exports = getDefaultConfig(__dirname);
