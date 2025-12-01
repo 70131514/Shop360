@@ -14,7 +14,7 @@ buildscript {
             ndkVersion = "21.4.7075529"
         }
 
-        kotlinVersion = "1.9.0" // Needed for Firebase Kotlin dependencies
+        kotlinVersion = "1.8.0" // Needed for Firebase Kotlin dependencies
     }
     repositories {
         google()
@@ -25,7 +25,6 @@ buildscript {
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("de.undercouch:gradle-download-task:5.0.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion") // Added Kotlin plugin
-        classpath("com.google.gms:google-services:4.4.2")
     }
 }
 
