@@ -4,8 +4,8 @@ type User = {id: string; name?: string} | null;
 
 type AuthContextType = {
   user: User;
-  signIn: (username: string, password: string) => Promise<void>;
-  signOut: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -13,15 +13,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{children: ReactNode}> = ({children}) => {
   const [user, setUser] = useState<User>(null);
 
-  const signIn = async (username: string) => {
+  const login = async (username: string) => {
     // placeholder: perform auth
     setUser({id: '1', name: username});
   };
 
-  const signOut = () => setUser(null);
+  const logout = () => setUser(null);
 
   return (
-    <AuthContext.Provider value={{user, signIn, signOut}}>
+    <AuthContext.Provider value={{user, login, logout}}>
       {children}
     </AuthContext.Provider>
   );
