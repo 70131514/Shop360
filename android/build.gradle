@@ -1,43 +1,90 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
-        minSdkVersion = 23 // Updated to 23 for Firebase Firestore
+        minSdkVersion = 23
         compileSdkVersion = 34
         targetSdkVersion = 34
 
-        if (System.properties['os.arch'] == "aarch64") {
-            // For M1 Users we need to use the NDK 24 which added support for aarch64
-            ndkVersion = "24.0.8215888"
-        } else {
-            ndkVersion = "21.4.7075529"
-        }
+        ndkVersion = System.properties['os.arch'] == "aarch64"
+                ? "24.0.8215888"
+                : "21.4.7075529"
 
-        kotlinVersion = "1.8.0" // Needed for Firebase Kotlin dependencies
+        kotlinVersion = "1.9.22"
+        // Use JDK 17 to run Gradle/AGP, but keep most modules targeting Java 11.
+        // Some libraries (notably @react-native-firebase/auth v23) require Java 17 language features.
+        defaultJavaVersion = JavaVersion.VERSION_11
+        defaultKotlinJvmTarget = "11"
+        firebaseJavaVersion = JavaVersion.VERSION_17
+        firebaseKotlinJvmTarget = "17"
     }
+
     repositories {
         google()
         mavenCentral()
     }
+
     dependencies {
-        classpath("com.android.tools.build:gradle:7.4.2") // Updated for SDK 34
+        classpath("com.android.tools.build:gradle:8.1.1")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("de.undercouch:gradle-download-task:5.0.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion") // Added Kotlin plugin
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath("com.google.gms:google-services:4.4.2")
     }
 }
 
 allprojects {
     repositories {
+        google()
+        mavenCentral()
         maven { url("$rootDir/../node_modules/react-native/android") }
         maven { url("$rootDir/../node_modules/jsc-android/dist") }
-        mavenCentral {
-            content {
-                excludeGroup "com.facebook.react"
+        maven { url "https://www.jitpack.io" }
+    }
+}
+
+/**
+ * ✅ FORCE JVM 17 FOR ALL MODULES (THIS FIXES YOUR ERROR)
+ */
+subprojects {
+    // Some dependencies in node_modules declare their own (older) AGP/Kotlin plugin versions.
+    // Force them onto our supported versions.
+    buildscript {
+        configurations.classpath {
+            resolutionStrategy.eachDependency { details ->
+                if (details.requested.group == "com.android.tools.build" && details.requested.name == "gradle") {
+                    details.useVersion("8.1.1")
+                }
+                if (details.requested.group == "org.jetbrains.kotlin" && details.requested.name == "kotlin-gradle-plugin") {
+                    details.useVersion(kotlinVersion)
+                }
             }
         }
-        google()
-        maven { url 'https://www.jitpack.io' }
+    }
+
+    afterEvaluate { project ->
+        // Firebase Android sources in RNFirebase v23 use Java 16+ language features.
+        def isReactNativeFirebase = project.name.startsWith("react-native-firebase_")
+        def javaVersionToUse = isReactNativeFirebase ? firebaseJavaVersion : defaultJavaVersion
+        def kotlinTargetToUse = isReactNativeFirebase ? firebaseKotlinJvmTarget : defaultKotlinJvmTarget
+
+        if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility javaVersionToUse
+                    targetCompatibility javaVersionToUse
+                }
+            }
+        }
+
+        project.tasks.withType(JavaCompile).configureEach {
+            sourceCompatibility = javaVersionToUse
+            targetCompatibility = javaVersionToUse
+            options.release = (javaVersionToUse == JavaVersion.VERSION_17) ? 17 : 11
+        }
+
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = kotlinTargetToUse
+            }
+        }
     }
 }

@@ -197,7 +197,15 @@ const AuthNavigator = () => (
 
 export const AppNavigator = () => {
   const { colors, isDark } = useTheme();
-  const { user } = useAuth(); // Use auth state to determine which stack to show
+  const { user, loading } = useAuth(); // Use auth state to determine which stack to show
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <Text style={{ color: colors.text }}>Loading...</Text>
+      </View>
+    );
+  }
 
   const navigationTheme = {
     ...DefaultTheme,

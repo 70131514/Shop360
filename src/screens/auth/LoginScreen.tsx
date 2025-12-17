@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -22,13 +24,36 @@ const LoginScreen = () => {
   const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   const handleLogin = async () => {
-    // TODO: Add actual authentication logic here
-    await login(email, password);
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await login(email, password);
+    } catch (error: any) {
+      console.error(error);
+      let errorMessage = 'An error occurred during login';
+      
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = 'That email address is invalid!';
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Invalid email or password';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid credentials provided';
+      }
+
+      Alert.alert('Login Failed', errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const toggleShowPassword = () => {
@@ -69,6 +94,7 @@ const LoginScreen = () => {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!submitting}
               onFocus={() => setIsEmailFocused(true)}
               onBlur={() => setIsEmailFocused(false)}
             />
@@ -88,6 +114,7 @@ const LoginScreen = () => {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              editable={!submitting}
               onFocus={() => setIsPasswordFocused(true)}
               onBlur={() => setIsPasswordFocused(false)}
             />
@@ -108,8 +135,13 @@ const LoginScreen = () => {
         <TouchableOpacity 
           style={[styles.loginButton, { backgroundColor: colors.primary }]} 
           onPress={handleLogin}
+          disabled={submitting}
         >
-          <Text style={[styles.loginButtonText, { color: colors.background }]}>Sign In</Text>
+          {submitting ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text style={[styles.loginButtonText, { color: colors.background }]}>Sign In</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.dividerContainer}>

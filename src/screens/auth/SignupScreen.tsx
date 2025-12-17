@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -20,14 +21,16 @@ import { useAuth } from '../../contexts/AuthContext';
 const SignupScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
-  // Use login instead of createUser since we are mocking auth
-  const { login } = useAuth();
+  const { register } = useAuth();
   
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isNameFocused, setIsNameFocused] = useState(false);
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
@@ -38,13 +41,35 @@ const SignupScreen = () => {
       return;
     }
 
+    if (!name || !email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
     try {
-      // Mock signup by just logging in
-      await login(email, password);
-      // Alert.alert('Success', 'Account created!');
-      // Navigation is handled by AppNavigator based on auth state
+      setSubmitting(true);
+      await register(email, password, name);
+      Alert.alert('Success', 'Account created. Please sign in.');
+      navigation.replace('Login');
     } catch (error: any) {
-      Alert.alert('Signup Failed', error.message);
+      console.error(error);
+      let errorMessage = 'An error occurred during signup';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'That email address is already in use!';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'That email address is invalid!';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak.';
+      } else if (error.code === 'firestore/permission-denied') {
+        errorMessage = 'Signup failed: Firestore permission denied. Check your Firestore rules.';
+      } else if (error.code === 'firestore/unavailable') {
+        errorMessage = 'Signup failed: Firestore is unavailable. Check your internet connection.';
+      }
+
+      Alert.alert('Signup Failed', errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -75,6 +100,26 @@ const SignupScreen = () => {
         <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>Sign up to get started</Text>
 
         <View style={styles.inputContainer}>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
+          <View style={[
+            styles.inputWrapper,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+            isNameFocused && { borderColor: colors.primary, borderWidth: 1.5 }
+          ]}>
+            <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Enter your full name"
+              placeholderTextColor={colors.textSecondary}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              editable={!submitting}
+              onFocus={() => setIsNameFocused(true)}
+              onBlur={() => setIsNameFocused(false)}
+            />
+          </View>
+
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
           <View style={[
             styles.inputWrapper,
@@ -90,6 +135,7 @@ const SignupScreen = () => {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!submitting}
               onFocus={() => setIsEmailFocused(true)}
               onBlur={() => setIsEmailFocused(false)}
             />
@@ -109,6 +155,7 @@ const SignupScreen = () => {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              editable={!submitting}
               onFocus={() => setIsPasswordFocused(true)}
               onBlur={() => setIsPasswordFocused(false)}
             />
@@ -135,6 +182,7 @@ const SignupScreen = () => {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
+              editable={!submitting}
               onFocus={() => setIsConfirmPasswordFocused(true)}
               onBlur={() => setIsConfirmPasswordFocused(false)}
             />
@@ -151,8 +199,13 @@ const SignupScreen = () => {
         <TouchableOpacity 
           style={[styles.signupButton, { backgroundColor: colors.primary }]} 
           onPress={handleSignup}
+          disabled={submitting}
         >
-          <Text style={[styles.signupButtonText, { color: colors.background }]}>Create Account</Text>
+          {submitting ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text style={[styles.signupButtonText, { color: colors.background }]}>Create Account</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.loginContainer}>

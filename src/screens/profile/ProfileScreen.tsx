@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   StyleSheet,
   View,
   Text,
@@ -28,10 +30,12 @@ const ProfileScreen = () => {
   // Safe check for useAuth just in case it's not fully ready
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log('Logout not implemented'));
+  const user = auth?.user;
   
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const loadWishlistCount = async () => {
@@ -99,6 +103,19 @@ const ProfileScreen = () => {
     },
   ];
 
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+    } catch (e: any) {
+      // Even if something went wrong, avoid unhandled promise rejections.
+      const msg = e?.message ?? 'Failed to log out';
+      Alert.alert('Logout', msg);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
@@ -127,18 +144,25 @@ const ProfileScreen = () => {
               </TouchableOpacity>
             </View>
             <View style={styles.userInfo}>
-              <Text style={[styles.userName, { color: colors.text }]}>John Doe</Text>
-              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>john.doe@example.com</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>{user?.displayName || 'User'}</Text>
+              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
             </View>
           </View>
         </View>
         
         <TouchableOpacity 
           style={[styles.logoutButton, { backgroundColor: colors.surface }]}
-          onPress={logout}
+          onPress={handleLogout}
+          disabled={loggingOut}
         >
-          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-          <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Log Out</Text>
+          {loggingOut ? (
+            <ActivityIndicator color="#FF3B30" />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+              <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Log Out</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <View style={styles.statsContainer}>
