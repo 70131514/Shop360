@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   View,
   Text,
@@ -12,36 +13,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { storeWishlist, getWishlist } from '../../utils/storage';
-
-type WishlistItem = {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice: number;
-  image: string;
-  inStock: boolean;
-};
+import { getWishlist, removeFromWishlist, WishlistItem } from '../../services/wishlistService';
 
 const WishlistScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load wishlist items on mount
-  useEffect(() => {
-    const loadWishlist = async () => {
-      const savedWishlist = await getWishlist();
-      setWishlistItems(savedWishlist);
-    };
-    loadWishlist();
+  const loadWishlist = useCallback(async () => {
+    try {
+      setLoading(true);
+      const items = await getWishlist();
+      setWishlistItems(items);
+    } catch (e) {
+      // If user is logged out (or rules deny), wishlist is empty
+      setWishlistItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Load wishlist items on mount + refresh when screen is focused
+  useEffect(() => {
+    loadWishlist();
+    const unsubscribe = navigation.addListener('focus', loadWishlist);
+    return unsubscribe;
+  }, [navigation, loadWishlist]);
+
   const handleRemoveItem = async (id: string) => {
-    const newWishlist = wishlistItems.filter(item => item.id !== id);
-    setWishlistItems(newWishlist);
-    await storeWishlist(newWishlist);
+    await removeFromWishlist(id);
+    setWishlistItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleMoveToCart = async (id: string) => {
@@ -55,7 +57,12 @@ const WishlistScreen = () => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={[styles.title, { color: colors.text }]}>My Wishlist</Text>
-          {wishlistItems.length === 0 ? (
+          {loading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.emptyText, { color: colors.text }]}>Loading wishlist...</Text>
+            </View>
+          ) : wishlistItems.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="heart-outline" size={64} color={colors.text} />
               <Text style={[styles.emptyText, { color: colors.text }]}>

@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getWishlist } from '../../utils/storage';
+import { getWishlist } from '../../services/wishlistService';
 
 type MenuItem = {
   icon: string;
@@ -39,8 +39,12 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     const loadWishlistCount = async () => {
-      const wishlist = await getWishlist();
-      setWishlistCount(wishlist.length);
+      try {
+        const wishlist = await getWishlist();
+        setWishlistCount(wishlist.length);
+      } catch {
+        setWishlistCount(0);
+      }
     };
     loadWishlistCount();
     

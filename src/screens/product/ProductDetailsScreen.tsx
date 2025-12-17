@@ -15,7 +15,12 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { storeWishlist, getWishlist } from '../../utils/storage';
+import {
+  addToWishlist,
+  isWishlisted as isWishlistedRemote,
+  removeFromWishlist,
+  WishlistItem,
+} from '../../services/wishlistService';
 
 // Define the Product type
 interface Product {
@@ -31,16 +36,6 @@ interface Product {
   stock: number;
   brand: string;
 }
-
-type WishlistItem = {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice: number;
-  image: string;
-  inStock: boolean;
-};
 
 const { width } = Dimensions.get('window');
 
@@ -92,16 +87,17 @@ export default function ProductDetailsScreen() {
   };
 
   const checkWishlistStatus = async () => {
-    const wishlist = await getWishlist();
-    setIsWishlisted(wishlist.some((item: WishlistItem) => item.id === id));
+    try {
+      setIsWishlisted(await isWishlistedRemote(id));
+    } catch {
+      // If user is not logged in or network fails, default to false
+      setIsWishlisted(false);
+    }
   };
 
   const toggleWishlist = async () => {
-    const wishlist = await getWishlist();
     if (isWishlisted) {
-      // Remove from wishlist
-      const newWishlist = wishlist.filter((item: WishlistItem) => item.id !== id);
-      await storeWishlist(newWishlist);
+      await removeFromWishlist(id);
       setIsWishlisted(false);
     } else if (product) {
       // Add to wishlist
@@ -114,7 +110,7 @@ export default function ProductDetailsScreen() {
         image: product.images[0],
         inStock: product.stock > 0,
       };
-      await storeWishlist([...wishlist, newItem]);
+      await addToWishlist(newItem);
       setIsWishlisted(true);
     }
   };
