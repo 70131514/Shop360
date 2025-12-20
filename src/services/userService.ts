@@ -84,3 +84,16 @@ export async function markMyEmailVerified(): Promise<void> {
   const uid = requireUid();
   await updateDoc(doc(firebaseDb, 'users', uid), { isEmailVerified: true } as any);
 }
+
+/**
+ * Update the Firestore profile email and mark it unverified.
+ * Intended to be called immediately after Firebase Auth `updateEmail()`.
+ */
+export async function updateMyEmailAndMarkUnverified(email: string): Promise<void> {
+  const uid = requireUid();
+  const nextEmail = String(email ?? '').trim();
+  if (!nextEmail) {
+    throw new Error('Email cannot be empty');
+  }
+  await updateDoc(doc(firebaseDb, 'users', uid), { email: nextEmail, isEmailVerified: false } as any);
+}

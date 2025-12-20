@@ -1,13 +1,17 @@
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   FirebaseAuthTypes,
   getIdToken as getIdTokenModular,
+  reauthenticateWithCredential,
   reload as reloadModular,
   sendEmailVerification as sendEmailVerificationModular,
   sendPasswordResetEmail as sendPasswordResetEmailModular,
   signInWithEmailAndPassword,
   signOut as signOutModular,
+  updateEmail as updateEmailModular,
+  updatePassword as updatePasswordModular,
   updateProfile,
 } from '@react-native-firebase/auth';
 import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
@@ -131,6 +135,60 @@ export const sendPasswordResetEmail = async (email: string): Promise<void> => {
 export const getCurrentUser = () => {
   return firebaseAuth.currentUser;
 };
+
+function requireCurrentUser(): FirebaseAuthTypes.User {
+  const user = firebaseAuth.currentUser;
+  if (!user) {
+    throw new Error('No authenticated user');
+  }
+  return user;
+}
+
+async function reauthenticateWithPassword(currentPassword: string): Promise<FirebaseAuthTypes.User> {
+  const user = requireCurrentUser();
+  const email = user.email;
+  if (!email) {
+    throw new Error('This account has no email address.');
+  }
+  const cred = EmailAuthProvider.credential(email, currentPassword);
+  await reauthenticateWithCredential(user, cred);
+  return user;
+}
+
+/**
+ * Change the signed-in user's email address.
+ * Requires reauthentication (current password).
+ *
+ * Note: changing email resets Firebase `emailVerified` to false.
+ */
+export async function changeEmailAddress(newEmail: string, currentPassword: string): Promise<void> {
+  const nextEmail = String(newEmail ?? '').trim();
+  if (!nextEmail) {
+    throw new Error('New email cannot be empty');
+  }
+  const user = await reauthenticateWithPassword(currentPassword);
+  await updateEmailModular(user, nextEmail);
+
+  // Refresh token so Firestore rules can see the new `request.auth.token.email`.
+  try {
+    await getIdTokenModular(user, true);
+  } catch {
+    // ignore; caller can retry
+  }
+}
+
+/**
+ * Change the signed-in user's password.
+ * Requires reauthentication (current password).
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const next = String(newPassword ?? '');
+  if (!next) {
+    throw new Error('New password cannot be empty');
+  }
+  const user = await reauthenticateWithPassword(currentPassword);
+  await updatePasswordModular(user, next);
+}
 
 export async function resendEmailVerification(): Promise<void> {
   const current = firebaseAuth.currentUser;

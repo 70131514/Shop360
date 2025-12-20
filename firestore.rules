@@ -33,15 +33,50 @@ service cloud.firestore {
       // Read your own profile
       allow get: if isOwner(uid) && isEmailVerified();
 
-      // Update only safe fields (no role escalation)
-      allow update: if isOwner(uid) && isEmailVerified()
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt'])
-        // Once verified, allow isEmailVerified to stay true (never allow turning it off)
-        && (resource.data.isEmailVerified != true || request.resource.data.isEmailVerified == true);
+      function profileKeysOk() {
+        return request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt']);
+      }
+
+      function profileBaseUnchanged() {
+        return request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // Normal profile updates (e.g., name) only after email verification
+      function safeVerifiedProfileUpdate() {
+        return isEmailVerified()
+          && profileKeysOk()
+          && profileBaseUnchanged()
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.isEmailVerified == resource.data.isEmailVerified;
+      }
+
+      // Allow flipping Firestore flag false -> true after email verification (best-effort sync)
+      function verifyFlagUpdate() {
+        return isEmailVerified()
+          && profileKeysOk()
+          && profileBaseUnchanged()
+          && request.resource.data.email == resource.data.email
+          && resource.data.isEmailVerified == false
+          && request.resource.data.isEmailVerified == true
+          && request.resource.data.name == resource.data.name;
+      }
+
+      // Allow changing email in Firestore immediately after Firebase Auth `updateEmail()`.
+      // At this point, `request.auth.token.email` is the NEW email but `email_verified` is false.
+      function emailChangeUpdate() {
+        return isOwner(uid)
+          && profileKeysOk()
+          && profileBaseUnchanged()
+          && request.resource.data.name == resource.data.name
+          && resource.data.isEmailVerified == true
+          && request.resource.data.isEmailVerified == false
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.email != resource.data.email;
+      }
+
+      allow update: if isOwner(uid) && (safeVerifiedProfileUpdate() || verifyFlagUpdate() || emailChangeUpdate());
 
       // Optional: allow delete your doc (usually false in prod)
       allow delete: if false;

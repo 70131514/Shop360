@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import {
@@ -31,7 +32,24 @@ type SettingItem = {
 const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
   const { alert } = useAppAlert();
+  const navigation = useNavigation<any>();
   const [settings, setSettings] = useState<SettingItem[]>([
+    {
+      id: 'change-email',
+      title: 'Change Email',
+      description: 'Update your login email (requires verification)',
+      type: 'action',
+      value: false,
+      icon: 'mail-outline',
+    },
+    {
+      id: 'change-password',
+      title: 'Change Password',
+      description: 'Update your account password',
+      type: 'action',
+      value: false,
+      icon: 'key-outline',
+    },
     {
       id: '1',
       title: 'Dark Mode',
@@ -146,6 +164,12 @@ const SettingsScreen = () => {
   const handleAction = (id: string) => {
     // Handle different actions based on setting id
     switch (id) {
+      case 'change-email':
+        navigation.navigate('ChangeEmail');
+        break;
+      case 'change-password':
+        navigation.navigate('ChangePassword');
+        break;
       case '6':
         // Clear cache logic
         alert(
@@ -206,7 +230,24 @@ const SettingsScreen = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {settings.map((setting) => (
-          <View key={setting.id} style={[styles.settingItem, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity
+            key={setting.id}
+            activeOpacity={0.85}
+            style={[styles.settingItem, { backgroundColor: colors.surface }]}
+            onPress={() => {
+              if (setting.type === 'toggle') {
+                handleToggle(setting.id);
+                return;
+              }
+              if (setting.type === 'action') {
+                handleAction(setting.id);
+                return;
+              }
+              // select
+              handleAction(setting.id);
+            }}
+            disabled={isClearing && setting.id === '6'}
+          >
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
                 <Ionicons name={setting.icon} size={20} color={colors.text} />
@@ -229,26 +270,22 @@ const SettingsScreen = () => {
             )}
 
             {setting.type === 'select' && (
-              <TouchableOpacity style={styles.selectButton} onPress={() => {}}>
+              <View style={styles.selectButton}>
                 <Text style={[styles.selectButtonText, { color: colors.primary }]}>Select</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-              </TouchableOpacity>
+              </View>
             )}
 
             {setting.type === 'action' && (
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleAction(setting.id)}
-                disabled={isClearing && setting.id === '6'}
-              >
+              <View style={styles.actionButton}>
                 {isClearing && setting.id === '6' ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
                   <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                 )}
-              </TouchableOpacity>
+              </View>
             )}
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </SafeAreaView>

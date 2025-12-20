@@ -35,6 +35,8 @@ import OrderHistoryScreen from '../screens/profile/OrderHistoryScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
+import ChangeEmailScreen from '../screens/profile/ChangeEmailScreen';
+import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -381,6 +383,16 @@ export const AppNavigator = () => {
             component={SettingsScreen}
             options={{ headerShown: true, title: 'Settings' }}
           />
+        <Stack.Screen
+          name="ChangeEmail"
+          component={ChangeEmailScreen}
+          options={{ headerShown: true, title: 'Change Email' }}
+        />
+        <Stack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreen}
+          options={{ headerShown: true, title: 'Change Password' }}
+        />
           <Stack.Screen
             name="HelpSupport"
             component={HelpSupportScreen}

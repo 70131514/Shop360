@@ -5,6 +5,8 @@ import {
   signOut as signOutModular,
 } from '@react-native-firebase/auth';
 import {
+  changeEmailAddress,
+  changePassword,
   reloadCurrentUser,
   resendEmailVerification,
   sendPasswordResetEmail,
@@ -18,6 +20,7 @@ import {
   markMyEmailVerified,
   subscribeMyUserProfile,
   type UserProfileDoc,
+  updateMyEmailAndMarkUnverified,
 } from '../services/userService';
 
 type User = FirebaseAuthTypes.User | null;
@@ -37,6 +40,8 @@ type AuthContextType = {
   refreshEmailVerification: () => Promise<boolean>;
   resendVerificationEmail: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateEmail: (newEmail: string, currentPassword: string) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -266,6 +271,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await sendPasswordResetEmail(email);
   };
 
+  const updateEmail = async (newEmail: string, currentPassword: string) => {
+    await changeEmailAddress(newEmail, currentPassword);
+
+    // Update Firestore profile to new email and mark it unverified.
+    // Rules will allow this specific update even though the new email is not verified yet.
+    await updateMyEmailAndMarkUnverified(newEmail);
+
+    // Send verification email to the new address (best-effort)
+    try {
+      await resendEmailVerification();
+    } catch {
+      // ignore
+    }
+
+    // Force re-login with the new email after verification.
+    await logout();
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    await changePassword(currentPassword, newPassword);
+  };
+
   const logout = async () => {
     try {
       // signOut is safe even if already signed out; treat "no-current-user" as success.
@@ -305,6 +332,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         refreshEmailVerification,
         resendVerificationEmail,
         resetPassword,
+        updateEmail,
+        updatePassword,
       }}
     >
       {children}
