@@ -65,18 +65,14 @@ const LoginScreen = () => {
         return;
       }
 
-      // Always dismiss the modal after successful login.
-      // (Any desired tab selection should be done BEFORE opening the modal to avoid double animations.)
-      if (navigation.canGoBack?.()) {
-        navigation.goBack();
-      } else {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
-          }),
-        );
-      }
+      // Always land on the main page (Home) after login, in one shot.
+      // MainTabs has animation disabled in AppNavigator to avoid a second swipe/transition.
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        }),
+      );
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'An error occurred during login';

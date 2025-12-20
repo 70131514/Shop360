@@ -279,28 +279,13 @@ const ProfileScreen = () => {
             <View style={styles.authButtonsRow}>
               <TouchableOpacity
                 style={[styles.authButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  // Switch to Home behind the auth modal (avoids post-login reset animation).
-                  try {
-                    navigation.navigate('Home');
-                  } catch {
-                    // ignore
-                  }
-                  requestAnimationFrame(() => navigation.navigate('Login'));
-                }}
+                onPress={() => navigation.navigate('Login')}
               >
                 <Text style={[styles.authButtonText, { color: colors.background }]}>Sign In</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.authButtonOutline, { borderColor: colors.border }]}
-                onPress={() => {
-                  try {
-                    navigation.navigate('Home');
-                  } catch {
-                    // ignore
-                  }
-                  requestAnimationFrame(() => navigation.navigate('Signup'));
-                }}
+                onPress={() => navigation.navigate('Signup')}
               >
                 <Text style={[styles.authButtonText, { color: colors.text }]}>Create Account</Text>
               </TouchableOpacity>

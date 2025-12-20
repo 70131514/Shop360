@@ -326,7 +326,7 @@ export const AppNavigator = () => {
             },
           }}
         >
-          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen name="MainTabs" component={TabNavigator} options={{ animation: 'none' }} />
           {/* Always register AdminTabs so navigation.reset({ routes: [{ name: 'AdminTabs' }] }) never errors.
              Access is enforced inside AdminTabsGate based on isAdmin. */}
           <Stack.Screen name="AdminTabs" component={AdminTabsGate} />
