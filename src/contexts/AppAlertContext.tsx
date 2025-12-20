@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
-import { Animated, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '../components/common/AppText';
 import { useTheme } from './ThemeContext';
 
 export type AppAlertButton = {

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   ScrollView,
   Image,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Animated,
   Modal,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
@@ -64,6 +64,9 @@ export default function ProductDetailsScreen() {
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [related, setRelated] = useState<Product[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
 
   const fetchProduct = useCallback(async () => {
     try {
@@ -102,6 +105,46 @@ export default function ProductDetailsScreen() {
       setLoading(false);
     }
   }, [id, fetchProduct, checkWishlistStatus]);
+
+  useEffect(() => {
+    // Reset quantity when product changes
+    setQuantity(1);
+  }, [product?.id]);
+
+  useEffect(() => {
+    // Fetch "similar" items by category (best-effort)
+    let alive = true;
+    const loadRelated = async () => {
+      if (!product?.category) {
+        setRelated([]);
+        return;
+      }
+      try {
+        setLoadingRelated(true);
+        const res = await fetch(
+          `https://dummyjson.com/products/category/${encodeURIComponent(product.category)}?limit=12`,
+        );
+        const data = await res.json();
+        const list = Array.isArray(data?.products) ? (data.products as Product[]) : [];
+        const filtered = list.filter((p) => String(p.id) !== String(product.id)).slice(0, 10);
+        if (alive) {
+          setRelated(filtered);
+        }
+      } catch {
+        if (alive) {
+          setRelated([]);
+        }
+      } finally {
+        if (alive) {
+          setLoadingRelated(false);
+        }
+      }
+    };
+    loadRelated();
+    return () => {
+      alive = false;
+    };
+  }, [product?.category, product?.id]);
 
   const toggleWishlist = async () => {
     try {
@@ -180,15 +223,25 @@ export default function ProductDetailsScreen() {
         originalPrice: product.discountPercentage > 0 ? product.price : undefined,
         image: product.images?.[0] || product.thumbnail,
         brand: product.brand,
+        quantity,
         inStock: product.stock > 0,
       });
-      alert('Added to cart', `${product.title} has been added to your cart.`);
+      alert('Added to cart', `${product.title} (x${quantity}) has been added to your cart.`);
     } catch (e: any) {
       alert('Could not add to cart', e?.message ?? 'Please try again.');
     } finally {
       setAddingToCart(false);
     }
   };
+
+  const discountedUnitPrice =
+    product && product.discountPercentage > 0
+      ? product.price * (1 - product.discountPercentage / 100)
+      : product?.price ?? 0;
+  const lineTotal = Number(discountedUnitPrice) * Math.max(1, Number(quantity || 1));
+
+  const canDecreaseQty = quantity > 1;
+  const canIncreaseQty = !!product && quantity < Math.max(1, Math.min(10, product.stock || 1));
 
   const changeImage = (direction: 'next' | 'prev') => {
     if (!product) {
@@ -367,10 +420,121 @@ export default function ProductDetailsScreen() {
             {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
           </Text>
 
+          {/* Purchase controls */}
+          <View style={[styles.purchaseCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.purchaseRow}>
+              <Text style={[styles.purchaseLabel, { color: colors.textSecondary }]}>Quantity</Text>
+              <View style={[styles.qtyStepper, { borderColor: colors.border }]}>
+                <TouchableOpacity
+                  style={styles.qtyBtn}
+                  onPress={() => canDecreaseQty && setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={!canDecreaseQty}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="remove"
+                    size={18}
+                    color={canDecreaseQty ? colors.text : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+                <Text style={[styles.qtyText, { color: colors.text }]}>{quantity}</Text>
+                <TouchableOpacity
+                  style={styles.qtyBtn}
+                  onPress={() => canIncreaseQty && setQuantity((q) => q + 1)}
+                  disabled={!canIncreaseQty}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="add"
+                    size={18}
+                    color={canIncreaseQty ? colors.text : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.purchaseRow}>
+              <Text style={[styles.purchaseLabel, { color: colors.textSecondary }]}>Total</Text>
+              <Text style={[styles.purchaseTotal, { color: colors.text }]}>
+                ${Number(lineTotal).toFixed(2)}
+              </Text>
+            </View>
+            <Text style={[styles.purchaseHint, { color: colors.textSecondary }]}>
+              Tip: You can add up to 10 units per item.
+            </Text>
+          </View>
+
           <Text style={[styles.descriptionTitle, { color: colors.text }]}>Description</Text>
           <Text style={[styles.description, { color: colors.textSecondary }]}>
             {product.description}
           </Text>
+
+          {/* Delivery & returns */}
+          <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.infoRow}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={colors.text} />
+              <View style={styles.infoRowText}>
+                <Text style={[styles.infoRowTitle, { color: colors.text }]}>Secure checkout</Text>
+                <Text style={[styles.infoRowSub, { color: colors.textSecondary }]}>
+                  Encrypted payments & protected orders
+                </Text>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="car-outline" size={18} color={colors.text} />
+              <View style={styles.infoRowText}>
+                <Text style={[styles.infoRowTitle, { color: colors.text }]}>Fast delivery</Text>
+                <Text style={[styles.infoRowSub, { color: colors.textSecondary }]}>
+                  Estimated 2–5 business days
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.infoRow, { marginBottom: 0 }]}>
+              <Ionicons name="refresh-outline" size={18} color={colors.text} />
+              <View style={styles.infoRowText}>
+                <Text style={[styles.infoRowTitle, { color: colors.text }]}>Easy returns</Text>
+                <Text style={[styles.infoRowSub, { color: colors.textSecondary }]}>
+                  7-day return window (unused items)
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Similar items */}
+          <View style={styles.similarHeader}>
+            <Text style={[styles.similarTitle, { color: colors.text }]}>You may also like</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Products')} activeOpacity={0.8}>
+              <Text style={[styles.similarLink, { color: colors.textSecondary }]}>See all</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
+            {loadingRelated ? (
+              <View style={styles.similarSkeleton}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : related.length === 0 ? (
+              <Text style={[styles.similarEmpty, { color: colors.textSecondary }]}>
+                No similar products found.
+              </Text>
+            ) : (
+              related.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  activeOpacity={0.9}
+                  style={[styles.similarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  onPress={() => navigation.navigate('ProductDetails', { id: p.id.toString() })}
+                >
+                  <Image source={{ uri: p.thumbnail }} style={styles.similarImage} />
+                  <Text style={[styles.similarName, { color: colors.text }]} numberOfLines={1}>
+                    {p.title}
+                  </Text>
+                  <Text style={[styles.similarPrice, { color: colors.textSecondary }]}>
+                    ${Number(p.price ?? 0).toFixed(2)}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </ScrollView>
         </View>
       </ScrollView>
 
@@ -395,7 +559,7 @@ export default function ProductDetailsScreen() {
         >
           <Ionicons name="cart-outline" size={20} color={colors.background} />
           <Text style={[styles.addToCartButtonText, { color: colors.background }]}>
-            Add to Cart
+            Add x{quantity}
           </Text>
         </TouchableOpacity>
       </View>
@@ -461,7 +625,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80, // Fixed bottom padding for footer
+    paddingBottom: 110, // Fixed bottom padding for footer
   },
   centeredContainer: {
     flex: 1,
@@ -608,6 +772,122 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 20,
     marginBottom: 16,
+  },
+  purchaseCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  purchaseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  purchaseLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  purchaseTotal: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  purchaseHint: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  qtyStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  qtyBtn: {
+    width: 38,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyText: {
+    width: 40,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  infoCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 18,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+  },
+  infoRowText: {
+    flex: 1,
+  },
+  infoRowTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  infoRowSub: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  similarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  similarTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  similarLink: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  similarRow: {
+    paddingBottom: 6,
+    gap: 12,
+  },
+  similarSkeleton: {
+    height: 150,
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  similarEmpty: {
+    fontSize: 13,
+    fontWeight: '500',
+    paddingVertical: 8,
+  },
+  similarCard: {
+    width: 150,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+  },
+  similarImage: {
+    width: '100%',
+    height: 88,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  similarName: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  similarPrice: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   ScrollView,
   FlatList,
   Image,
@@ -13,6 +12,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';

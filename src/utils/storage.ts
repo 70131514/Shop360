@@ -10,7 +10,10 @@ export const STORAGE_KEYS = {
   ADDRESSES: '@addresses',
   PAYMENT_METHODS: '@payment_methods',
   NOTIFICATION_PREFERENCES: '@notification_preferences',
+  FONT_SIZE_PRESET: '@font_size_preset',
 } as const;
+
+export type FontSizePreset = 'xs' | 's' | 'm' | 'l' | 'xl';
 
 // Theme storage
 export const storeTheme = async (isDark: boolean) => {
@@ -159,6 +162,31 @@ export const getNotificationPreferences = async () => {
     return preferences ? JSON.parse(preferences) : null;
   } catch (error) {
     console.error('Error getting notification preferences:', error);
+    return null;
+  }
+};
+
+// Font size preset storage (XS–XL)
+export const storeFontSizePreset = async (preset: FontSizePreset) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.FONT_SIZE_PRESET, preset);
+  } catch (error) {
+    console.error('Error storing font size preset:', error);
+  }
+};
+
+export const getFontSizePreset = async (): Promise<FontSizePreset | null> => {
+  try {
+    const v = await AsyncStorage.getItem(STORAGE_KEYS.FONT_SIZE_PRESET);
+    if (!v) {
+      return null;
+    }
+    if (v === 'xs' || v === 's' || v === 'm' || v === 'l' || v === 'xl') {
+      return v;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting font size preset:', error);
     return null;
   }
 };

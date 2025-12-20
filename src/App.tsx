@@ -6,6 +6,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppAlertProvider } from './contexts/AppAlertContext';
 import { useTheme } from './contexts/ThemeContext';
+import { FontSizeProvider } from './contexts/FontSizeContext';
 
 const ThemedStatusBar = () => {
   const { colors, isDark } = useTheme();
@@ -23,10 +24,12 @@ const App = () => {
     <SafeAreaProvider>
       <AuthProvider>
         <ThemeProvider>
-          <AppAlertProvider>
-            <ThemedStatusBar />
-            <AppNavigator />
-          </AppAlertProvider>
+          <FontSizeProvider>
+            <AppAlertProvider>
+              <ThemedStatusBar />
+              <AppNavigator />
+            </AppAlertProvider>
+          </FontSizeProvider>
         </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>

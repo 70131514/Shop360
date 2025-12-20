@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { AppText as Text } from '../components/common/AppText';
 import { HomeScreen } from './home/HomeScreen';
 import { CartScreen } from './cart/CartScreen';
 import { ProfileScreen } from './profile/ProfileScreen';

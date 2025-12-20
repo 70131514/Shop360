@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SPACING } from '../../theme';
 

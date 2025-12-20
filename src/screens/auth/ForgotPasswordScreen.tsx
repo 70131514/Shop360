@@ -6,12 +6,12 @@ import {
   Platform,
   StatusBar,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';

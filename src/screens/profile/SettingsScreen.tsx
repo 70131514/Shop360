@@ -2,18 +2,21 @@ import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   ScrollView,
   StatusBar,
   Switch,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { useFontSize } from '../../contexts/FontSizeContext';
 import {
   storeNotificationPreferences,
   getNotificationPreferences,
@@ -24,9 +27,11 @@ const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
   const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
+  const { preset, setPreset } = useFontSize();
   const [locationEnabled, setLocationEnabled] = useState<boolean>(true);
 
   const [isClearing, setIsClearing] = useState(false);
+  const [fontPickerOpen, setFontPickerOpen] = useState(false);
 
   // Load saved preferences (best-effort)
   useEffect(() => {
@@ -111,6 +116,33 @@ const SettingsScreen = () => {
             thumbColor="#FFF"
           />
         </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => setFontPickerOpen(true)}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="text-outline" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Font size</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                {preset === 'xs'
+                  ? 'Extra small'
+                  : preset === 's'
+                  ? 'Small'
+                  : preset === 'm'
+                  ? 'Medium'
+                  : preset === 'l'
+                  ? 'Large'
+                  : 'Extra large'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* Account cards */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
@@ -237,6 +269,61 @@ const SettingsScreen = () => {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={fontPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFontPickerOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setFontPickerOpen(false)}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => {}}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Font size</Text>
+              <TouchableOpacity onPress={() => setFontPickerOpen(false)} activeOpacity={0.8}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {(
+              [
+                { key: 'xs', label: 'Extra small' },
+                { key: 's', label: 'Small' },
+                { key: 'm', label: 'Medium (default)' },
+                { key: 'l', label: 'Large' },
+                { key: 'xl', label: 'Extra large' },
+              ] as const
+            ).map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                activeOpacity={0.85}
+                style={[styles.modalOption, { borderColor: colors.border }]}
+                onPress={async () => {
+                  await setPreset(opt.key);
+                  setFontPickerOpen(false);
+                }}
+              >
+                <Text style={[styles.modalOptionText, { color: colors.text }]}>{opt.label}</Text>
+                <Ionicons
+                  name={preset === opt.key ? 'checkmark' : 'chevron-forward'}
+                  size={18}
+                  color={preset === opt.key ? colors.primary : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            ))}
+
+            <Text style={[styles.modalHint, { color: colors.textSecondary }]}>
+              This works together with your phone’s accessibility font size settings.
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -335,6 +422,47 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 16,
+    justifyContent: 'flex-end',
+    paddingBottom: 18,
+  },
+  modalCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalOption: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalHint: {
+    marginTop: 12,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
 

@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   Image,
   ScrollView,
   StatusBar,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';

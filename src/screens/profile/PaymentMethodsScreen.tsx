@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   ScrollView,
   StatusBar,
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
