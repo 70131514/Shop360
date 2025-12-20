@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   addToWishlist,
   isWishlisted as isWishlistedRemote,
@@ -53,6 +54,7 @@ export default function ProductDetailsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +104,36 @@ export default function ProductDetailsScreen() {
 
   const toggleWishlist = async () => {
     try {
+      if (!user) {
+        Alert.alert('Sign in required', 'Please sign in to use wishlist.', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Login') },
+          { text: 'Sign Up', onPress: () => navigation.navigate('Signup') },
+        ]);
+        return;
+      }
+
+      if (!user.emailVerified) {
+        Alert.alert(
+          'Verify your email',
+          'Please verify your email to use wishlist. Check your inbox, then tap “I verified”.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'I verified',
+              onPress: async () => {
+                try {
+                  await user.reload();
+                } catch {
+                  // ignore
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+
       if (isWishlisted) {
         await removeFromWishlist(id);
         setIsWishlisted(false);

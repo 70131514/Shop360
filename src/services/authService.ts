@@ -60,6 +60,13 @@ export const signUp = async (
         role,
         createdAt: serverTimestamp(),
       });
+
+      // 4. Send email verification (best-effort)
+      try {
+        await userCredential.user.sendEmailVerification();
+      } catch (_) {
+        // ignore email verification send failures
+      }
     } catch (innerError) {
       // If Firestore write fails, rollback the auth user so the email isn't "stuck" in Auth
       try {

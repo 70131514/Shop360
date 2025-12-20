@@ -13,14 +13,21 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 
+type SignupRouteParams =
+  | {
+      redirectToTab?: 'Home' | 'Products' | 'Cart' | 'Profile';
+    }
+  | undefined;
+
 const SignupScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { register } = useAuth();
 
   const [name, setName] = useState('');
@@ -49,8 +56,19 @@ const SignupScreen = () => {
     try {
       setSubmitting(true);
       await register(email, password, name);
-      Alert.alert('Success', 'Account created. Please sign in.');
-      navigation.replace('Login');
+      Alert.alert(
+        'Account created',
+        'We sent a verification email. Please verify your email to use wishlist and checkout.',
+      );
+      const params = (route.params ?? {}) as SignupRouteParams;
+      if (params?.redirectToTab) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: params.redirectToTab } }],
+        });
+      } else {
+        navigation.goBack();
+      }
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'An error occurred during signup';
@@ -253,7 +271,7 @@ const SignupScreen = () => {
           <Text style={[styles.loginText, { color: colors.textSecondary }]}>
             Already have an account?{' '}
           </Text>
-          <TouchableOpacity onPress={() => navigation.replace('Login')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login', route.params ?? {})}>
             <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
           </TouchableOpacity>
         </View>

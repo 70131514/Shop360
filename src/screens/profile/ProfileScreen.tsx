@@ -37,6 +37,7 @@ const ProfileScreen = () => {
   const [wishlistCount, setWishlistCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
+  const isGuest = !user;
 
   useEffect(() => {
     const loadWishlistCount = async () => {
@@ -141,6 +142,33 @@ const ProfileScreen = () => {
     }
   };
 
+  const promptAuth = (reason: string, redirectToTab: 'Profile' | 'Cart' | 'Home' | 'Products') => {
+    Alert.alert('Sign in required', reason, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign In', onPress: () => navigation.navigate('Login', { redirectToTab }) },
+      { text: 'Create Account', onPress: () => navigation.navigate('Signup', { redirectToTab }) },
+    ]);
+  };
+
+  const handleMenuPress = (route: string) => {
+    const routesRequiringAuth = new Set([
+      'PersonalInfo',
+      'ShippingAddresses',
+      'PaymentMethods',
+      'Wishlist',
+      'Orders',
+      'Notifications',
+      'Settings',
+    ]);
+
+    if (isGuest && routesRequiringAuth.has(route)) {
+      promptAuth('Please sign in to access this section.', 'Profile');
+      return;
+    }
+
+    navigation.navigate(route);
+  };
+
   return (
     <SafeAreaView
       edges={['top']}
@@ -181,29 +209,61 @@ const ProfileScreen = () => {
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: colors.text }]}>
-                {user?.displayName || 'User'}
+                {isGuest ? 'Guest' : user?.displayName || 'User'}
               </Text>
               <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                {user?.email || 'No email'}
+                {isGuest ? 'You are browsing in guest mode' : user?.email || 'No email'}
               </Text>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.logoutButton, { backgroundColor: colors.surface }]}
-          onPress={handleLogout}
-          disabled={loggingOut}
-        >
-          {loggingOut ? (
-            <ActivityIndicator color="#FF3B30" />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-              <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Log Out</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {isGuest ? (
+          <View style={[styles.authCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.authCardHeader}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
+              <Text style={[styles.authCardTitle, { color: colors.text }]}>
+                Sign in to unlock wishlist & checkout
+              </Text>
+            </View>
+            <Text style={[styles.authCardSubtitle, { color: colors.textSecondary }]}>
+              Your cart is saved on this device. Sign in to sync it and access your wishlist & order history.
+            </Text>
+            <View style={styles.authButtonsRow}>
+              <TouchableOpacity
+                style={[styles.authButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Login', { redirectToTab: 'Profile' })}
+              >
+                <Text style={[styles.authButtonText, { color: colors.background }]}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.authButtonOutline, { borderColor: colors.border }]}
+                onPress={() => navigation.navigate('Signup', { redirectToTab: 'Profile' })}
+              >
+                <Text style={[styles.authButtonText, { color: colors.text }]}>
+                  Create Account
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.logoutButton, { backgroundColor: colors.surface }]}
+            onPress={handleLogout}
+            disabled={loggingOut}
+          >
+            {loggingOut ? (
+              <ActivityIndicator color="#FF3B30" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+                <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Log Out</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
@@ -239,7 +299,7 @@ const ProfileScreen = () => {
               key={index}
               style={[styles.menuItem, { backgroundColor: colors.surface }]}
               onPress={() => {
-                navigation.navigate(item.route);
+                handleMenuPress(item.route);
               }}
             >
               <View style={styles.menuItemLeft}>
@@ -398,6 +458,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  authCard: {
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  authCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  authCardTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  authCardSubtitle: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  authButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  authButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authButtonOutline: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  authButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 

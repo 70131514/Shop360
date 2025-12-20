@@ -6,6 +6,7 @@ import {
 } from '@react-native-firebase/auth';
 import { signIn, signOut, signUp } from '../services/authService';
 import { firebaseAuth } from '../services/firebase';
+import { migrateGuestCartToUserCart } from '../services/cartService';
 
 type User = FirebaseAuthTypes.User | null;
 
@@ -73,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await signIn(email, password);
       // Ensure immediate UI update even if auth listener lags
       setUser(firebaseAuth.currentUser);
+      await migrateGuestCartToUserCart();
     } catch (error) {
       throw error;
     }
@@ -81,9 +83,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (email: string, password: string, name: string) => {
     try {
       await signUp(email, password, name);
-      // After successful signup + Firestore write, sign out so user goes to Login screen.
-      await signOutModular(firebaseAuth);
-      setUser(null);
+      // Keep the new user signed-in so they can continue as "guest -> signed-in" smoothly.
+      setUser(firebaseAuth.currentUser);
+      await migrateGuestCartToUserCart();
     } catch (error) {
       throw error;
     }

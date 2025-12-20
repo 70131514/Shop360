@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '../../components/ThemedText';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { placeOrderFromCart } from '../../services/orderService';
 import {
   clearCart,
@@ -81,6 +82,7 @@ export default function CartScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { user } = useAuth();
 
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +113,7 @@ export default function CartScreen() {
         unsub();
       }
     };
-  }, []);
+  }, [user?.uid]);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     // Optimistic UI update; Firestore snapshot will confirm shortly
@@ -152,6 +154,36 @@ export default function CartScreen() {
 
   const handleCheckout = async () => {
     if (cartItems.length === 0 || placingOrder) {
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Sign in required', 'Please sign in to checkout.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign In', onPress: () => navigation.navigate('Login', { redirectToTab: 'Cart' }) },
+        { text: 'Sign Up', onPress: () => navigation.navigate('Signup', { redirectToTab: 'Cart' }) },
+      ]);
+      return;
+    }
+
+    if (!user.emailVerified) {
+      Alert.alert(
+        'Verify your email',
+        'Please verify your email to checkout. Check your inbox, then tap “I verified”.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'I verified',
+            onPress: async () => {
+              try {
+                await user.reload();
+              } catch {
+                // ignore reload failures; user can retry
+              }
+            },
+          },
+        ],
+      );
       return;
     }
 

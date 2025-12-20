@@ -30,7 +30,6 @@ import SettingsScreen from '../screens/profile/SettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 
 const Stack = createNativeStackNavigator();
-const AuthStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const CustomTabBar = ({ state, descriptors: _descriptors, navigation }: BottomTabBarProps) => {
@@ -179,21 +178,9 @@ const TabNavigator = () => {
   );
 };
 
-const AuthNavigator = () => (
-  <AuthStack.Navigator
-    screenOptions={{
-      headerShown: false,
-      animation: 'slide_from_right',
-    }}
-  >
-    <AuthStack.Screen name="Login" component={LoginScreen} />
-    <AuthStack.Screen name="Signup" component={SignupScreen} />
-  </AuthStack.Navigator>
-);
-
 export const AppNavigator = () => {
   const { colors } = useTheme();
-  const { user, loading } = useAuth(); // Use auth state to determine which stack to show
+  const { loading } = useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
 
   if (loading) {
     return (
@@ -223,80 +210,88 @@ export const AppNavigator = () => {
 
   return (
     <NavigationContainer theme={navigationTheme}>
-      {user ? (
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right', // Smooth transitions
-            headerStyle: {
-              backgroundColor: colors.background,
-            },
-            headerTintColor: colors.text,
-            headerTitleStyle: {
-              color: colors.text,
-              fontWeight: '600',
-            },
-            contentStyle: {
-              backgroundColor: colors.background,
-            },
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right', // Smooth transitions
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+          headerTitleStyle: {
+            color: colors.text,
+            fontWeight: '600',
+          },
+          contentStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+        <Stack.Screen
+          name="ARView"
+          component={ARViewScreen}
+          options={{
+            animation: 'fade', // AR often opens with a fade or modal style
+            presentation: 'fullScreenModal',
           }}
-        >
-          <Stack.Screen name="MainTabs" component={TabNavigator} />
-          <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-          <Stack.Screen
-            name="ARView"
-            component={ARViewScreen}
-            options={{
-              animation: 'fade', // AR often opens with a fade or modal style
-              presentation: 'fullScreenModal',
-            }}
-          />
+        />
 
-          {/* Profile Sub-screens */}
-          <Stack.Screen
-            name="PersonalInfo"
-            component={PersonalInfoScreen}
-            options={{ headerShown: true, title: 'Personal Information' }}
-          />
-          <Stack.Screen
-            name="ShippingAddresses"
-            component={ShippingAddressesScreen}
-            options={{ headerShown: true, title: 'Shipping Addresses' }}
-          />
-          <Stack.Screen
-            name="PaymentMethods"
-            component={PaymentMethodsScreen}
-            options={{ headerShown: true, title: 'Payment Methods' }}
-          />
-          <Stack.Screen
-            name="Wishlist"
-            component={WishlistScreen}
-            options={{ headerShown: true, title: 'Wishlist' }}
-          />
-          <Stack.Screen
-            name="Orders"
-            component={OrderHistoryScreen}
-            options={{ headerShown: true, title: 'Order History' }}
-          />
-          <Stack.Screen
-            name="Notifications"
-            component={NotificationsScreen}
-            options={{ headerShown: true, title: 'Notifications' }}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{ headerShown: true, title: 'Settings' }}
-          />
-          <Stack.Screen
-            name="HelpSupport"
-            component={HelpSupportScreen}
-            options={{ headerShown: true, title: 'Help & Support' }}
-          />
-        </Stack.Navigator>
-      ) : (
-        <AuthNavigator />
-      )}
+        {/* Profile Sub-screens */}
+        <Stack.Screen
+          name="PersonalInfo"
+          component={PersonalInfoScreen}
+          options={{ headerShown: true, title: 'Personal Information' }}
+        />
+        <Stack.Screen
+          name="ShippingAddresses"
+          component={ShippingAddressesScreen}
+          options={{ headerShown: true, title: 'Shipping Addresses' }}
+        />
+        <Stack.Screen
+          name="PaymentMethods"
+          component={PaymentMethodsScreen}
+          options={{ headerShown: true, title: 'Payment Methods' }}
+        />
+        <Stack.Screen
+          name="Wishlist"
+          component={WishlistScreen}
+          options={{ headerShown: true, title: 'Wishlist' }}
+        />
+        <Stack.Screen
+          name="Orders"
+          component={OrderHistoryScreen}
+          options={{ headerShown: true, title: 'Order History' }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{ headerShown: true, title: 'Notifications' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ headerShown: true, title: 'Settings' }}
+        />
+        <Stack.Screen
+          name="HelpSupport"
+          component={HelpSupportScreen}
+          options={{ headerShown: true, title: 'Help & Support' }}
+        />
+
+        {/* Auth screens (modal) */}
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="Signup"
+          component={SignupScreen}
+          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };

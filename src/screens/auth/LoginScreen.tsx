@@ -13,15 +13,22 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+
+type LoginRouteParams =
+  | {
+      redirectToTab?: 'Home' | 'Products' | 'Cart' | 'Profile';
+    }
+  | undefined;
 
 const LoginScreen = () => {
   const { login } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +45,17 @@ const LoginScreen = () => {
     try {
       setSubmitting(true);
       await login(email, password);
+      const params = (route.params ?? {}) as LoginRouteParams;
+      if (params?.redirectToTab) {
+        // Reset back to app (closes modal) and jump to the tab
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: params.redirectToTab } }],
+        });
+      } else {
+        // Default: dismiss modal
+        navigation.goBack();
+      }
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'An error occurred during login';
@@ -193,7 +211,7 @@ const LoginScreen = () => {
           <Text style={[styles.signupText, { color: colors.textSecondary }]}>
             Don't have an account?{' '}
           </Text>
-          <TouchableOpacity onPress={() => navigation.replace('Signup')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Signup', route.params ?? {})}>
             <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>
