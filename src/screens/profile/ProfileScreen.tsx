@@ -31,6 +31,7 @@ const ProfileScreen = () => {
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log('Logout not implemented'));
   const user = auth?.user;
+  const isAdmin = auth?.isAdmin === true;
   const { alert } = useAppAlert();
 
   const insets = useSafeAreaInsets();
@@ -226,14 +227,45 @@ const ProfileScreen = () => {
                 {isGuest ? 'Guest' : user?.displayName || 'User'}
               </Text>
               <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                {isGuest ? 'You are browsing in guest mode' : user?.email || 'No email'}
+                {isGuest
+                  ? 'You are browsing in guest mode'
+                  : isAdmin
+                  ? 'Admin account'
+                  : user?.email || 'No email'}
               </Text>
             </View>
           </View>
         </View>
 
+        {!isGuest && isAdmin && (
+          <TouchableOpacity
+            style={[
+              styles.adminPortalCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('AdminTabs')}
+          >
+            <View style={[styles.adminPortalIcon, { backgroundColor: colors.background }]}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.flex1}>
+              <Text style={[styles.adminPortalTitle, { color: colors.text }]}>Admin Portal</Text>
+              <Text style={[styles.adminPortalSubtitle, { color: colors.textSecondary }]}>
+                Manage users, products, and orders
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {isGuest ? (
-          <View style={[styles.authCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.authCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.authCardHeader}>
               <Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />
               <Text style={[styles.authCardTitle, { color: colors.text }]}>
@@ -241,24 +273,21 @@ const ProfileScreen = () => {
               </Text>
             </View>
             <Text style={[styles.authCardSubtitle, { color: colors.textSecondary }]}>
-              Your cart is saved on this device. Sign in to sync it and access your wishlist & order history.
+              Your cart is saved on this device. Sign in to sync it and access your wishlist & order
+              history.
             </Text>
             <View style={styles.authButtonsRow}>
               <TouchableOpacity
                 style={[styles.authButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('Login', { redirectToTab: 'Profile' })}
               >
-                <Text style={[styles.authButtonText, { color: colors.background }]}>
-                  Sign In
-                </Text>
+                <Text style={[styles.authButtonText, { color: colors.background }]}>Sign In</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.authButtonOutline, { borderColor: colors.border }]}
                 onPress={() => navigation.navigate('Signup', { redirectToTab: 'Profile' })}
               >
-                <Text style={[styles.authButtonText, { color: colors.text }]}>
-                  Create Account
-                </Text>
+                <Text style={[styles.authButtonText, { color: colors.text }]}>Create Account</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -273,7 +302,7 @@ const ProfileScreen = () => {
             ) : (
               <>
                 <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-                <Text style={[styles.logoutText, { color: '#FF3B30' }]}>Log Out</Text>
+                <Text style={styles.logoutTextDanger}>Log Out</Text>
               </>
             )}
           </TouchableOpacity>
@@ -473,6 +502,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  logoutTextDanger: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: '#FF3B30',
+  },
   authCard: {
     width: '90%',
     alignSelf: 'center',
@@ -520,6 +555,35 @@ const styles = StyleSheet.create({
   authButtonText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  adminPortalCard: {
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adminPortalIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adminPortalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  adminPortalSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  flex1: {
+    flex: 1,
   },
 });
 

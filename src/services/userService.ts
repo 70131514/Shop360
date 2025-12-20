@@ -1,5 +1,6 @@
 import { updateProfile } from '@react-native-firebase/auth';
-import { doc, getDoc, updateDoc } from '@react-native-firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc } from '@react-native-firebase/firestore';
+import type { Unsubscribe } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 
 export type UserProfileDoc = {
@@ -25,6 +26,28 @@ export async function getMyUserProfile(): Promise<UserProfileDoc> {
     throw new Error('User profile not found');
   }
   return snap.data() as UserProfileDoc;
+}
+
+export function subscribeMyUserProfile(
+  onProfile: (profile: UserProfileDoc | null) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const uid = requireUid();
+  return onSnapshot(
+    doc(firebaseDb, 'users', uid),
+    (snap) => {
+      if (!snap.exists()) {
+        onProfile(null);
+        return;
+      }
+      onProfile(snap.data() as UserProfileDoc);
+    },
+    (err) => {
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
 }
 
 /**

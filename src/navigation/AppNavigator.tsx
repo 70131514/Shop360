@@ -14,6 +14,11 @@ import ProductDetailsScreen from '../screens/product/ProductDetailsScreen';
 import { ARViewScreen } from '../screens/ar/ARViewScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
+import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
+import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
+import AdminProductEditScreen from '../screens/admin/AdminProductEditScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -31,6 +36,7 @@ import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const AdminTab = createBottomTabNavigator();
 
 const CustomTabBar = ({ state, descriptors: _descriptors, navigation }: BottomTabBarProps) => {
   const { colors } = useTheme();
@@ -76,6 +82,14 @@ const CustomTabBar = ({ state, descriptors: _descriptors, navigation }: BottomTa
               return 'cart-outline';
             case 'Profile':
               return 'person-outline';
+            case 'Admin':
+              return 'shield-checkmark-outline';
+            case 'Users':
+              return 'people-outline';
+            case 'ProductsAdmin':
+              return 'pricetags-outline';
+            case 'OrdersAdmin':
+              return 'receipt-outline';
             default:
               return 'home-outline';
           }
@@ -91,6 +105,14 @@ const CustomTabBar = ({ state, descriptors: _descriptors, navigation }: BottomTa
               return 'Cart';
             case 'Profile':
               return 'Profile';
+            case 'Admin':
+              return 'Admin';
+            case 'Users':
+              return 'Users';
+            case 'ProductsAdmin':
+              return 'Products';
+            case 'OrdersAdmin':
+              return 'Orders';
             default:
               return 'Home';
           }
@@ -178,9 +200,54 @@ const TabNavigator = () => {
   );
 };
 
+const AdminTabNavigator = () => {
+  return (
+    <AdminTab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <AdminTab.Screen name="Admin" component={AdminDashboardScreen} />
+      <AdminTab.Screen name="Users" component={AdminUsersScreen} />
+      <AdminTab.Screen name="ProductsAdmin" component={AdminProductsScreen} />
+      <AdminTab.Screen name="OrdersAdmin" component={AdminOrdersScreen} />
+    </AdminTab.Navigator>
+  );
+};
+
+const AdminTabsGate = () => {
+  const { colors } = useTheme();
+  const { isAdmin } = useAuth();
+
+  if (!isAdmin) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+        }}
+      >
+        <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 12 }}>
+          Not authorized
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 6, textAlign: 'center' }}>
+          This portal is only available to admin accounts.
+        </Text>
+      </View>
+    );
+  }
+
+  return <AdminTabNavigator />;
+};
+
 export const AppNavigator = () => {
   const { colors } = useTheme();
-  const { loading } = useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
+  const { loading, isAdmin, user } = useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
 
   if (loading) {
     return (
@@ -211,6 +278,8 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator
+        key={user && isAdmin ? 'admin-root' : 'main-root'}
+        initialRouteName={user && isAdmin ? 'AdminTabs' : 'MainTabs'}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right', // Smooth transitions
@@ -228,6 +297,14 @@ export const AppNavigator = () => {
         }}
       >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
+        {/* Always register AdminTabs so navigation.reset({ routes: [{ name: 'AdminTabs' }] }) never errors.
+           Access is enforced inside AdminTabsGate based on isAdmin. */}
+        <Stack.Screen name="AdminTabs" component={AdminTabsGate} />
+        <Stack.Screen
+          name="AdminProductEdit"
+          component={AdminProductEditScreen}
+          options={{ headerShown: true, title: 'Product' }}
+        />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen
           name="ARView"

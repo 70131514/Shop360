@@ -11,6 +11,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     match /users/{uid} {
 
       // Create your own user document at signup
@@ -35,7 +40,7 @@ service cloud.firestore {
       allow delete: if false;
 
       // Disallow listing all users by default
-      allow list: if false;
+      allow list: if isAdmin();
 
       // ✅ Cart subcollection (per-user)
       match /cart/{productId} {
@@ -68,7 +73,7 @@ service cloud.firestore {
       // ✅ Orders subcollection (per-user)
       match /orders/{orderId} {
         // Users can only read/list their own orders
-        allow get, list: if isOwner(uid);
+        allow get, list: if isOwner(uid) || isAdmin();
 
         // Users can create orders only for themselves (written by the app after checkout)
         allow create: if isOwner(uid)
@@ -89,6 +94,12 @@ service cloud.firestore {
         // Typically orders shouldn't be editable by the client after creation
         allow update, delete: if false;
       }
+    }
+
+    // ✅ Products collection (admin-managed)
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     // Everything else locked down

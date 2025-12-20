@@ -7,12 +7,16 @@ import {
 import { signIn, signOut, signUp } from '../services/authService';
 import { firebaseAuth } from '../services/firebase';
 import { migrateGuestCartToUserCart } from '../services/cartService';
+import { subscribeMyUserProfile, type UserProfileDoc } from '../services/userService';
 
 type User = FirebaseAuthTypes.User | null;
 
 type AuthContextType = {
   user: User;
   loading: boolean;
+  profile: UserProfileDoc | null;
+  role: string | null;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -23,6 +27,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [profile, setProfile] = useState<UserProfileDoc | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   // Handle user state changes
   function handleAuthStateChanged(nextUser: User) {
@@ -39,6 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     let unsubscribe: undefined | (() => void);
+    let unsubProfile: undefined | (() => void);
 
     const init = async () => {
       try {
@@ -50,7 +57,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Keep auth state simple/stable. Any "post-signup" sign-out is handled inside register()
         // after Firestore has been written successfully.
-        unsubscribe = onAuthStateChangedModular(firebaseAuth, handleAuthStateChanged);
+        unsubscribe = onAuthStateChangedModular(firebaseAuth, (nextUser) => {
+          handleAuthStateChanged(nextUser);
+
+          // Reset profile state immediately on auth changes
+          if (unsubProfile) {
+            unsubProfile();
+            unsubProfile = undefined;
+          }
+          setProfile(null);
+          setRole(null);
+
+          if (nextUser) {
+            try {
+              unsubProfile = subscribeMyUserProfile(
+                (p) => {
+                  setProfile(p);
+                  setRole(p?.role ?? null);
+                },
+                () => {
+                  setProfile(null);
+                  setRole(null);
+                },
+              );
+            } catch {
+              setProfile(null);
+              setRole(null);
+            }
+          }
+        });
       } catch (e) {
         // If anything goes wrong, still unblock the UI
         setUser(null);
@@ -63,6 +98,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
       if (unsubscribe) {
         unsubscribe();
+      }
+      if (unsubProfile) {
+        unsubProfile();
       }
     };
     // firebaseAuth is stable per app; do not resubscribe on state changes
@@ -96,17 +134,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // signOut is safe even if already signed out; treat "no-current-user" as success.
       await signOut();
       setUser(null);
+      setProfile(null);
+      setRole(null);
     } catch (error: any) {
       if (error?.code === 'auth/no-current-user') {
         setUser(null);
+        setProfile(null);
+        setRole(null);
         return;
       }
       throw error;
     }
   };
 
+  const isAdmin = role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, profile, role, isAdmin, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

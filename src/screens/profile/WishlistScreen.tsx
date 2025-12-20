@@ -72,7 +72,11 @@ const WishlistScreen = () => {
       edges={['bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <StatusBar barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'} />
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={[styles.title, { color: colors.text }]}>My Wishlist</Text>

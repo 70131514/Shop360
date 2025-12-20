@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { getMyUserProfile } from '../../services/userService';
 
 type LoginRouteParams =
   | {
@@ -46,6 +47,21 @@ const LoginScreen = () => {
     try {
       setSubmitting(true);
       await login(email, password);
+      let isAdmin = false;
+      try {
+        const profile = await getMyUserProfile();
+        isAdmin = profile?.role === 'admin';
+      } catch {
+        // ignore role lookup failures; default to user flow
+      }
+
+      if (isAdmin) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AdminTabs' }],
+        });
+        return;
+      }
       const params = (route.params ?? {}) as LoginRouteParams;
       if (params?.redirectToTab) {
         // Reset back to app (closes modal) and jump to the tab
