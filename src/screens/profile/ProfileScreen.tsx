@@ -131,16 +131,29 @@ const ProfileScreen = () => {
   ];
 
   const handleLogout = async () => {
-    try {
-      setLoggingOut(true);
-      await logout();
-    } catch (e: any) {
-      // Even if something went wrong, avoid unhandled promise rejections.
-      const msg = e?.message ?? 'Failed to log out';
-      alert('Logout', msg);
-    } finally {
-      setLoggingOut(false);
+    if (loggingOut) {
+      return;
     }
+
+    alert('Log out?', 'Are you sure you want to log out of your account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setLoggingOut(true);
+            await logout();
+          } catch (e: any) {
+            // Even if something went wrong, avoid unhandled promise rejections.
+            const msg = e?.message ?? 'Failed to log out';
+            alert('Logout failed', msg);
+          } finally {
+            setLoggingOut(false);
+          }
+        },
+      },
+    ]);
   };
 
   const promptAuth = (reason: string, redirectToTab: 'Profile' | 'Cart' | 'Home' | 'Products') => {
