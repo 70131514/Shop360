@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+
+      // Create your own user document at signup
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','createdAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'user';
+
+      // Read your own profile
+      allow get: if isOwner(uid);
+
+      // Update only safe fields (no role escalation)
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','createdAt']);
+
+      // Optional: allow delete your doc (usually false in prod)
+      allow delete: if false;
+
+      // Disallow listing all users by default
+      allow list: if false;
+
+      // ✅ Cart subcollection (per-user)
+      match /cart/{productId} {
+        allow get, list: if isOwner(uid);
+
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly([
+            'id','name','price','image','quantity','brand','originalPrice','inStock','addedAt','updatedAt'
+          ])
+          && request.resource.data.id == productId;
+
+        allow delete: if isOwner(uid);
+      }
+
+      // ✅ Wishlist subcollection (per-user)
+      match /wishlist/{productId} {
+        allow get, list: if isOwner(uid);
+
+        // Create/update wishlist item (only allow safe fields)
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly([
+            'id','name','brand','price','originalPrice','image','inStock','addedAt'
+          ])
+          && request.resource.data.id == productId;
+
+        // Remove wishlist item
+        allow delete: if isOwner(uid);
+      }
+
+      // ✅ Orders subcollection (per-user)
+      match /orders/{orderId} {
+        // Users can only read/list their own orders
+        allow get, list: if isOwner(uid);
+
+        // Users can create orders only for themselves (written by the app after checkout)
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'status',
+            'createdAt',
+            'updatedAt',
+            'items',
+            'itemCount',
+            'subtotal',
+            'shipping',
+            'total'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.items is list;
+
+        // Typically orders shouldn't be editable by the client after creation
+        allow update, delete: if false;
+      }
+    }
+
+    // Everything else locked down
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+

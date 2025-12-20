@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   StyleSheet,
   View,
   Text,
@@ -61,6 +62,7 @@ const WishlistScreen = () => {
       brand: item.brand,
       inStock: item.inStock,
     });
+    Alert.alert('Added to cart', `${item.name} has been added to your cart.`);
     await handleRemoveItem(id);
   };
 

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   View,
   Text,
@@ -11,66 +12,56 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { subscribeOrders } from '../../services/orderService';
 
-type OrderItem = {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  quantity: number;
-  image: string;
-};
-
-type Order = {
-  id: string;
-  date: string;
-  status: 'delivered' | 'processing' | 'shipped' | 'cancelled';
-  items: OrderItem[];
-  total: number;
-  trackingNumber?: string;
-};
+type OrderStatus = 'delivered' | 'processing' | 'shipped' | 'cancelled';
 
 const OrderHistoryScreen = () => {
   const { colors } = useTheme();
-  const [orders] = useState<Order[]>([
-    {
-      id: '1',
-      date: '2024-03-15',
-      status: 'delivered',
-      items: [
-        {
-          id: '1',
-          name: 'Nike Air Max 270',
-          brand: 'Nike',
-          price: 150,
-          quantity: 1,
-          image:
-            'https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/skwgyqrbfzhu6uyeh0gg/air-max-270-mens-shoes-KkLcGR.png',
-        },
-      ],
-      total: 150,
-      trackingNumber: '1Z999AA10123456789',
-    },
-    {
-      id: '2',
-      date: '2024-03-10',
-      status: 'processing',
-      items: [
-        {
-          id: '2',
-          name: 'Adidas Ultraboost 22',
-          brand: 'Adidas',
-          price: 180,
-          quantity: 1,
-          image:
-            'https://assets.adidas.com/images/w_600,f_auto,q_auto/2c1a0a0a0a0a0a0a0a0a0a0a0a0a0a0a/ultraboost-22-shoes.jpg',
-        },
-      ],
-      total: 180,
-    },
-  ]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getStatusColor = (status: Order['status']) => {
+  useEffect(() => {
+    let unsub: undefined | (() => void);
+    try {
+      unsub = subscribeOrders(
+        (next) => {
+          setOrders(next);
+          setLoading(false);
+        },
+        (e) => {
+          setError(e instanceof Error ? e.message : 'Failed to load orders');
+          setLoading(false);
+        },
+      );
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to load orders');
+      setLoading(false);
+    }
+
+    return () => {
+      if (unsub) {
+        unsub();
+      }
+    };
+  }, []);
+
+  const uiOrders = useMemo(() => {
+    return (orders ?? []).map((o: any) => {
+      const createdAtMs =
+        typeof o?.createdAt?.toMillis === 'function' ? o.createdAt.toMillis() : Date.now();
+      return {
+        ...o,
+        createdAtMs,
+        status: (o?.status as OrderStatus) ?? 'processing',
+        items: Array.isArray(o?.items) ? o.items : [],
+        total: Number(o?.total ?? 0),
+      };
+    });
+  }, [orders]);
+
+  const getStatusColor = (status: OrderStatus) => {
     switch (status) {
       case 'delivered':
         return '#4CD964';
@@ -102,60 +93,89 @@ const OrderHistoryScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {orders.map((order) => (
-          <TouchableOpacity
-            key={order.id}
-            style={[styles.orderCard, { backgroundColor: colors.surface }]}
-            onPress={() => handleViewOrder(order.id)}
-          >
-            <View style={styles.orderHeader}>
-              <View>
-                <Text style={[styles.orderId, { color: colors.text }]}>Order #{order.id}</Text>
-                <Text style={[styles.orderDate, { color: colors.textSecondary }]}>
-                  {new Date(order.date).toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                <Text style={styles.statusText}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.itemsContainer}>
-              {order.items.map((item) => (
-                <View key={item.id} style={styles.itemRow}>
-                  <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" />
-                  <View style={styles.itemInfo}>
-                    <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>
-                      {item.brand}
-                    </Text>
-                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                    <Text style={[styles.itemQuantity, { color: colors.textSecondary }]}>
-                      Qty: {item.quantity}
-                    </Text>
-                  </View>
-                  <Text style={[styles.itemPrice, { color: colors.text }]}>${item.price}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
-              <View>
-                <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
-                <Text style={[styles.totalAmount, { color: colors.text }]}>${order.total}</Text>
-              </View>
-              {order.trackingNumber && (
-                <View style={styles.trackingContainer}>
-                  <Ionicons name="car-outline" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.trackingText, { color: colors.textSecondary }]}>
-                    {order.trackingNumber}
+        {loading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.helperText, { color: colors.textSecondary }]}>Loading orders…</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.centered}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.textSecondary} />
+            <Text style={[styles.helperText, { color: colors.text }]}>{error}</Text>
+          </View>
+        ) : uiOrders.length === 0 ? (
+          <View style={styles.centered}>
+            <Ionicons name="receipt-outline" size={56} color={colors.textSecondary} />
+            <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+              No orders yet
+            </Text>
+          </View>
+        ) : (
+          uiOrders.map((order: any) => (
+            <TouchableOpacity
+              key={order.id}
+              style={[styles.orderCard, { backgroundColor: colors.surface }]}
+              onPress={() => handleViewOrder(order.id)}
+            >
+              <View style={styles.orderHeader}>
+                <View>
+                  <Text style={[styles.orderId, { color: colors.text }]}>
+                    Order #{String(order.id).slice(-6).toUpperCase()}
+                  </Text>
+                  <Text style={[styles.orderDate, { color: colors.textSecondary }]}>
+                    {new Date(order.createdAtMs).toLocaleDateString()}
                   </Text>
                 </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
+                <View
+                  style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}
+                >
+                  <Text style={styles.statusText}>
+                    {String(order.status).charAt(0).toUpperCase() + String(order.status).slice(1)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.itemsContainer}>
+                {(order.items ?? []).slice(0, 3).map((item: any) => (
+                  <View key={item.productId ?? item.id} style={styles.itemRow}>
+                    {!!item.image && (
+                      <Image
+                        source={{ uri: item.image }}
+                        style={styles.itemImage}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <View style={styles.itemInfo}>
+                      {!!item.brand && (
+                        <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>
+                          {item.brand}
+                        </Text>
+                      )}
+                      <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.itemQuantity, { color: colors.textSecondary }]}>
+                        Qty: {item.quantity}
+                      </Text>
+                    </View>
+                    <Text style={[styles.itemPrice, { color: colors.text }]}>
+                      ${Number(item.price ?? 0).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
+                  <Text style={[styles.totalAmount, { color: colors.text }]}>
+                    ${Number(order.total ?? 0).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -167,6 +187,18 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    flexGrow: 1,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  helperText: {
+    marginTop: 12,
+    fontSize: 14,
+    textAlign: 'center',
   },
   orderCard: {
     borderRadius: 16,

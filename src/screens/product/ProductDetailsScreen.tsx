@@ -13,6 +13,7 @@ import {
   Animated,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -51,6 +52,7 @@ export default function ProductDetailsScreen() {
   const { id } = route.params || {}; // Handle undefined params safely
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,22 +101,27 @@ export default function ProductDetailsScreen() {
   }, [id, fetchProduct, checkWishlistStatus]);
 
   const toggleWishlist = async () => {
-    if (isWishlisted) {
-      await removeFromWishlist(id);
-      setIsWishlisted(false);
-    } else if (product) {
-      // Add to wishlist
-      const newItem: WishlistItem = {
-        id: product.id.toString(),
-        name: product.title,
-        brand: product.brand,
-        price: product.price,
-        originalPrice: product.price * 1.2, // 20% higher as original price
-        image: product.images[0],
-        inStock: product.stock > 0,
-      };
-      await addToWishlist(newItem);
-      setIsWishlisted(true);
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(id);
+        setIsWishlisted(false);
+      } else if (product) {
+        // Add to wishlist
+        const newItem: WishlistItem = {
+          id: product.id.toString(),
+          name: product.title,
+          brand: product.brand,
+          price: product.price,
+          originalPrice: product.price * 1.2, // 20% higher as original price
+          image: product.images[0],
+          inStock: product.stock > 0,
+        };
+        await addToWishlist(newItem);
+        setIsWishlisted(true);
+        Alert.alert('Added to wishlist', `${product.title} has been added to your wishlist.`);
+      }
+    } catch (e: any) {
+      Alert.alert('Wishlist update failed', e?.message ?? 'Please try again.');
     }
   };
 
@@ -142,6 +149,7 @@ export default function ProductDetailsScreen() {
         brand: product.brand,
         inStock: product.stock > 0,
       });
+      Alert.alert('Added to cart', `${product.title} has been added to your cart.`);
     } catch (e: any) {
       Alert.alert('Could not add to cart', e?.message ?? 'Please try again.');
     } finally {
@@ -211,7 +219,12 @@ export default function ProductDetailsScreen() {
       />
 
       {/* Custom Header */}
-      <View style={[styles.customHeader, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.customHeader,
+          { backgroundColor: colors.background, paddingTop: Math.max(insets.top, 0) + 10 },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.headerButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
@@ -363,7 +376,10 @@ export default function ProductDetailsScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <TouchableOpacity
-              style={[styles.closeButton, { backgroundColor: colors.surface }]}
+              style={[
+                styles.closeButton,
+                { backgroundColor: colors.surface, top: Math.max(insets.top, 0) + 12 },
+              ]}
               onPress={() => setIsFullScreen(false)}
             >
               <Ionicons name="close" size={24} color={colors.text} />
@@ -409,7 +425,6 @@ export default function ProductDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 12,
     flex: 1,
   },
   scrollContent: {
@@ -448,7 +463,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: 40, // Android status bar height
     elevation: 2,
   },
   headerButton: {
@@ -643,7 +657,6 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 40,
     right: 16,
     width: 40,
     height: 40,

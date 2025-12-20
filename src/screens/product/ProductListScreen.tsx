@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
-  SafeAreaView,
   TextInput,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -40,6 +40,7 @@ interface Category {
 
 const ProductListScreen = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +118,7 @@ const ProductListScreen = () => {
         brand: product.brand,
         inStock: (product.stock ?? 0) > 0,
       });
+      Alert.alert('Added to cart', `${product.title} has been added to your cart.`);
     } catch (e: any) {
       Alert.alert('Could not add to cart', e?.message ?? 'Please try again.');
     } finally {
@@ -288,27 +290,42 @@ const ProductListScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <StatusBar
         barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
         translucent={false}
       />
 
-      {selectedCategory && (
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            paddingTop: Math.max(insets.top, 0) + 10,
+          },
+        ]}
+      >
+        {selectedCategory ? (
           <TouchableOpacity
             style={[styles.headerButton, { backgroundColor: colors.surface }]}
             onPress={clearCategory}
           >
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            {selectedCategory.charAt(0).toUpperCase() +
-              selectedCategory.slice(1).replace(/-/g, ' ')}
-          </Text>
-        </View>
-      )}
+        ) : (
+          <View style={styles.headerButtonPlaceholder} />
+        )}
+
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
+          {selectedCategory
+            ? selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1).replace(/-/g, ' ')
+            : 'Categories'}
+        </Text>
+      </View>
 
       {selectedCategory && (
         <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
@@ -367,7 +384,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingTop: 60,
   },
   headerButton: {
     width: 44,
@@ -386,6 +402,11 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     flex: 1,
+  },
+  headerButtonPlaceholder: {
+    width: 44,
+    height: 44,
+    marginRight: 16,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -415,7 +436,7 @@ const styles = StyleSheet.create({
   },
   categoryList: {
     paddingHorizontal: 20,
-    paddingTop: 80,
+    paddingTop: 8,
     paddingBottom: 30,
   },
   categoryRow: {

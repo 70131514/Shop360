@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StatusBar,
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '../../components/ThemedText';
 import { useTheme } from '../../contexts/ThemeContext';
+import { placeOrderFromCart } from '../../services/orderService';
 import {
   clearCart,
   removeFromCart,
@@ -83,6 +85,7 @@ export default function CartScreen() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   useEffect(() => {
     let unsub: undefined | (() => void);
@@ -144,6 +147,24 @@ export default function CartScreen() {
       await clearCart();
     } finally {
       setClearing(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (cartItems.length === 0 || placingOrder) {
+      return;
+    }
+
+    try {
+      setPlacingOrder(true);
+      const { orderId } = await placeOrderFromCart(cartItems, { shipping });
+      Alert.alert('Order placed', `Your order #${orderId.slice(-6).toUpperCase()} was created.`);
+      // Cart is cleared by the batch; snapshot will update UI automatically.
+      navigation.navigate('Profile');
+    } catch (e: any) {
+      Alert.alert('Checkout failed', e?.message ?? 'Please try again.');
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
@@ -257,11 +278,11 @@ export default function CartScreen() {
 
         <TouchableOpacity
           style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('Home')}
-          disabled={cartItems.length === 0}
+          onPress={handleCheckout}
+          disabled={cartItems.length === 0 || placingOrder}
         >
           <ThemedText style={[styles.checkoutButtonText, { color: colors.background }]}>
-            Proceed to Checkout
+            {placingOrder ? 'Placing Order...' : 'Proceed to Checkout'}
           </ThemedText>
         </TouchableOpacity>
       </View>

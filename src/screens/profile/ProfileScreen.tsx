@@ -9,14 +9,14 @@ import {
   Image,
   ScrollView,
   StatusBar,
-  SafeAreaView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getWishlist } from '../../services/wishlistService';
+import { subscribeOrderCount } from '../../services/orderService';
 
 type MenuItem = {
   icon: string;
@@ -35,6 +35,7 @@ const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -55,6 +56,26 @@ const ProfileScreen = () => {
 
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    // Live order count for the signed-in user
+    let unsub: undefined | (() => void);
+    try {
+      unsub = subscribeOrderCount(
+        (count) => setOrderCount(count),
+        () => setOrderCount(0),
+      );
+    } catch {
+      // Likely signed out / no uid yet
+      setOrderCount(0);
+    }
+
+    return () => {
+      if (unsub) {
+        unsub();
+      }
+    };
+  }, [user?.uid]);
 
   const menuItems: MenuItem[] = [
     {
@@ -121,7 +142,10 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <StatusBar
         barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
         backgroundColor={colors.background}
@@ -133,7 +157,7 @@ const ProfileScreen = () => {
         bounces={true}
         scrollEventThrottle={16}
       >
-        <View style={[styles.header, { paddingTop: 50 }]}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 0) + 10 }]}>
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
@@ -184,7 +208,7 @@ const ProfileScreen = () => {
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
             <Ionicons name="bag-outline" size={24} color={colors.primary} style={styles.statIcon} />
-            <Text style={[styles.statNumber, { color: colors.text }]}>12</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
@@ -250,7 +274,6 @@ const styles = StyleSheet.create({
     minHeight: '100%',
   },
   header: {
-    marginTop: 20,
     paddingHorizontal: 20,
   },
   profileSection: {
