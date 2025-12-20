@@ -16,6 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { getWishlist, removeFromWishlist, WishlistItem } from '../../services/wishlistService';
 import { addToCart } from '../../services/cartService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { getReadableTextColor } from '../../utils/helpers';
 
 const WishlistScreen = () => {
   const { colors } = useTheme();
@@ -93,50 +94,66 @@ const WishlistScreen = () => {
                 style={[styles.browseButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('Products')}
               >
-                <Text style={styles.browseButtonText}>Browse Products</Text>
+                <Text
+                  style={[styles.browseButtonText, { color: getReadableTextColor(colors.primary) }]}
+                >
+                  Browse Products
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
-            wishlistItems.map((item) => (
-              <View
-                key={item.id}
-                style={[styles.itemContainer, { backgroundColor: colors.surface }]}
-              >
-                <Image source={{ uri: item.image }} style={styles.itemImage} />
-                <View style={styles.itemDetails}>
-                  <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
-                  <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                  <View style={styles.priceContainer}>
-                    <Text style={[styles.itemPrice, { color: colors.text }]}>${item.price}</Text>
-                    {item.originalPrice > item.price && (
-                      <Text style={[styles.originalPrice, { color: colors.text }]}>
-                        ${item.originalPrice}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.moveToCartButton,
-                        { backgroundColor: item.inStock ? colors.primary : colors.textSecondary },
-                      ]}
-                      onPress={() => handleMoveToCart(item.id)}
-                      disabled={!item.inStock}
-                    >
-                      <Text style={[styles.buttonText, { opacity: item.inStock ? 1 : 0.7 }]}>
-                        {item.inStock ? 'Move to Cart' : 'Out of Stock'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.removeButton, { backgroundColor: '#FF3B30' }]}
-                      onPress={() => handleRemoveItem(item.id)}
-                    >
-                      <Text style={styles.buttonText}>Remove</Text>
-                    </TouchableOpacity>
+            wishlistItems.map((item) => {
+              const price = Number(item.price ?? 0);
+              const originalPrice = Number(item.originalPrice ?? 0);
+              const moveBg = item.inStock ? colors.primary : colors.textSecondary;
+              const removeBg = '#FF3B30';
+              const moveText = getReadableTextColor(moveBg);
+              const removeText = getReadableTextColor(removeBg);
+
+              return (
+                <View
+                  key={item.id}
+                  style={[styles.itemContainer, { backgroundColor: colors.surface }]}
+                >
+                  <Image source={{ uri: item.image }} style={styles.itemImage} />
+                  <View style={styles.itemDetails}>
+                    <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
+                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={[styles.itemPrice, { color: colors.text }]}>${price}</Text>
+                      {originalPrice > price && (
+                        <Text style={[styles.originalPrice, { color: colors.text }]}>
+                          ${originalPrice}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
+                        style={[styles.moveToCartButton, { backgroundColor: moveBg }]}
+                        onPress={() => handleMoveToCart(item.id)}
+                        disabled={!item.inStock}
+                      >
+                        <Text
+                          style={[
+                            styles.buttonText,
+                            !item.inStock ? styles.buttonTextDisabled : null,
+                            { color: moveText },
+                          ]}
+                        >
+                          {item.inStock ? 'Move to Cart' : 'Out of Stock'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.removeButton, { backgroundColor: removeBg }]}
+                        onPress={() => handleRemoveItem(item.id)}
+                      >
+                        <Text style={[styles.buttonText, { color: removeText }]}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -175,7 +192,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   browseButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -236,9 +252,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  buttonTextDisabled: {
+    opacity: 0.7,
   },
 });
 

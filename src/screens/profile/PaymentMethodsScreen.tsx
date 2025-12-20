@@ -97,6 +97,7 @@ const PaymentMethodsScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Payment Methods</Text>
         {paymentMethods.map((method) => (
           <View key={method.id} style={[styles.cardContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.cardHeader}>
@@ -161,6 +162,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
   } as ViewStyle,
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
+  } as TextStyle,
   cardContainer: {
     borderRadius: 16,
     padding: 16,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -20,177 +20,58 @@ import {
   clearAllStorage,
 } from '../../utils/storage';
 
-type SettingItem = {
-  id: string;
-  title: string;
-  description: string;
-  type: 'toggle' | 'select' | 'action';
-  value: boolean;
-  icon: string;
-};
-
 const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
   const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
-  const [settings, setSettings] = useState<SettingItem[]>([
-    {
-      id: 'change-email',
-      title: 'Change Email',
-      description: 'Update your login email (requires verification)',
-      type: 'action',
-      value: false,
-      icon: 'mail-outline',
-    },
-    {
-      id: 'change-password',
-      title: 'Change Password',
-      description: 'Update your account password',
-      type: 'action',
-      value: false,
-      icon: 'key-outline',
-    },
-    {
-      id: '1',
-      title: 'Dark Mode',
-      description: 'Enable dark theme for the app',
-      type: 'toggle',
-      value: isDark,
-      icon: 'moon-outline',
-    },
-    {
-      id: '2',
-      title: 'Location Services',
-      description: 'Allow app to access your location',
-      type: 'toggle',
-      value: true,
-      icon: 'location-outline',
-    },
-    {
-      id: '3',
-      title: 'Clear Cache',
-      description: 'Free up storage space',
-      type: 'action',
-      value: false,
-      icon: 'trash-outline',
-    },
-    {
-      id: '4',
-      title: 'Privacy Policy',
-      description: 'Read our privacy policy',
-      type: 'action',
-      value: false,
-      icon: 'shield-checkmark-outline',
-    },
-    {
-      id: '5',
-      title: 'Terms of Service',
-      description: 'Read our terms of service',
-      type: 'action',
-      value: false,
-      icon: 'document-text-outline',
-    },
-  ]);
+  const [locationEnabled, setLocationEnabled] = useState<boolean>(true);
 
   const [isClearing, setIsClearing] = useState(false);
 
-  // Load saved notification preferences
+  // Load saved preferences (best-effort)
   useEffect(() => {
     const loadPreferences = async () => {
       const savedPreferences = await getNotificationPreferences();
       if (savedPreferences) {
-        setSettings((prevSettings) =>
-          prevSettings.map((setting) => ({
-            ...setting,
-            value: savedPreferences[setting.id] ?? setting.value,
-          })),
-        );
+        setLocationEnabled(savedPreferences.locationServices ?? true);
       }
     };
     loadPreferences();
   }, []);
 
-  const handleToggle = async (id: string) => {
-    if (id === '1') {
-      // Handle theme toggle
-      toggleTheme();
-      setSettings(
-        settings.map((setting) =>
-          setting.id === id ? { ...setting, value: !setting.value } : setting,
-        ),
-      );
-    } else {
-      // Handle other toggles
-      const newSettings = settings.map((setting) =>
-        setting.id === id ? { ...setting, value: !setting.value } : setting,
-      );
-      setSettings(newSettings);
-
-      // Save notification preferences
-      const preferences = newSettings.reduce((acc, setting) => {
-        if (setting.type === 'toggle') {
-          acc[setting.id] = setting.value;
-        }
-        return acc;
-      }, {} as Record<string, boolean>);
-      await storeNotificationPreferences(preferences);
+  const persistLocation = async (next: boolean) => {
+    setLocationEnabled(next);
+    try {
+      await storeNotificationPreferences({ locationServices: next });
+    } catch {
+      // ignore
     }
   };
 
-  const handleAction = (id: string) => {
-    // Handle different actions based on setting id
-    switch (id) {
-      case 'change-email':
-        navigation.navigate('ChangeEmail');
-        break;
-      case 'change-password':
-        navigation.navigate('ChangePassword');
-        break;
-      case '6':
-        // Clear cache logic
-        alert(
-          'Clear Cache',
-          'Are you sure you want to clear all app data? This will remove your wishlist, cart, and other saved preferences.',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-            {
-              text: 'Clear',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  setIsClearing(true);
-                  await clearAllStorage();
-                  // Reset settings to default values
-                  setSettings((prevSettings) =>
-                    prevSettings.map((setting) => ({
-                      ...setting,
-                      value: setting.id === '1' ? isDark : false,
-                    })),
-                  );
-                  alert('Success', 'Cache cleared successfully');
-                } catch (error) {
-                  console.error('Clear cache error:', error);
-                  alert('Error', 'Failed to clear cache. Please try again.');
-                } finally {
-                  setIsClearing(false);
-                }
-              },
-            },
-          ],
-        );
-        break;
-      case '7':
-        // Open privacy policy
-        break;
-      case '8':
-        // Open terms of service
-        break;
-      default:
-        break;
-    }
+  const handleClearCache = () => {
+    alert(
+      'Clear Cache',
+      'Are you sure you want to clear all app data? This will remove your wishlist, cart, and other saved preferences.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsClearing(true);
+              await clearAllStorage();
+              alert('Success', 'Cache cleared successfully');
+            } catch (error) {
+              console.error('Clear cache error:', error);
+              alert('Error', 'Failed to clear cache. Please try again.');
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -205,64 +86,156 @@ const SettingsScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {settings.map((setting) => (
-          <TouchableOpacity
-            key={setting.id}
-            activeOpacity={0.85}
-            style={[styles.settingItem, { backgroundColor: colors.surface }]}
-            onPress={() => {
-              if (setting.type === 'toggle') {
-                handleToggle(setting.id);
-                return;
-              }
-              if (setting.type === 'action') {
-                handleAction(setting.id);
-                return;
-              }
-              // select
-              handleAction(setting.id);
-            }}
-            disabled={isClearing && setting.id === '6'}
-          >
-            <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
-                <Ionicons name={setting.icon} size={20} color={colors.text} />
-              </View>
-              <View style={styles.settingInfo}>
-                <Text style={[styles.settingTitle, { color: colors.text }]}>{setting.title}</Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  {setting.description}
-                </Text>
-              </View>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Settings</Text>
+
+        {/* Theme (top) */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
+        <View
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="moon-outline" size={20} color={colors.text} />
             </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Dark Mode</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Enable dark theme for the app
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={() => toggleTheme()}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#FFF"
+          />
+        </View>
 
-            {setting.type === 'toggle' && (
-              <Switch
-                value={setting.value}
-                onValueChange={() => handleToggle(setting.id)}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFF"
-              />
-            )}
-
-            {setting.type === 'select' && (
-              <View style={styles.selectButton}>
-                <Text style={[styles.selectButtonText, { color: colors.primary }]}>Select</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-              </View>
-            )}
-
-            {setting.type === 'action' && (
-              <View style={styles.actionButton}>
-                {isClearing && setting.id === '6' ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                )}
-              </View>
-            )}
+        {/* Account cards */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
+        <View style={styles.cardRow}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[
+              styles.actionCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => navigation.navigate('ChangeEmail')}
+          >
+            <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
+              <Ionicons name="mail-outline" size={20} color={colors.text} />
+            </View>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Change Email</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+              Update your login email (verification required)
+            </Text>
           </TouchableOpacity>
-        ))}
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[
+              styles.actionCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => navigation.navigate('ChangePassword')}
+          >
+            <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
+              <Ionicons name="key-outline" size={20} color={colors.text} />
+            </View>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>Change Password</Text>
+            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+              Keep your account secure
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Remaining options */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Preferences</Text>
+
+        <View
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="location-outline" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Location Services</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Allow app to access your location
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={locationEnabled}
+            onValueChange={(v) => persistLocation(v)}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#FFF"
+          />
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={handleClearCache}
+          disabled={isClearing}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="trash-outline" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Clear Cache</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Free up storage space
+              </Text>
+            </View>
+          </View>
+          {isClearing ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => alert('Coming soon', 'Privacy Policy will be available here.')}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Privacy Policy</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Read our privacy policy
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={() => alert('Coming soon', 'Terms of Service will be available here.')}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="document-text-outline" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Terms of Service</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Read our terms of service
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -274,19 +247,35 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 28,
   },
-  settingItem: {
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    marginTop: 14,
+    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
     borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
     marginBottom: 12,
   },
-  settingLeft: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    paddingRight: 12,
   },
   iconContainer: {
     width: 40,
@@ -296,16 +285,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  settingInfo: {
+  rowInfo: {
     flex: 1,
   },
-  settingTitle: {
+  rowTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  settingDescription: {
+  rowDesc: {
     fontSize: 14,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    minHeight: 140,
+  },
+  cardIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  cardDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   selectButton: {
     flexDirection: 'row',

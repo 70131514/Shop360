@@ -69,6 +69,7 @@ const ShippingAddressesScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Shipping Addresses</Text>
         {addresses.map((address) => (
           <View key={address.id} style={[styles.addressCard, { backgroundColor: colors.surface }]}>
             <View style={styles.addressHeader}>
@@ -125,6 +126,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   addressCard: {
     borderRadius: 16,

@@ -93,6 +93,7 @@ const OrderHistoryScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Order History</Text>
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -188,6 +189,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     flexGrow: 1,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   centered: {
     flex: 1,

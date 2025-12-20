@@ -351,52 +351,52 @@ export const AppNavigator = () => {
           <Stack.Screen
             name="PersonalInfo"
             component={PersonalInfoScreen}
-            options={{ headerShown: true, title: 'Personal Information' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="ShippingAddresses"
             component={ShippingAddressesScreen}
-            options={{ headerShown: true, title: 'Shipping Addresses' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="PaymentMethods"
             component={PaymentMethodsScreen}
-            options={{ headerShown: true, title: 'Payment Methods' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="Wishlist"
             component={WishlistScreen}
-            options={{ headerShown: true, title: 'Wishlist' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="Orders"
             component={OrderHistoryScreen}
-            options={{ headerShown: true, title: 'Order History' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="Notifications"
             component={NotificationsScreen}
-            options={{ headerShown: true, title: 'Notifications' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
           <Stack.Screen
             name="Settings"
             component={SettingsScreen}
-            options={{ headerShown: true, title: 'Settings' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
         <Stack.Screen
           name="ChangeEmail"
           component={ChangeEmailScreen}
-          options={{ headerShown: true, title: 'Change Email' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
         <Stack.Screen
           name="ChangePassword"
           component={ChangePasswordScreen}
-          options={{ headerShown: true, title: 'Change Password' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
           <Stack.Screen
             name="HelpSupport"
             component={HelpSupportScreen}
-            options={{ headerShown: true, title: 'Help & Support' }}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
           />
 
           {/* Auth screens (modal) */}

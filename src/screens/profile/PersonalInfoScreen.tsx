@@ -91,6 +91,7 @@ const PersonalInfoScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Personal Information</Text>
           {loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -201,6 +202,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   formGroup: {
     marginBottom: 20,

@@ -116,6 +116,7 @@ const HelpSupportScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Help & Support</Text>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Frequently Asked Questions
         </Text>
@@ -198,6 +199,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 20,

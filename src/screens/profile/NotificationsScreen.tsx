@@ -78,6 +78,7 @@ const NotificationsScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>Notifications</Text>
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
@@ -140,6 +141,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+  },
+  pageTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 14,
   },
   section: {
     borderRadius: 16,
