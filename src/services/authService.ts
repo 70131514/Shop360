@@ -2,6 +2,9 @@ import {
   createUserWithEmailAndPassword,
   deleteUser,
   FirebaseAuthTypes,
+  getIdToken as getIdTokenModular,
+  reload as reloadModular,
+  sendEmailVerification as sendEmailVerificationModular,
   sendPasswordResetEmail as sendPasswordResetEmailModular,
   signInWithEmailAndPassword,
   signOut as signOutModular,
@@ -9,6 +12,14 @@ import {
 } from '@react-native-firebase/auth';
 import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
+
+export class EmailNotVerifiedError extends Error {
+  code = 'auth/email-not-verified';
+  constructor(message: string = 'Email address is not verified') {
+    super(message);
+    this.name = 'EmailNotVerifiedError';
+  }
+}
 
 /**
  * Sign in with email and password
@@ -58,12 +69,13 @@ export const signUp = async (
         name,
         email: authEmail,
         role,
+        isEmailVerified: false,
         createdAt: serverTimestamp(),
       });
 
       // 4. Send email verification (best-effort)
       try {
-        await userCredential.user.sendEmailVerification();
+        await sendEmailVerificationModular(userCredential.user);
       } catch (_) {
         // ignore email verification send failures
       }
@@ -119,3 +131,37 @@ export const sendPasswordResetEmail = async (email: string): Promise<void> => {
 export const getCurrentUser = () => {
   return firebaseAuth.currentUser;
 };
+
+export async function resendEmailVerification(): Promise<void> {
+  const current = firebaseAuth.currentUser;
+  if (!current) {
+    throw new Error('No authenticated user');
+  }
+  await sendEmailVerificationModular(current);
+}
+
+/**
+ * Reload the current user from Firebase so `emailVerified` updates without restarting the app.
+ * Returns the latest `emailVerified` value.
+ */
+export async function reloadCurrentUser(): Promise<boolean> {
+  const current = firebaseAuth.currentUser;
+  if (!current) {
+    return false;
+  }
+  await reloadModular(current);
+  // IMPORTANT: rely on the reloaded `current` user object; `firebaseAuth.currentUser` can lag briefly.
+  const verified = current.emailVerified === true;
+
+  // Firestore rules read `request.auth.token.email_verified`, which can lag behind `user.emailVerified`
+  // until the ID token refreshes. Force-refresh the token so rules see the verified claim immediately.
+  if (verified) {
+    try {
+      await getIdTokenModular(current, true);
+    } catch {
+      // ignore token refresh failures; user can retry
+    }
+  }
+
+  return verified;
+}

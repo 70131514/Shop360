@@ -82,7 +82,7 @@ export default function CartScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
+  const { user, refreshEmailVerification } = useAuth();
   const { alert } = useAppAlert();
 
   const [cartItems, setCartItems] = useState<any[]>([]);
@@ -177,7 +177,7 @@ export default function CartScreen() {
             text: 'I verified',
             onPress: async () => {
               try {
-                await user.reload();
+                  await refreshEmailVerification();
               } catch {
                 // ignore reload failures; user can retry
               }

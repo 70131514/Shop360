@@ -7,6 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
@@ -20,63 +24,66 @@ service cloud.firestore {
 
       // Create your own user document at signup
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['uid','name','email','role','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt'])
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == 'user';
+        && request.resource.data.role == 'user'
+        && request.resource.data.isEmailVerified == false;
 
       // Read your own profile
-      allow get: if isOwner(uid);
+      allow get: if isOwner(uid) && isEmailVerified();
 
       // Update only safe fields (no role escalation)
-      allow update: if isOwner(uid)
+      allow update: if isOwner(uid) && isEmailVerified()
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
         && request.resource.data.role == resource.data.role
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.keys().hasOnly(['uid','name','email','role','createdAt']);
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt'])
+        // Once verified, allow isEmailVerified to stay true (never allow turning it off)
+        && (resource.data.isEmailVerified != true || request.resource.data.isEmailVerified == true);
 
       // Optional: allow delete your doc (usually false in prod)
       allow delete: if false;
 
       // Disallow listing all users by default
-      allow list: if isAdmin();
+      allow list: if isAdmin() && isEmailVerified();
 
       // ✅ Cart subcollection (per-user)
       match /cart/{productId} {
-        allow get, list: if isOwner(uid);
+        allow get, list: if isOwner(uid) && isEmailVerified();
 
-        allow create, update: if isOwner(uid)
+        allow create, update: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
             'id','name','price','image','quantity','brand','originalPrice','inStock','addedAt','updatedAt'
           ])
           && request.resource.data.id == productId;
 
-        allow delete: if isOwner(uid);
+        allow delete: if isOwner(uid) && isEmailVerified();
       }
 
       // ✅ Wishlist subcollection (per-user)
       match /wishlist/{productId} {
-        allow get, list: if isOwner(uid);
+        allow get, list: if isOwner(uid) && isEmailVerified();
 
         // Create/update wishlist item (only allow safe fields)
-        allow create, update: if isOwner(uid)
+        allow create, update: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
             'id','name','brand','price','originalPrice','image','inStock','addedAt'
           ])
           && request.resource.data.id == productId;
 
         // Remove wishlist item
-        allow delete: if isOwner(uid);
+        allow delete: if isOwner(uid) && isEmailVerified();
       }
 
       // ✅ Orders subcollection (per-user)
       match /orders/{orderId} {
         // Users can only read/list their own orders
-        allow get, list: if isOwner(uid) || isAdmin();
+        allow get, list: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
 
         // Users can create orders only for themselves (written by the app after checkout)
-        allow create: if isOwner(uid)
+        allow create: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
             'userId',
             'status',

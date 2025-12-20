@@ -57,19 +57,9 @@ const SignupScreen = () => {
     try {
       setSubmitting(true);
       await register(email, password, name);
-      alert(
-        'Account created',
-        'We sent a verification email. Please verify your email to use wishlist and checkout.',
-      );
-      const params = (route.params ?? {}) as SignupRouteParams;
-      if (params?.redirectToTab) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs', params: { screen: params.redirectToTab } }],
-        });
-      } else {
-        navigation.goBack();
-      }
+      alert('Verify your account', 'We sent a verification email. Please verify your email to log in.');
+      // Do not navigate here — AppNavigator will hard-gate signed-in-but-unverified users
+      // into the VerifyEmail screen automatically.
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'An error occurred during signup';

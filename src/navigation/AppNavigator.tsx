@@ -23,6 +23,8 @@ import AdminProductEditScreen from '../screens/admin/AdminProductEditScreen';
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
+import VerifyEmailScreen from '../screens/auth/VerifyEmailScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Profile screens
 import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
@@ -247,22 +249,8 @@ const AdminTabsGate = () => {
 
 export const AppNavigator = () => {
   const { colors } = useTheme();
-  const { loading, isAdmin, user } = useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
-
-  if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <Text style={{ color: colors.text }}>Loading...</Text>
-      </View>
-    );
-  }
+  const { loading, checkingEmailVerification, emailVerificationChecked, isAdmin, user, isEmailVerified } =
+    useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
 
   const navigationTheme = {
     ...DefaultTheme,
@@ -275,101 +263,166 @@ export const AppNavigator = () => {
     },
   };
 
+  const showBlockingLoader = loading || checkingEmailVerification;
+
+  // If the user is signed in but not verified, hard-gate them into the verification flow.
+  // They can log out from that screen to continue as guest.
+  if (user && emailVerificationChecked && !isEmailVerified) {
+    return (
+      <View style={{ flex: 1 }}>
+        <NavigationContainer theme={navigationTheme}>
+          <Stack.Navigator
+            key="verify-root"
+            initialRouteName="VerifyEmail"
+            screenOptions={{
+              headerShown: false,
+              gestureEnabled: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+
+        {showBlockingLoader && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: colors.text }}>Loading...</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
-    <NavigationContainer theme={navigationTheme}>
-      <Stack.Navigator
-        key={user && isAdmin ? 'admin-root' : 'main-root'}
-        initialRouteName={user && isAdmin ? 'AdminTabs' : 'MainTabs'}
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right', // Smooth transitions
-          headerStyle: {
-            backgroundColor: colors.background,
-          },
-          headerTintColor: colors.text,
-          headerTitleStyle: {
-            color: colors.text,
-            fontWeight: '600',
-          },
-          contentStyle: {
-            backgroundColor: colors.background,
-          },
-        }}
-      >
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-        {/* Always register AdminTabs so navigation.reset({ routes: [{ name: 'AdminTabs' }] }) never errors.
-           Access is enforced inside AdminTabsGate based on isAdmin. */}
-        <Stack.Screen name="AdminTabs" component={AdminTabsGate} />
-        <Stack.Screen
-          name="AdminProductEdit"
-          component={AdminProductEditScreen}
-          options={{ headerShown: true, title: 'Product' }}
-        />
-        <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-        <Stack.Screen
-          name="ARView"
-          component={ARViewScreen}
-          options={{
-            animation: 'fade', // AR often opens with a fade or modal style
-            presentation: 'fullScreenModal',
+    <View style={{ flex: 1 }}>
+      <NavigationContainer theme={navigationTheme}>
+        <Stack.Navigator
+          key={user && isAdmin ? 'admin-root' : 'main-root'}
+          initialRouteName={user && isAdmin ? 'AdminTabs' : 'MainTabs'}
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right', // Smooth transitions
+            headerStyle: {
+              backgroundColor: colors.background,
+            },
+            headerTintColor: colors.text,
+            headerTitleStyle: {
+              color: colors.text,
+              fontWeight: '600',
+            },
+            contentStyle: {
+              backgroundColor: colors.background,
+            },
           }}
-        />
+        >
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          {/* Always register AdminTabs so navigation.reset({ routes: [{ name: 'AdminTabs' }] }) never errors.
+             Access is enforced inside AdminTabsGate based on isAdmin. */}
+          <Stack.Screen name="AdminTabs" component={AdminTabsGate} />
+          <Stack.Screen
+            name="AdminProductEdit"
+            component={AdminProductEditScreen}
+            options={{ headerShown: true, title: 'Product' }}
+          />
+          <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+          <Stack.Screen
+            name="ARView"
+            component={ARViewScreen}
+            options={{
+              animation: 'fade', // AR often opens with a fade or modal style
+              presentation: 'fullScreenModal',
+            }}
+          />
 
-        {/* Profile Sub-screens */}
-        <Stack.Screen
-          name="PersonalInfo"
-          component={PersonalInfoScreen}
-          options={{ headerShown: true, title: 'Personal Information' }}
-        />
-        <Stack.Screen
-          name="ShippingAddresses"
-          component={ShippingAddressesScreen}
-          options={{ headerShown: true, title: 'Shipping Addresses' }}
-        />
-        <Stack.Screen
-          name="PaymentMethods"
-          component={PaymentMethodsScreen}
-          options={{ headerShown: true, title: 'Payment Methods' }}
-        />
-        <Stack.Screen
-          name="Wishlist"
-          component={WishlistScreen}
-          options={{ headerShown: true, title: 'Wishlist' }}
-        />
-        <Stack.Screen
-          name="Orders"
-          component={OrderHistoryScreen}
-          options={{ headerShown: true, title: 'Order History' }}
-        />
-        <Stack.Screen
-          name="Notifications"
-          component={NotificationsScreen}
-          options={{ headerShown: true, title: 'Notifications' }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ headerShown: true, title: 'Settings' }}
-        />
-        <Stack.Screen
-          name="HelpSupport"
-          component={HelpSupportScreen}
-          options={{ headerShown: true, title: 'Help & Support' }}
-        />
+          {/* Profile Sub-screens */}
+          <Stack.Screen
+            name="PersonalInfo"
+            component={PersonalInfoScreen}
+            options={{ headerShown: true, title: 'Personal Information' }}
+          />
+          <Stack.Screen
+            name="ShippingAddresses"
+            component={ShippingAddressesScreen}
+            options={{ headerShown: true, title: 'Shipping Addresses' }}
+          />
+          <Stack.Screen
+            name="PaymentMethods"
+            component={PaymentMethodsScreen}
+            options={{ headerShown: true, title: 'Payment Methods' }}
+          />
+          <Stack.Screen
+            name="Wishlist"
+            component={WishlistScreen}
+            options={{ headerShown: true, title: 'Wishlist' }}
+          />
+          <Stack.Screen
+            name="Orders"
+            component={OrderHistoryScreen}
+            options={{ headerShown: true, title: 'Order History' }}
+          />
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
+            options={{ headerShown: true, title: 'Notifications' }}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{ headerShown: true, title: 'Settings' }}
+          />
+          <Stack.Screen
+            name="HelpSupport"
+            component={HelpSupportScreen}
+            options={{ headerShown: true, title: 'Help & Support' }}
+          />
 
-        {/* Auth screens (modal) */}
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="Signup"
-          component={SignupScreen}
-          options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+          {/* Auth screens (modal) */}
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="Signup"
+            component={SignupScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="ForgotPassword"
+            component={ForgotPasswordScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+
+      {showBlockingLoader && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: colors.background,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ color: colors.text }}>Loading...</Text>
+        </View>
+      )}
+    </View>
   );
 };
 

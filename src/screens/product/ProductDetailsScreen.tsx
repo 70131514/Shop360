@@ -54,7 +54,7 @@ export default function ProductDetailsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, refreshEmailVerification } = useAuth();
   const { alert } = useAppAlert();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,7 +124,7 @@ export default function ProductDetailsScreen() {
               text: 'I verified',
               onPress: async () => {
                 try {
-                  await user.reload();
+                  await refreshEmailVerification();
                 } catch {
                   // ignore
                 }

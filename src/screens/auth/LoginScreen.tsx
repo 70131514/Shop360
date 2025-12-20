@@ -12,24 +12,18 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getMyUserProfile } from '../../services/userService';
 
-type LoginRouteParams =
-  | {
-      redirectToTab?: 'Home' | 'Products' | 'Cart' | 'Profile';
-    }
-  | undefined;
-
 const LoginScreen = () => {
   const { login } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  useRoute<any>();
   const { alert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +40,15 @@ const LoginScreen = () => {
 
     try {
       setSubmitting(true);
-      await login(email, password);
+      const { emailVerified } = await login(email, password);
+
+      if (!emailVerified) {
+        alert(
+          'Verify your account',
+          'We sent a verification email. Please verify your email before logging in. Then return here and tap Sign In again (or use the “I’ve verified” button).',
+        );
+        return;
+      }
       let isAdmin = false;
       try {
         const profile = await getMyUserProfile();
@@ -62,16 +64,18 @@ const LoginScreen = () => {
         });
         return;
       }
-      const params = (route.params ?? {}) as LoginRouteParams;
-      if (params?.redirectToTab) {
-        // Reset back to app (closes modal) and jump to the tab
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs', params: { screen: params.redirectToTab } }],
-        });
-      } else {
-        // Default: dismiss modal
+
+      // Always dismiss the modal after successful login.
+      // (Any desired tab selection should be done BEFORE opening the modal to avoid double animations.)
+      if (navigation.canGoBack?.()) {
         navigation.goBack();
+      } else {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+          }),
+        );
       }
     } catch (error: any) {
       console.error(error);
@@ -187,7 +191,11 @@ const LoginScreen = () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.forgotPasswordContainer}>
+          <TouchableOpacity
+            style={styles.forgotPasswordContainer}
+            onPress={() => navigation.navigate('ForgotPassword', { email })}
+            disabled={submitting}
+          >
             <Text style={[styles.forgotPasswordText, { color: colors.textSecondary }]}>
               Forgot Password?
             </Text>
@@ -228,7 +236,7 @@ const LoginScreen = () => {
           <Text style={[styles.signupText, { color: colors.textSecondary }]}>
             Don't have an account?{' '}
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Signup', route.params ?? {})}>
+          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
             <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
           </TouchableOpacity>
         </View>

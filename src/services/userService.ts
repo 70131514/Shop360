@@ -8,6 +8,7 @@ export type UserProfileDoc = {
   name: string;
   email: string;
   role: 'user' | string;
+  isEmailVerified?: boolean;
   createdAt: any;
 };
 
@@ -73,4 +74,13 @@ export async function updateMyName(name: string): Promise<void> {
       // ignore auth profile sync failures; Firestore is the source of truth
     }
   }
+}
+
+/**
+ * Best-effort: mark the user's Firestore profile as email-verified.
+ * Firestore rules should require `request.auth.token.email_verified == true` for this to succeed.
+ */
+export async function markMyEmailVerified(): Promise<void> {
+  const uid = requireUid();
+  await updateDoc(doc(firebaseDb, 'users', uid), { isEmailVerified: true } as any);
 }
