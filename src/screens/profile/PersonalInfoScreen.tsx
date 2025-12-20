@@ -31,25 +31,34 @@ const PersonalInfoScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-  
-      <KeyboardAvoidingView 
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
+
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.content}
       >
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>First Name</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
               value={formData.firstName}
               onChangeText={(text) => setFormData({ ...formData, firstName: text })}
               placeholderTextColor={colors.textSecondary}
@@ -59,11 +68,14 @@ const PersonalInfoScreen = () => {
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Last Name</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
               value={formData.lastName}
               onChangeText={(text) => setFormData({ ...formData, lastName: text })}
               placeholderTextColor={colors.textSecondary}
@@ -73,11 +85,14 @@ const PersonalInfoScreen = () => {
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
               value={formData.email}
               onChangeText={(text) => setFormData({ ...formData, email: text })}
               placeholderTextColor={colors.textSecondary}
@@ -89,11 +104,14 @@ const PersonalInfoScreen = () => {
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Phone Number</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
               value={formData.phone}
               onChangeText={(text) => setFormData({ ...formData, phone: text })}
               placeholderTextColor={colors.textSecondary}
@@ -104,11 +122,14 @@ const PersonalInfoScreen = () => {
           <View style={styles.formGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>Date of Birth</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
               value={formData.dateOfBirth}
               onChangeText={(text) => setFormData({ ...formData, dateOfBirth: text })}
               placeholderTextColor={colors.textSecondary}
@@ -117,13 +138,13 @@ const PersonalInfoScreen = () => {
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
-                styles.saveButton, 
-                { 
+                styles.saveButton,
+                {
                   backgroundColor: colors.primary,
                   borderColor: colors.primary,
-                }
+                },
               ]}
               onPress={handleSave}
               activeOpacity={0.7}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { COLORS, SPACING, FONTS, SHADOWS } from '../../theme';
+import { COLORS, SPACING, FONTS } from '../../theme';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - SPACING.m * 3) / 2;
@@ -20,23 +20,17 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => {
   return (
-    <TouchableOpacity 
-      style={styles.container} 
-      onPress={onPress}
-      activeOpacity={0.9}
-    >
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
       <View style={styles.imageContainer}>
-        <Image 
-          source={{ uri: product.image }} 
-          style={styles.image} 
-          resizeMode="cover" 
-        />
+        <Image source={{ uri: product.image }} style={styles.image} resizeMode="cover" />
         <View style={styles.badge}>
-            <Text style={styles.badgeText}>AR</Text>
+          <Text style={styles.badgeText}>AR</Text>
         </View>
       </View>
       <View style={styles.details}>
-        <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {product.name}
+        </Text>
         <Text style={styles.category}>{product.category}</Text>
         <Text style={styles.price}>${product.price.toFixed(2)}</Text>
       </View>
@@ -98,7 +92,5 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontSize: 10,
     fontWeight: 'bold',
-  }
+  },
 });
-
-

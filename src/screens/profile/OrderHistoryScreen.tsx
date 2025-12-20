@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type OrderItem = {
@@ -33,8 +32,7 @@ type Order = {
 
 const OrderHistoryScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation<any>();
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders] = useState<Order[]>([
     {
       id: '1',
       date: '2024-03-15',
@@ -46,7 +44,8 @@ const OrderHistoryScreen = () => {
           brand: 'Nike',
           price: 150,
           quantity: 1,
-          image: 'https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/skwgyqrbfzhu6uyeh0gg/air-max-270-mens-shoes-KkLcGR.png',
+          image:
+            'https://static.nike.com/a/images/t_PDP_1280_v1/f_auto,q_auto:eco/skwgyqrbfzhu6uyeh0gg/air-max-270-mens-shoes-KkLcGR.png',
         },
       ],
       total: 150,
@@ -63,7 +62,8 @@ const OrderHistoryScreen = () => {
           brand: 'Adidas',
           price: 180,
           quantity: 1,
-          image: 'https://assets.adidas.com/images/w_600,f_auto,q_auto/2c1a0a0a0a0a0a0a0a0a0a0a0a0a0a0a/ultraboost-22-shoes.jpg',
+          image:
+            'https://assets.adidas.com/images/w_600,f_auto,q_auto/2c1a0a0a0a0a0a0a0a0a0a0a0a0a0a0a/ultraboost-22-shoes.jpg',
         },
       ],
       total: 180,
@@ -91,13 +91,17 @@ const OrderHistoryScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {orders.map((order) => (
           <TouchableOpacity
             key={order.id}
@@ -121,13 +125,11 @@ const OrderHistoryScreen = () => {
             <View style={styles.itemsContainer}>
               {order.items.map((item) => (
                 <View key={item.id} style={styles.itemRow}>
-                  <Image 
-                    source={{ uri: item.image }}
-                    style={styles.itemImage}
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: item.image }} style={styles.itemImage} resizeMode="cover" />
                   <View style={styles.itemInfo}>
-                    <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>{item.brand}</Text>
+                    <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>
+                      {item.brand}
+                    </Text>
                     <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
                     <Text style={[styles.itemQuantity, { color: colors.textSecondary }]}>
                       Qty: {item.quantity}

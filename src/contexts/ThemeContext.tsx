@@ -81,7 +81,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const toggleTheme = async () => {
     // Configure layout animation for smooth transition
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    
+
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
     await storeTheme(newTheme === 'dark');

@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type NotificationPreference = {
@@ -22,7 +21,6 @@ type NotificationPreference = {
 
 const NotificationsScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
   const [preferences, setPreferences] = useState<NotificationPreference[]>([
     {
       id: '1',
@@ -63,19 +61,23 @@ const NotificationsScreen = () => {
   ]);
 
   const handleTogglePreference = (id: string) => {
-    setPreferences(preferences.map(pref => 
-      pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
-    ));
+    setPreferences(
+      preferences.map((pref) => (pref.id === id ? { ...pref, enabled: !pref.enabled } : pref)),
+    );
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
@@ -88,7 +90,7 @@ const NotificationsScreen = () => {
 
         <View style={styles.preferencesContainer}>
           {preferences.map((preference) => (
-            <View 
+            <View
               key={preference.id}
               style={[styles.preferenceItem, { backgroundColor: colors.surface }]}
             >
@@ -118,7 +120,7 @@ const NotificationsScreen = () => {
           <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
             Manage your email notification preferences
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.emailButton, { borderColor: colors.border }]}
             onPress={() => {}}
           >

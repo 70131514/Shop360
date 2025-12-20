@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { storeNotificationPreferences, getNotificationPreferences, clearAllStorage } from '../../utils/storage';
+import {
+  storeNotificationPreferences,
+  getNotificationPreferences,
+  clearAllStorage,
+} from '../../utils/storage';
 
 type SettingItem = {
   id: string;
@@ -27,7 +30,6 @@ type SettingItem = {
 
 const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
-  const navigation = useNavigation();
   const [settings, setSettings] = useState<SettingItem[]>([
     {
       id: '1',
@@ -102,11 +104,11 @@ const SettingsScreen = () => {
     const loadPreferences = async () => {
       const savedPreferences = await getNotificationPreferences();
       if (savedPreferences) {
-        setSettings(prevSettings => 
-          prevSettings.map(setting => ({
+        setSettings((prevSettings) =>
+          prevSettings.map((setting) => ({
             ...setting,
             value: savedPreferences[setting.id] ?? setting.value,
-          }))
+          })),
         );
       }
     };
@@ -117,13 +119,15 @@ const SettingsScreen = () => {
     if (id === '1') {
       // Handle theme toggle
       toggleTheme();
-      setSettings(settings.map(setting => 
-        setting.id === id ? { ...setting, value: !setting.value } : setting
-      ));
+      setSettings(
+        settings.map((setting) =>
+          setting.id === id ? { ...setting, value: !setting.value } : setting,
+        ),
+      );
     } else {
       // Handle other toggles
-      const newSettings = settings.map(setting => 
-        setting.id === id ? { ...setting, value: !setting.value } : setting
+      const newSettings = settings.map((setting) =>
+        setting.id === id ? { ...setting, value: !setting.value } : setting,
       );
       setSettings(newSettings);
 
@@ -159,11 +163,11 @@ const SettingsScreen = () => {
                   setIsClearing(true);
                   await clearAllStorage();
                   // Reset settings to default values
-                  setSettings(prevSettings => 
-                    prevSettings.map(setting => ({
+                  setSettings((prevSettings) =>
+                    prevSettings.map((setting) => ({
                       ...setting,
                       value: setting.id === '1' ? isDark : false,
-                    }))
+                    })),
                   );
                   Alert.alert('Success', 'Cache cleared successfully');
                 } catch (error) {
@@ -174,7 +178,7 @@ const SettingsScreen = () => {
                 }
               },
             },
-          ]
+          ],
         );
         break;
       case '7':
@@ -189,26 +193,25 @@ const SettingsScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {settings.map((setting) => (
-          <View 
-            key={setting.id}
-            style={[styles.settingItem, { backgroundColor: colors.surface }]}
-          >
+          <View key={setting.id} style={[styles.settingItem, { backgroundColor: colors.surface }]}>
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
                 <Ionicons name={setting.icon} size={20} color={colors.text} />
               </View>
               <View style={styles.settingInfo}>
-                <Text style={[styles.settingTitle, { color: colors.text }]}>
-                  {setting.title}
-                </Text>
+                <Text style={[styles.settingTitle, { color: colors.text }]}>{setting.title}</Text>
                 <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
                   {setting.description}
                 </Text>
@@ -225,19 +228,14 @@ const SettingsScreen = () => {
             )}
 
             {setting.type === 'select' && (
-              <TouchableOpacity 
-                style={styles.selectButton}
-                onPress={() => {}}
-              >
-                <Text style={[styles.selectButtonText, { color: colors.primary }]}>
-                  Select
-                </Text>
+              <TouchableOpacity style={styles.selectButton} onPress={() => {}}>
+                <Text style={[styles.selectButtonText, { color: colors.primary }]}>Select</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.primary} />
               </TouchableOpacity>
             )}
 
             {setting.type === 'action' && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => handleAction(setting.id)}
                 disabled={isClearing && setting.id === '6'}

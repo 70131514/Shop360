@@ -7,11 +7,7 @@ import {
   signOut as signOutModular,
   updateProfile,
 } from '@react-native-firebase/auth';
-import {
-  doc,
-  serverTimestamp,
-  setDoc,
-} from '@react-native-firebase/firestore';
+import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 
 /**
@@ -47,11 +43,7 @@ export const signUp = async (
 ): Promise<FirebaseAuthTypes.UserCredential> => {
   try {
     // 1. Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(
-      firebaseAuth,
-      email,
-      password,
-    );
+    const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
     const { uid } = userCredential.user;
 
     try {
@@ -93,7 +85,9 @@ export const signOut = async (): Promise<void> => {
     return await signOutModular(firebaseAuth);
   } catch (error) {
     // If already signed out, treat as success.
-    if ((error as any)?.code === 'auth/no-current-user') return;
+    if ((error as any)?.code === 'auth/no-current-user') {
+      return;
+    }
     throw error;
   }
 };

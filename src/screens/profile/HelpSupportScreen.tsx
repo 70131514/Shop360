@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type FAQItem = {
@@ -29,7 +28,6 @@ type SupportOption = {
 
 const HelpSupportScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 
@@ -37,22 +35,26 @@ const HelpSupportScreen = () => {
     {
       id: '1',
       question: 'How do I track my order?',
-      answer: 'You can track your order by going to the Orders section in your profile. Click on the specific order to view its current status and tracking information.',
+      answer:
+        'You can track your order by going to the Orders section in your profile. Click on the specific order to view its current status and tracking information.',
     },
     {
       id: '2',
       question: 'What payment methods do you accept?',
-      answer: 'We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and Apple Pay. You can manage your payment methods in the Payment Methods section.',
+      answer:
+        'We accept all major credit cards (Visa, MasterCard, American Express), PayPal, and Apple Pay. You can manage your payment methods in the Payment Methods section.',
     },
     {
       id: '3',
       question: 'How can I return an item?',
-      answer: 'To return an item, go to the Orders section, select the order containing the item you want to return, and click on "Return Item". Follow the instructions to complete the return process.',
+      answer:
+        'To return an item, go to the Orders section, select the order containing the item you want to return, and click on "Return Item". Follow the instructions to complete the return process.',
     },
     {
       id: '4',
       question: 'Do you ship internationally?',
-      answer: 'Yes, we ship to most countries worldwide. Shipping costs and delivery times vary by location. You can check shipping rates during checkout.',
+      answer:
+        'Yes, we ship to most countries worldwide. Shipping costs and delivery times vary by location. You can check shipping rates during checkout.',
     },
   ];
 
@@ -103,14 +105,20 @@ const HelpSupportScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Frequently Asked Questions
+        </Text>
         {faqs.map((faq) => (
           <TouchableOpacity
             key={faq.id}
@@ -118,19 +126,15 @@ const HelpSupportScreen = () => {
             onPress={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
           >
             <View style={styles.faqHeader}>
-              <Text style={[styles.faqQuestion, { color: colors.text }]}>
-                {faq.question}
-              </Text>
-              <Ionicons 
-                name={expandedFAQ === faq.id ? 'chevron-up' : 'chevron-down'} 
-                size={20} 
-                color={colors.textSecondary} 
+              <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
+              <Ionicons
+                name={expandedFAQ === faq.id ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
               />
             </View>
             {expandedFAQ === faq.id && (
-              <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
-                {faq.answer}
-              </Text>
+              <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>{faq.answer}</Text>
             )}
           </TouchableOpacity>
         ))}
@@ -149,9 +153,7 @@ const HelpSupportScreen = () => {
                 <Ionicons name={option.icon} size={24} color={colors.primary} />
               </View>
               <View style={styles.optionInfo}>
-                <Text style={[styles.optionTitle, { color: colors.text }]}>
-                  {option.title}
-                </Text>
+                <Text style={[styles.optionTitle, { color: colors.text }]}>{option.title}</Text>
                 <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
                   {option.description}
                 </Text>
@@ -165,10 +167,13 @@ const HelpSupportScreen = () => {
         </Text>
         <View style={[styles.messageContainer, { backgroundColor: colors.surface }]}>
           <TextInput
-            style={[styles.messageInput, { 
-              color: colors.text,
-              backgroundColor: colors.background,
-            }]}
+            style={[
+              styles.messageInput,
+              {
+                color: colors.text,
+                backgroundColor: colors.background,
+              },
+            ]}
             placeholder="Type your message here..."
             placeholderTextColor={colors.textSecondary}
             multiline

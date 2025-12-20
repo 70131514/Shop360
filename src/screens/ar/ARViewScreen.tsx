@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { COLORS, SPACING } from '../../theme';
+import { SPACING } from '../../theme';
 
 export const ARViewScreen = () => {
   const navigation = useNavigation();
@@ -13,45 +13,35 @@ export const ARViewScreen = () => {
 
   return (
     <View style={styles.container}>
-        {/* Mock Camera View */}
-        <View style={styles.cameraPreview}>
-            <Text style={styles.cameraPlaceholderText}>Camera View Active</Text>
-            {/* Overlay the product image as a "3D model" */}
-            <View style={styles.arObjectContainer}>
-                 <Image 
-                    source={{ uri: product.image }} 
-                    style={styles.arObject} 
-                    resizeMode="contain"
-                 />
-                 <View style={styles.placementRing} />
-            </View>
+      {/* Mock Camera View */}
+      <View style={styles.cameraPreview}>
+        <Text style={styles.cameraPlaceholderText}>Camera View Active</Text>
+        {/* Overlay the product image as a "3D model" */}
+        <View style={styles.arObjectContainer}>
+          <Image source={{ uri: product.image }} style={styles.arObject} resizeMode="contain" />
+          <View style={styles.placementRing} />
+        </View>
+      </View>
+
+      <SafeAreaView style={styles.overlay}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
         </View>
 
-        <SafeAreaView style={styles.overlay}>
-            <View style={styles.header}>
-                <TouchableOpacity 
-                    style={styles.closeButton}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Text style={styles.closeButtonText}>✕</Text>
-                </TouchableOpacity>
-            </View>
+        <View style={styles.controls}>
+          <Text style={styles.instructionText}>
+            {isPlaced ? 'Drag to move, pinch to scale' : 'Point camera at a flat surface'}
+          </Text>
 
-            <View style={styles.controls}>
-                <Text style={styles.instructionText}>
-                    {isPlaced ? 'Drag to move, pinch to scale' : 'Point camera at a flat surface'}
-                </Text>
-                
-                {!isPlaced && (
-                    <TouchableOpacity 
-                        style={styles.placeButton}
-                        onPress={() => setIsPlaced(true)}
-                    >
-                        <Text style={styles.placeButtonText}>Place Object</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-        </SafeAreaView>
+          {!isPlaced && (
+            <TouchableOpacity style={styles.placeButton} onPress={() => setIsPlaced(true)}>
+              <Text style={styles.placeButtonText}>Place Object</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </SafeAreaView>
     </View>
   );
 };
@@ -144,5 +134,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
-

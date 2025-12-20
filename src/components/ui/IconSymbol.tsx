@@ -1,7 +1,6 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
 // Simple mapping for SF Symbols to Material Icons

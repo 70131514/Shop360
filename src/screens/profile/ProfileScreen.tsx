@@ -31,7 +31,7 @@ const ProfileScreen = () => {
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log('Logout not implemented'));
   const user = auth?.user;
-  
+
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const [wishlistCount, setWishlistCount] = useState(0);
@@ -47,12 +47,12 @@ const ProfileScreen = () => {
       }
     };
     loadWishlistCount();
-    
+
     // Add focus listener to refresh data
     const unsubscribe = navigation.addListener('focus', () => {
       loadWishlistCount();
     });
-    
+
     return unsubscribe;
   }, [navigation]);
 
@@ -122,8 +122,11 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      <ScrollView 
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
@@ -134,27 +137,36 @@ const ProfileScreen = () => {
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop' }}
+                source={{
+                  uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop',
+                }}
                 style={[styles.profileImage, { borderColor: colors.primary }]}
               />
-              <TouchableOpacity 
-                style={[styles.cameraButton, { 
-                  backgroundColor: colors.primary,
-                  borderColor: colors.background 
-                }]}
+              <TouchableOpacity
+                style={[
+                  styles.cameraButton,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                  },
+                ]}
                 onPress={() => {}}
               >
                 <Ionicons name="camera" size={16} color={colors.background} />
               </TouchableOpacity>
             </View>
             <View style={styles.userInfo}>
-              <Text style={[styles.userName, { color: colors.text }]}>{user?.displayName || 'User'}</Text>
-              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user?.email || 'No email'}</Text>
+              <Text style={[styles.userName, { color: colors.text }]}>
+                {user?.displayName || 'User'}
+              </Text>
+              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+                {user?.email || 'No email'}
+              </Text>
             </View>
           </View>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: colors.surface }]}
           onPress={handleLogout}
           disabled={loggingOut}
@@ -176,12 +188,22 @@ const ProfileScreen = () => {
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="heart-outline" size={24} color={colors.primary} style={styles.statIcon} />
+            <Ionicons
+              name="heart-outline"
+              size={24}
+              color={colors.primary}
+              style={styles.statIcon}
+            />
             <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="location-outline" size={24} color={colors.primary} style={styles.statIcon} />
+            <Ionicons
+              name="location-outline"
+              size={24}
+              color={colors.primary}
+              style={styles.statIcon}
+            />
             <Text style={[styles.statNumber, { color: colors.text }]}>2</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
           </View>
@@ -202,7 +224,9 @@ const ProfileScreen = () => {
                 </View>
                 <View style={styles.menuItemText}>
                   <Text style={[styles.menuItemTitle, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
+                  <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>
+                    {item.subtitle}
+                  </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { HomeScreen } from './home/HomeScreen';
 import { CartScreen } from './cart/CartScreen';
 import { ProfileScreen } from './profile/ProfileScreen';
-import { COLORS, SPACING } from '../theme';
+import { COLORS } from '../theme';
 
 export const MainScreen = () => {
   const [activeTab, setActiveTab] = useState('Home');
@@ -23,22 +23,11 @@ export const MainScreen = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
+      <View style={styles.content}>{renderContent()}</View>
       <View style={styles.tabBar}>
         {['Home', 'Cart', 'Profile'].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={styles.tabItem}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[
-              styles.tabText,
-              activeTab === tab && styles.activeTabText
-            ]}>
-              {tab}
-            </Text>
+          <TouchableOpacity key={tab} style={styles.tabItem} onPress={() => setActiveTab(tab)}>
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
             {activeTab === tab && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
         ))}
@@ -84,5 +73,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-
-

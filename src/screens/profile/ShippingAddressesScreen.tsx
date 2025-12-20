@@ -1,17 +1,7 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type Address = {
@@ -27,7 +17,6 @@ type Address = {
 
 const ShippingAddressesScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation<any>();
   const [addresses, setAddresses] = useState<Address[]>([
     {
       id: '1',
@@ -51,55 +40,56 @@ const ShippingAddressesScreen = () => {
     },
   ]);
 
-  const handleAddAddress = () => {
-    console.log('Navigate to Add Address');
-  };
-
   const handleEditAddress = (id: string) => {
     console.log('Navigate to Edit Address', id);
   };
 
   const handleDeleteAddress = (id: string) => {
-    setAddresses(addresses.filter(address => address.id !== id));
+    setAddresses(addresses.filter((address) => address.id !== id));
   };
 
   const handleSetDefault = (id: string) => {
-    setAddresses(addresses.map(address => ({
-      ...address,
-      isDefault: address.id === id,
-    })));
+    setAddresses(
+      addresses.map((address) => ({
+        ...address,
+        isDefault: address.id === id,
+      })),
+    );
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {addresses.map((address) => (
-          <View 
-            key={address.id}
-            style={[styles.addressCard, { backgroundColor: colors.surface }]}
-          >
+          <View key={address.id} style={[styles.addressCard, { backgroundColor: colors.surface }]}>
             <View style={styles.addressHeader}>
               <View style={styles.addressTitleContainer}>
                 <Text style={[styles.addressName, { color: colors.text }]}>{address.name}</Text>
                 {address.isDefault && (
                   <View style={[styles.defaultBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={[styles.defaultBadgeText, { color: colors.background }]}>Default</Text>
+                    <Text style={[styles.defaultBadgeText, { color: colors.background }]}>
+                      Default
+                    </Text>
                   </View>
                 )}
               </View>
               <View style={styles.addressActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => handleEditAddress(address.id)}
                 >
                   <Ionicons name="pencil" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.actionButton}
                   onPress={() => handleDeleteAddress(address.id)}
                 >
@@ -115,7 +105,7 @@ const ShippingAddressesScreen = () => {
             <Text style={[styles.addressText, { color: colors.text }]}>{address.country}</Text>
 
             {!address.isDefault && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.setDefaultButton, { borderColor: colors.border }]}
                 onPress={() => handleSetDefault(address.id)}
               >

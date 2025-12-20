@@ -24,7 +24,7 @@ export const FONTS = {
   regular: 'System',
   medium: 'System',
   bold: 'System',
-  // In a real app we might load custom fonts like Helvetica or SF Pro manually if needed, 
+  // In a real app we might load custom fonts like Helvetica or SF Pro manually if needed,
   // but 'System' maps to San Francisco on iOS which is perfect for the requested aesthetic.
 };
 
@@ -50,5 +50,3 @@ export const SHADOWS = {
     elevation: 4,
   },
 };
-
-

@@ -1,5 +1,13 @@
 import React from 'react';
-import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View, StatusBar, Image } from 'react-native';
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  StatusBar,
+  Image,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -14,7 +22,11 @@ interface FeatureSectionProps {
   title: string;
   description: string;
   iconType: 'sf' | 'ionicon';
-  sfIconName?: 'house.fill' | 'paperplane.fill' | 'chevron.left.forwardslash.chevron.right' | 'chevron.right';
+  sfIconName?:
+    | 'house.fill'
+    | 'paperplane.fill'
+    | 'chevron.left.forwardslash.chevron.right'
+    | 'chevron.right';
   ionIconName?: string;
 }
 
@@ -25,33 +37,53 @@ interface FeaturedProductProps {
 }
 
 // Minimal feature section component
-const FeatureSection = ({ title, description, iconType, sfIconName, ionIconName }: FeatureSectionProps) => {
+const FeatureSection = ({
+  title,
+  description,
+  iconType,
+  sfIconName,
+  ionIconName,
+}: FeatureSectionProps) => {
   const { colors, isDark } = useTheme();
   return (
-    <View style={[styles.featureCard, { 
-      backgroundColor: colors.surface,
-      borderColor: colors.border 
-    }]}>
-      <View style={[styles.featureIconContainer, { 
-        backgroundColor: isDark ? colors.primary : '#FFFFFF',
-        borderColor: colors.border
-      }]}>
+    <View
+      style={[
+        styles.featureCard,
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.featureIconContainer,
+          {
+            backgroundColor: isDark ? colors.primary : '#FFFFFF',
+            borderColor: colors.border,
+          },
+        ]}
+      >
         {iconType === 'ionicon' ? (
-          <Ionicons 
-            name={ionIconName as any} 
-            size={22} 
-            color={isDark ? colors.background : colors.primary} 
+          <Ionicons
+            name={ionIconName as any}
+            size={22}
+            color={isDark ? colors.background : colors.primary}
           />
         ) : (
-          <IconSymbol 
-            size={22} 
-            name={sfIconName!} 
-            color={isDark ? colors.background : colors.primary} 
+          <IconSymbol
+            size={22}
+            name={sfIconName!}
+            color={isDark ? colors.background : colors.primary}
           />
         )}
       </View>
-      <ThemedText type="defaultSemiBold" style={[styles.featureTitle, { color: colors.text }]}>{title}</ThemedText>
-      <ThemedText style={[styles.featureDescription, { color: colors.textSecondary }]}>{description}</ThemedText>
+      <ThemedText type="defaultSemiBold" style={[styles.featureTitle, { color: colors.text }]}>
+        {title}
+      </ThemedText>
+      <ThemedText style={[styles.featureDescription, { color: colors.textSecondary }]}>
+        {description}
+      </ThemedText>
     </View>
   );
 };
@@ -61,14 +93,21 @@ const FeaturedProduct = ({ title, image, price }: FeaturedProductProps) => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   return (
-    <TouchableOpacity 
-      style={[styles.featuredProductCard, { backgroundColor: colors.surface }]} 
+    <TouchableOpacity
+      style={[styles.featuredProductCard, { backgroundColor: colors.surface }]}
       onPress={() => navigation.navigate('Products')}
     >
       <Image source={{ uri: image }} style={styles.featuredProductImage} />
       <View style={styles.featuredProductInfo}>
-        <ThemedText type="defaultSemiBold" style={[styles.featuredProductTitle, { color: colors.text }]}>{title}</ThemedText>
-        <ThemedText style={[styles.featuredProductPrice, { color: colors.primary }]}>{price}</ThemedText>
+        <ThemedText
+          type="defaultSemiBold"
+          style={[styles.featuredProductTitle, { color: colors.text }]}
+        >
+          {title}
+        </ThemedText>
+        <ThemedText style={[styles.featuredProductPrice, { color: colors.primary }]}>
+          {price}
+        </ThemedText>
       </View>
     </TouchableOpacity>
   );
@@ -78,29 +117,36 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar 
-        barStyle={isDark ? "light-content" : "dark-content"} 
-        backgroundColor={colors.background} 
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
         translucent={false}
       />
-      <ScrollView 
-        style={[styles.scrollView, { backgroundColor: colors.background }]} 
+      <ScrollView
+        style={[styles.scrollView, { backgroundColor: colors.background }]}
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <View>
-            <ThemedText type="title" style={[styles.welcomeText, { color: colors.textSecondary }]}>Welcome to</ThemedText>
-            <ThemedText type="title" style={[styles.appName, { color: colors.text }]}>Shop360°</ThemedText>
+            <ThemedText type="title" style={[styles.welcomeText, { color: colors.textSecondary }]}>
+              Welcome to
+            </ThemedText>
+            <ThemedText type="title" style={[styles.appName, { color: colors.text }]}>
+              Shop360°
+            </ThemedText>
           </View>
-          <TouchableOpacity 
-            style={[styles.profileButton, { 
-              backgroundColor: colors.surface,
-              borderColor: colors.border 
-            }]}
+          <TouchableOpacity
+            style={[
+              styles.profileButton,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={() => navigation.navigate('Profile')}
           >
             <MaterialIcons name="person" size={24} color={colors.text} />
@@ -109,48 +155,64 @@ export default function HomeScreen() {
 
         {/* Banner */}
         <View style={[styles.bannerContainer, { borderColor: colors.border }]}>
-          <Image 
-            source={{ uri: 'https://images.ctfassets.net/wp1lcwdav1p1/2bzxvC8K1Cv0OMSQEA7p9l/eaa3de48c71d61a4a7d9c064d7235db6/GettyImages-1351925376.jpg?w=1500&h=680&q=60&fit=fill&f=faces&fm=jpg&fl=progressive' }} 
+          <Image
+            source={{
+              uri: 'https://images.ctfassets.net/wp1lcwdav1p1/2bzxvC8K1Cv0OMSQEA7p9l/eaa3de48c71d61a4a7d9c064d7235db6/GettyImages-1351925376.jpg?w=1500&h=680&q=60&fit=fill&f=faces&fm=jpg&fl=progressive',
+            }}
             style={styles.bannerImage}
           />
           <View style={[styles.bannerOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-            <ThemedText type="title" style={styles.bannerTitle}>View in AR</ThemedText>
+            <ThemedText type="title" style={styles.bannerTitle}>
+              View in AR
+            </ThemedText>
             <ThemedText style={styles.bannerSubtitle}>Experience products in your space</ThemedText>
-            <TouchableOpacity 
-              style={[styles.bannerButton, { 
-                backgroundColor: isDark ? colors.primary : '#FFFFFF',
-                borderColor: colors.border
-              }]} 
+            <TouchableOpacity
+              style={[
+                styles.bannerButton,
+                {
+                  backgroundColor: isDark ? colors.primary : '#FFFFFF',
+                  borderColor: colors.border,
+                },
+              ]}
               onPress={() => navigation.navigate('Products')}
             >
-              <ThemedText style={[styles.bannerButtonText, { 
-                color: isDark ? colors.background : colors.primary 
-              }]}>Explore Now</ThemedText>
+              <ThemedText
+                style={[
+                  styles.bannerButtonText,
+                  {
+                    color: isDark ? colors.background : colors.primary,
+                  },
+                ]}
+              >
+                Explore Now
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Features section */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>Why Shop With Us</ThemedText>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+            Why Shop With Us
+          </ThemedText>
         </View>
-        
+
         <View style={styles.featuresContainer}>
-          <FeatureSection 
-            title="AR Experience" 
-            description="Try products in your space" 
+          <FeatureSection
+            title="AR Experience"
+            description="Try products in your space"
             iconType="ionicon"
             ionIconName="cube-outline"
           />
-          <FeatureSection 
-            title="Precise Details" 
-            description="Exact dimensions and specs" 
+          <FeatureSection
+            title="Precise Details"
+            description="Exact dimensions and specs"
             iconType="ionicon"
             ionIconName="scan-outline"
           />
-          <FeatureSection 
-            title="Smart Shopping" 
-            description="Intelligent recommendations" 
+          <FeatureSection
+            title="Smart Shopping"
+            description="Intelligent recommendations"
             iconType="ionicon"
             ionIconName="sparkles-outline"
           />
@@ -158,32 +220,36 @@ export default function HomeScreen() {
 
         {/* Featured products */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>Featured Products</ThemedText>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+            Featured Products
+          </ThemedText>
           <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-            <ThemedText style={[styles.viewAllText, { color: colors.textSecondary }]}>View All</ThemedText>
+            <ThemedText style={[styles.viewAllText, { color: colors.textSecondary }]}>
+              View All
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={styles.featuredProductsContainer}
           contentContainerStyle={styles.featuredProductsContent}
         >
-          <FeaturedProduct 
-            title="Wireless Headphones" 
-            image="https://pcstore.pk/wp-content/uploads/2024/01/Sony-WH-CH520-Wireless-Headphones-with-Microphone-_price-in-pakistan-Black-img1-min.png" 
-            price="$129.99" 
+          <FeaturedProduct
+            title="Wireless Headphones"
+            image="https://pcstore.pk/wp-content/uploads/2024/01/Sony-WH-CH520-Wireless-Headphones-with-Microphone-_price-in-pakistan-Black-img1-min.png"
+            price="$129.99"
           />
-          <FeaturedProduct 
-            title="Smart Watch" 
-            image="https://images.samsung.com/is/image/samsung/p6pim/pk/sm-l310nzg8eua/gallery/pk-galaxy-watch7-l310-sm-l310nzg8eua-thumb-544769007?$UX_EXT2_PNG$" 
-            price="$249.99" 
+          <FeaturedProduct
+            title="Smart Watch"
+            image="https://images.samsung.com/is/image/samsung/p6pim/pk/sm-l310nzg8eua/gallery/pk-galaxy-watch7-l310-sm-l310nzg8eua-thumb-544769007?$UX_EXT2_PNG$"
+            price="$249.99"
           />
-          <FeaturedProduct 
-            title="Bluetooth Speaker" 
-            image="https://cdn.thewirecutter.com/wp-content/media/2024/11/portablebluetoothspeakers-2048px-9481.jpg?auto=webp&quality=75&width=1024" 
-            price="$79.99" 
+          <FeaturedProduct
+            title="Bluetooth Speaker"
+            image="https://cdn.thewirecutter.com/wp-content/media/2024/11/portablebluetoothspeakers-2048px-9481.jpg?auto=webp&quality=75&width=1024"
+            price="$79.99"
           />
         </ScrollView>
       </ScrollView>

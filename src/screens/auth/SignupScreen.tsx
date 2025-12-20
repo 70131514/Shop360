@@ -22,7 +22,7 @@ const SignupScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const { register } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +54,7 @@ const SignupScreen = () => {
     } catch (error: any) {
       console.error(error);
       let errorMessage = 'An error occurred during signup';
-      
+
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'That email address is already in use!';
       } else if (error.code === 'auth/invalid-email') {
@@ -87,26 +87,44 @@ const SignupScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={[styles.container, { backgroundColor: colors.background }]}
       >
-        <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-        
+        <StatusBar
+          barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.background}
+          translucent={false}
+        />
+
         <View style={styles.logoContainer}>
-          <View style={[styles.logoCircle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.logoCircle,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <Text style={[styles.logoText, { color: colors.text }]}>S360</Text>
           </View>
           <Text style={[styles.appName, { color: colors.text }]}>Shop360°</Text>
         </View>
 
         <Text style={[styles.welcomeText, { color: colors.text }]}>Create Account</Text>
-        <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>Sign up to get started</Text>
+        <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
+          Sign up to get started
+        </Text>
 
         <View style={styles.inputContainer}>
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
-          <View style={[
-            styles.inputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            isNameFocused && { borderColor: colors.primary, borderWidth: 1.5 }
-          ]}>
-            <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <View
+            style={[
+              styles.inputWrapper,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              isNameFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+            ]}
+          >
+            <Ionicons
+              name="person-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="Enter your full name"
@@ -121,12 +139,19 @@ const SignupScreen = () => {
           </View>
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
-          <View style={[
-            styles.inputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            isEmailFocused && { borderColor: colors.primary, borderWidth: 1.5 }
-          ]}>
-            <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <View
+            style={[
+              styles.inputWrapper,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              isEmailFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+            ]}
+          >
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="Enter your email"
@@ -142,12 +167,19 @@ const SignupScreen = () => {
           </View>
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-          <View style={[
-            styles.inputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            isPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 }
-          ]}>
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <View
+            style={[
+              styles.inputWrapper,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              isPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+            ]}
+          >
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="Enter your password"
@@ -169,12 +201,19 @@ const SignupScreen = () => {
           </View>
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
-          <View style={[
-            styles.inputWrapper,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            isConfirmPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 }
-          ]}>
-            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <View
+            style={[
+              styles.inputWrapper,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              isConfirmPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+            ]}
+          >
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={[styles.input, { color: colors.text }]}
               placeholder="Confirm your password"
@@ -196,20 +235,24 @@ const SignupScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.signupButton, { backgroundColor: colors.primary }]} 
+        <TouchableOpacity
+          style={[styles.signupButton, { backgroundColor: colors.primary }]}
           onPress={handleSignup}
           disabled={submitting}
         >
           {submitting ? (
             <ActivityIndicator color={colors.background} />
           ) : (
-            <Text style={[styles.signupButtonText, { color: colors.background }]}>Create Account</Text>
+            <Text style={[styles.signupButtonText, { color: colors.background }]}>
+              Create Account
+            </Text>
           )}
         </TouchableOpacity>
 
         <View style={styles.loginContainer}>
-          <Text style={[styles.loginText, { color: colors.textSecondary }]}>Already have an account? </Text>
+          <Text style={[styles.loginText, { color: colors.textSecondary }]}>
+            Already have an account?{' '}
+          </Text>
           <TouchableOpacity onPress={() => navigation.replace('Login')}>
             <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
           </TouchableOpacity>

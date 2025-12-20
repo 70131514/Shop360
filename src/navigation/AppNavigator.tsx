@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Dimensions, Platform } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,27 +32,27 @@ import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 const Stack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-const { width: screenWidth } = Dimensions.get('window');
 
-const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+const CustomTabBar = ({ state, descriptors: _descriptors, navigation }: BottomTabBarProps) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  
+
   const circleRadius = 20;
 
   return (
-    <View style={{
-      flexDirection: 'row',
-      backgroundColor: colors.background,
-      height: 70 + (Platform.OS === 'ios' ? insets.bottom : 0),
-      paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
-      borderTopWidth: 0.5,
-      borderTopColor: colors.border,
-      position: 'relative',
-    }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: colors.background,
+        height: 70 + (Platform.OS === 'ios' ? insets.bottom : 0),
+        paddingBottom: Platform.OS === 'ios' ? insets.bottom : 8,
+        borderTopWidth: 0.5,
+        borderTopColor: colors.border,
+        position: 'relative',
+      }}
+    >
       {/* Tab buttons */}
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
         const isFocused = state.index === index;
 
         const onPress = () => {
@@ -130,14 +130,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                   elevation: 4,
                 }}
               >
-                <Ionicons
-                  name={getIconName() as any}
-                  size={20}
-                  color={colors.background}
-                />
+                <Ionicons name={getIconName() as any} size={20} color={colors.background} />
               </View>
             )}
-            
+
             {/* Regular icon for inactive tabs */}
             {!isFocused && (
               <Ionicons
@@ -147,7 +143,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 style={{ marginBottom: 4 }}
               />
             )}
-            
+
             {/* Label */}
             <Text
               style={{
@@ -196,12 +192,19 @@ const AuthNavigator = () => (
 );
 
 export const AppNavigator = () => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { user, loading } = useAuth(); // Use auth state to determine which stack to show
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
         <Text style={{ color: colors.text }}>Loading...</Text>
       </View>
     );
@@ -235,60 +238,60 @@ export const AppNavigator = () => {
             },
             contentStyle: {
               backgroundColor: colors.background,
-            }
+            },
           }}
         >
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-          <Stack.Screen 
-            name="ARView" 
-            component={ARViewScreen} 
+          <Stack.Screen
+            name="ARView"
+            component={ARViewScreen}
             options={{
-                animation: 'fade', // AR often opens with a fade or modal style
-                presentation: 'fullScreenModal',
+              animation: 'fade', // AR often opens with a fade or modal style
+              presentation: 'fullScreenModal',
             }}
           />
-          
+
           {/* Profile Sub-screens */}
-          <Stack.Screen 
-            name="PersonalInfo" 
-            component={PersonalInfoScreen} 
+          <Stack.Screen
+            name="PersonalInfo"
+            component={PersonalInfoScreen}
             options={{ headerShown: true, title: 'Personal Information' }}
           />
-          <Stack.Screen 
-            name="ShippingAddresses" 
+          <Stack.Screen
+            name="ShippingAddresses"
             component={ShippingAddressesScreen}
-            options={{ headerShown: true, title: 'Shipping Addresses' }} 
+            options={{ headerShown: true, title: 'Shipping Addresses' }}
           />
-          <Stack.Screen 
-            name="PaymentMethods" 
+          <Stack.Screen
+            name="PaymentMethods"
             component={PaymentMethodsScreen}
             options={{ headerShown: true, title: 'Payment Methods' }}
           />
-          <Stack.Screen 
-            name="Wishlist" 
+          <Stack.Screen
+            name="Wishlist"
             component={WishlistScreen}
-            options={{ headerShown: true, title: 'Wishlist' }} 
+            options={{ headerShown: true, title: 'Wishlist' }}
           />
-          <Stack.Screen 
-            name="Orders" 
+          <Stack.Screen
+            name="Orders"
             component={OrderHistoryScreen}
-            options={{ headerShown: true, title: 'Order History' }} 
+            options={{ headerShown: true, title: 'Order History' }}
           />
-          <Stack.Screen 
-            name="Notifications" 
+          <Stack.Screen
+            name="Notifications"
             component={NotificationsScreen}
-            options={{ headerShown: true, title: 'Notifications' }} 
+            options={{ headerShown: true, title: 'Notifications' }}
           />
-          <Stack.Screen 
-            name="Settings" 
+          <Stack.Screen
+            name="Settings"
             component={SettingsScreen}
-            options={{ headerShown: true, title: 'Settings' }} 
+            options={{ headerShown: true, title: 'Settings' }}
           />
-          <Stack.Screen 
-            name="HelpSupport" 
+          <Stack.Screen
+            name="HelpSupport"
             component={HelpSupportScreen}
-            options={{ headerShown: true, title: 'Help & Support' }} 
+            options={{ headerShown: true, title: 'Help & Support' }}
           />
         </Stack.Navigator>
       ) : (

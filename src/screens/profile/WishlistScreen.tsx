@@ -14,6 +14,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getWishlist, removeFromWishlist, WishlistItem } from '../../services/wishlistService';
+import { addToCart } from '../../services/cartService';
 
 const WishlistScreen = () => {
   const { colors } = useTheme();
@@ -47,13 +48,28 @@ const WishlistScreen = () => {
   };
 
   const handleMoveToCart = async (id: string) => {
-    // TODO: Implement move to cart functionality
+    const item = wishlistItems.find((w) => w.id === id);
+    if (!item) {
+      return;
+    }
+    await addToCart({
+      id: item.id,
+      name: item.name,
+      price: Number(item.price ?? 0),
+      originalPrice: item.originalPrice,
+      image: item.image,
+      brand: item.brand,
+      inStock: item.inStock,
+    });
     await handleRemoveItem(id);
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} />
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'} />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <Text style={[styles.title, { color: colors.text }]}>My Wishlist</Text>
@@ -65,9 +81,7 @@ const WishlistScreen = () => {
           ) : wishlistItems.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="heart-outline" size={64} color={colors.text} />
-              <Text style={[styles.emptyText, { color: colors.text }]}>
-                Your wishlist is empty
-              </Text>
+              <Text style={[styles.emptyText, { color: colors.text }]}>Your wishlist is empty</Text>
               <TouchableOpacity
                 style={[styles.browseButton, { backgroundColor: colors.primary }]}
                 onPress={() => navigation.navigate('Products')}
@@ -86,9 +100,7 @@ const WishlistScreen = () => {
                   <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
                   <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
                   <View style={styles.priceContainer}>
-                    <Text style={[styles.itemPrice, { color: colors.text }]}>
-                      ${item.price}
-                    </Text>
+                    <Text style={[styles.itemPrice, { color: colors.text }]}>${item.price}</Text>
                     {item.originalPrice > item.price && (
                       <Text style={[styles.originalPrice, { color: colors.text }]}>
                         ${item.originalPrice}
@@ -99,7 +111,7 @@ const WishlistScreen = () => {
                     <TouchableOpacity
                       style={[
                         styles.moveToCartButton,
-                        { backgroundColor: item.inStock ? colors.primary : colors.textSecondary }
+                        { backgroundColor: item.inStock ? colors.primary : colors.textSecondary },
                       ]}
                       onPress={() => handleMoveToCart(item.id)}
                       disabled={!item.inStock}

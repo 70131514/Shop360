@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 type PaymentMethod = {
@@ -26,7 +25,6 @@ type PaymentMethod = {
 
 const PaymentMethodsScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation<any>();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     {
       id: '1',
@@ -48,20 +46,17 @@ const PaymentMethodsScreen = () => {
     },
   ]);
 
-  const handleAddPaymentMethod = () => {
-    // navigation.navigate('AddPaymentMethod');
-    console.log('Navigate to Add Payment Method');
-  };
-
   const handleDeletePaymentMethod = (id: string) => {
-    setPaymentMethods(paymentMethods.filter(method => method.id !== id));
+    setPaymentMethods(paymentMethods.filter((method) => method.id !== id));
   };
 
   const handleSetDefault = (id: string) => {
-    setPaymentMethods(paymentMethods.map(method => ({
-      ...method,
-      isDefault: method.id === id,
-    })));
+    setPaymentMethods(
+      paymentMethods.map((method) => ({
+        ...method,
+        isDefault: method.id === id,
+      })),
+    );
   };
 
   const getCardIcon = (cardType: string): string => {
@@ -91,21 +86,27 @@ const PaymentMethodsScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={colors.background === '#000000' ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <StatusBar
+        barStyle={colors.background === '#000000' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {paymentMethods.map((method) => (
-          <View 
-            key={method.id}
-            style={[styles.cardContainer, { backgroundColor: colors.surface }]}
-          >
+          <View key={method.id} style={[styles.cardContainer, { backgroundColor: colors.surface }]}>
             <View style={styles.cardHeader}>
               <View style={styles.cardInfo}>
-                <View style={[styles.cardIconContainer, { backgroundColor: getCardColor(method.cardType) }]}>
+                <View
+                  style={[
+                    styles.cardIconContainer,
+                    { backgroundColor: getCardColor(method.cardType) },
+                  ]}
+                >
                   <Ionicons name={getCardIcon(method.cardType)} size={24} color="#FFF" />
                 </View>
                 <View>
@@ -119,7 +120,9 @@ const PaymentMethodsScreen = () => {
               </View>
               {method.isDefault && (
                 <View style={[styles.defaultBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={[styles.defaultBadgeText, { color: colors.background }]}>Default</Text>
+                  <Text style={[styles.defaultBadgeText, { color: colors.background }]}>
+                    Default
+                  </Text>
                 </View>
               )}
             </View>
@@ -128,7 +131,7 @@ const PaymentMethodsScreen = () => {
               <Text style={[styles.expiryText, { color: colors.textSecondary }]}>
                 Expires {method.expiryMonth}/{method.expiryYear}
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => handleDeletePaymentMethod(method.id)}
               >
@@ -137,7 +140,7 @@ const PaymentMethodsScreen = () => {
             </View>
 
             {!method.isDefault && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.setDefaultButton, { borderColor: colors.border }]}
                 onPress={() => handleSetDefault(method.id)}
               >

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   StyleSheet,
   View,
   Text,
@@ -21,6 +22,7 @@ import {
   removeFromWishlist,
   WishlistItem,
 } from '../../services/wishlistService';
+import { addToCart } from '../../services/cartService';
 
 // Define the Product type
 interface Product {
@@ -40,7 +42,7 @@ interface Product {
 const { width } = Dimensions.get('window');
 
 type RootStackParamList = {
-    ProductDetails: { id: string };
+  ProductDetails: { id: string };
 };
 type ProductDetailsRouteProp = RouteProp<RootStackParamList, 'ProductDetails'>;
 
@@ -56,44 +58,45 @@ export default function ProductDetailsScreen() {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(1));
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-        fetchProduct();
-        checkWishlistStatus();
-    } else {
-        setError('No product ID provided');
-        setLoading(false);
-    }
-  }, [id]);
-
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       const response = await fetch(`https://dummyjson.com/products/${id}`);
       const data = await response.json();
-      
+
       if (data) {
         setProduct(data);
       } else {
         setError('Product not found');
       }
-      
+
       setLoading(false);
     } catch (err) {
       console.error('Error fetching product:', err);
       setError('Failed to load product. Please try again.');
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const checkWishlistStatus = async () => {
+  const checkWishlistStatus = useCallback(async () => {
     try {
       setIsWishlisted(await isWishlistedRemote(id));
     } catch {
       // If user is not logged in or network fails, default to false
       setIsWishlisted(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchProduct();
+      checkWishlistStatus();
+    } else {
+      setError('No product ID provided');
+      setLoading(false);
+    }
+  }, [id, fetchProduct, checkWishlistStatus]);
 
   const toggleWishlist = async () => {
     if (isWishlisted) {
@@ -115,8 +118,41 @@ export default function ProductDetailsScreen() {
     }
   };
 
+  const handleAddToCart = async () => {
+    if (!product) {
+      return;
+    }
+    if (product.stock <= 0) {
+      return;
+    }
+
+    try {
+      const discountedPrice =
+        product.discountPercentage > 0
+          ? product.price * (1 - product.discountPercentage / 100)
+          : product.price;
+
+      setAddingToCart(true);
+      await addToCart({
+        id: product.id.toString(),
+        name: product.title,
+        price: Number(discountedPrice),
+        originalPrice: product.discountPercentage > 0 ? product.price : undefined,
+        image: product.images?.[0] || product.thumbnail,
+        brand: product.brand,
+        inStock: product.stock > 0,
+      });
+    } catch (e: any) {
+      Alert.alert('Could not add to cart', e?.message ?? 'Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
   const changeImage = (direction: 'next' | 'prev') => {
-    if (!product) return;
+    if (!product) {
+      return;
+    }
 
     Animated.sequence([
       Animated.timing(fadeAnim, {
@@ -142,7 +178,9 @@ export default function ProductDetailsScreen() {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading product...</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          Loading product...
+        </Text>
       </View>
     );
   }
@@ -151,9 +189,11 @@ export default function ProductDetailsScreen() {
     return (
       <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
         <Ionicons name="alert-circle-outline" size={64} color={colors.textSecondary} />
-        <Text style={[styles.errorText, { color: colors.text }]}>{error || 'Product not found'}</Text>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: colors.surface }]} 
+        <Text style={[styles.errorText, { color: colors.text }]}>
+          {error || 'Product not found'}
+        </Text>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
         >
           <Text style={[styles.backButtonText, { color: colors.text }]}>Go Back</Text>
@@ -164,40 +204,38 @@ export default function ProductDetailsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+
       {/* Custom Header */}
       <View style={[styles.customHeader, { backgroundColor: colors.background }]}>
-        <TouchableOpacity 
-          style={[styles.headerButton, { backgroundColor: colors.surface }]} 
+        <TouchableOpacity
+          style={[styles.headerButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        
-        <Text 
-          style={[styles.headerTitle, { color: colors.text }]} 
-          numberOfLines={1}
-        >
+
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {product.title}
         </Text>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.headerButton, { backgroundColor: colors.surface }]}
           onPress={toggleWishlist}
         >
-          <Ionicons 
-            name={isWishlisted ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isWishlisted ? colors.primary : colors.text} 
+          <Ionicons
+            name={isWishlisted ? 'heart' : 'heart-outline'}
+            size={24}
+            color={isWishlisted ? colors.primary : colors.text}
           />
         </TouchableOpacity>
       </View>
-      
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={[styles.imageGallery, { backgroundColor: colors.surface }]}>
           <Animated.Image
             source={{ uri: product.images[activeImage] || product.thumbnail }}
@@ -211,25 +249,25 @@ export default function ProductDetailsScreen() {
               </Text>
             </View>
           )}
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.fullScreenButton, { backgroundColor: colors.surface }]}
             onPress={() => setIsFullScreen(true)}
           >
             <Ionicons name="expand-outline" size={20} color={colors.text} />
           </TouchableOpacity>
-          
+
           {activeImage > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.navButton, styles.leftButton, { backgroundColor: colors.surface }]}
               onPress={() => changeImage('prev')}
             >
               <Ionicons name="chevron-back" size={20} color={colors.text} />
             </TouchableOpacity>
           )}
-          
+
           {activeImage < product.images.length - 1 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.navButton, styles.rightButton, { backgroundColor: colors.surface }]}
               onPress={() => changeImage('next')}
             >
@@ -238,27 +276,23 @@ export default function ProductDetailsScreen() {
           )}
         </View>
 
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={styles.thumbnailScroll}
           contentContainerStyle={styles.thumbnailContainer}
         >
           {product.images.map((image, index) => (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               onPress={() => setActiveImage(index)}
               style={[
                 styles.thumbnailWrapper,
                 { backgroundColor: colors.surface },
-                activeImage === index && { borderColor: colors.primary }
+                activeImage === index && { borderColor: colors.primary },
               ]}
             >
-              <Image 
-                source={{ uri: image }} 
-                style={styles.thumbnail} 
-                resizeMode="cover"
-              />
+              <Image source={{ uri: image }} style={styles.thumbnail} resizeMode="cover" />
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -273,7 +307,7 @@ export default function ProductDetailsScreen() {
           </View>
 
           <Text style={[styles.title, { color: colors.text }]}>{product.title}</Text>
-          
+
           <Text style={[styles.price, { color: colors.text }]}>
             ${product.price}{' '}
             {product.discountPercentage > 0 && (
@@ -288,25 +322,35 @@ export default function ProductDetailsScreen() {
           </Text>
 
           <Text style={[styles.descriptionTitle, { color: colors.text }]}>Description</Text>
-          <Text style={[styles.description, { color: colors.textSecondary }]}>{product.description}</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]}>
+            {product.description}
+          </Text>
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-        <TouchableOpacity 
-          style={[styles.arButton, { backgroundColor: colors.surface }]} 
+      <View
+        style={[
+          styles.footer,
+          { backgroundColor: colors.background, borderTopColor: colors.border },
+        ]}
+      >
+        <TouchableOpacity
+          style={[styles.arButton, { backgroundColor: colors.surface }]}
           onPress={() => navigation.navigate('ARView', { productId: product.id })}
         >
           <Ionicons name="cube-outline" size={20} color={colors.text} />
           <Text style={[styles.arButtonText, { color: colors.text }]}>View in AR</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.addToCartButton, { backgroundColor: colors.primary }]} 
-          onPress={() => {}}
+
+        <TouchableOpacity
+          style={[styles.addToCartButton, { backgroundColor: colors.primary }]}
+          onPress={handleAddToCart}
+          disabled={addingToCart || (product?.stock ?? 0) <= 0}
         >
           <Ionicons name="cart-outline" size={20} color={colors.background} />
-          <Text style={[styles.addToCartButtonText, { color: colors.background }]}>Add to Cart</Text>
+          <Text style={[styles.addToCartButtonText, { color: colors.background }]}>
+            Add to Cart
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -318,31 +362,39 @@ export default function ProductDetailsScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.closeButton, { backgroundColor: colors.surface }]}
               onPress={() => setIsFullScreen(false)}
             >
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            
+
             <Animated.Image
               source={{ uri: product.images[activeImage] || product.thumbnail }}
               style={[styles.fullScreenImage, { opacity: fadeAnim }]}
               resizeMode="contain"
             />
-            
+
             {activeImage > 0 && (
-              <TouchableOpacity 
-                style={[styles.modalNavButton, styles.modalLeftButton, { backgroundColor: colors.surface }]}
+              <TouchableOpacity
+                style={[
+                  styles.modalNavButton,
+                  styles.modalLeftButton,
+                  { backgroundColor: colors.surface },
+                ]}
                 onPress={() => changeImage('prev')}
               >
                 <Ionicons name="chevron-back" size={24} color={colors.text} />
               </TouchableOpacity>
             )}
-            
+
             {activeImage < product.images.length - 1 && (
-              <TouchableOpacity 
-                style={[styles.modalNavButton, styles.modalRightButton, { backgroundColor: colors.surface }]}
+              <TouchableOpacity
+                style={[
+                  styles.modalNavButton,
+                  styles.modalRightButton,
+                  { backgroundColor: colors.surface },
+                ]}
                 onPress={() => changeImage('next')}
               >
                 <Ionicons name="chevron-forward" size={24} color={colors.text} />

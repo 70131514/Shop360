@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import {
   FirebaseAuthTypes,
   onAuthStateChanged as onAuthStateChangedModular,
@@ -67,7 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     init();
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
     // firebaseAuth is stable per app; do not resubscribe on state changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,7 +112,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return ctx;
 };
 

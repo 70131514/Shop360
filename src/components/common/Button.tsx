@@ -1,5 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 import { COLORS, SPACING, FONTS } from '../../theme';
 
 interface ButtonProps {
@@ -22,7 +29,9 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
 }) => {
   const getBackgroundColor = () => {
-    if (disabled) return COLORS.border;
+    if (disabled) {
+      return COLORS.border;
+    }
     switch (variant) {
       case 'secondary':
         return COLORS.surface;
@@ -34,7 +43,9 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextColor = () => {
-    if (disabled) return COLORS.textSecondary;
+    if (disabled) {
+      return COLORS.textSecondary;
+    }
     switch (variant) {
       case 'secondary':
         return COLORS.text;
@@ -60,9 +71,7 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={getTextColor()} />
       ) : (
-        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>
-          {title}
-        </Text>
+        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -88,5 +97,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-
-
