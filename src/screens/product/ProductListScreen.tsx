@@ -3,12 +3,15 @@ import {
   StyleSheet,
   View,
   Text,
+  ScrollView,
   FlatList,
   Image,
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
   TextInput,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -49,6 +52,16 @@ const ProductListScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const navigation = useNavigation<any>();
   const [addingId, setAddingId] = useState<string | null>(null);
+
+  // Minimal filters (apply only in the selected category list)
+  type SortBy = 'relevance' | 'priceAsc' | 'priceDesc' | 'ratingDesc' | 'discountDesc';
+  const [sortBy, setSortBy] = useState<SortBy>('relevance');
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [discountOnly, setDiscountOnly] = useState(false);
+  const [minRating, setMinRating] = useState<number>(0);
+  const [minPrice, setMinPrice] = useState<string>(''); // optional
+  const [maxPrice, setMaxPrice] = useState<string>(''); // optional
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -97,10 +110,60 @@ const ProductListScreen = () => {
           return titleMatch || brandMatch || descriptionMatch;
         });
       }
+
+      // Apply minimal filters in the list view
+      if (inStockOnly) {
+        results = results.filter((p) => Number(p.stock ?? 0) > 0);
+      }
+      if (discountOnly) {
+        results = results.filter((p) => Number(p.discountPercentage ?? 0) > 0);
+      }
+      if (minRating > 0) {
+        results = results.filter((p) => Number(p.rating ?? 0) >= minRating);
+      }
+      const minP = Number(String(minPrice).trim());
+      const maxP = Number(String(maxPrice).trim());
+      const hasMin = String(minPrice).trim().length > 0 && !Number.isNaN(minP);
+      const hasMax = String(maxPrice).trim().length > 0 && !Number.isNaN(maxP);
+      if (hasMin) {
+        results = results.filter((p) => Number(p.price ?? 0) >= minP);
+      }
+      if (hasMax) {
+        results = results.filter((p) => Number(p.price ?? 0) <= maxP);
+      }
+
+      // Sort
+      const byDiscountedPrice = (p: Product) =>
+        Number(
+          (p.discountPercentage ?? 0) > 0
+            ? p.price * (1 - (p.discountPercentage ?? 0) / 100)
+            : p.price,
+        );
+      if (sortBy === 'priceAsc') {
+        results.sort((a, b) => byDiscountedPrice(a) - byDiscountedPrice(b));
+      } else if (sortBy === 'priceDesc') {
+        results.sort((a, b) => byDiscountedPrice(b) - byDiscountedPrice(a));
+      } else if (sortBy === 'ratingDesc') {
+        results.sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0));
+      } else if (sortBy === 'discountDesc') {
+        results.sort(
+          (a, b) => Number(b.discountPercentage ?? 0) - Number(a.discountPercentage ?? 0),
+        );
+      }
     }
 
     return results;
-  }, [products, searchQuery, selectedCategory]);
+  }, [
+    products,
+    searchQuery,
+    selectedCategory,
+    inStockOnly,
+    discountOnly,
+    minRating,
+    minPrice,
+    maxPrice,
+    sortBy,
+  ]);
 
   const handleAddToCart = async (product: Product) => {
     try {
@@ -167,7 +230,32 @@ const ProductListScreen = () => {
 
   const clearCategory = () => {
     setSelectedCategory(null);
+    setSearchQuery('');
+    // Reset filters when leaving the list for a predictable UX
+    setSortBy('relevance');
+    setInStockOnly(false);
+    setDiscountOnly(false);
+    setMinRating(0);
+    setMinPrice('');
+    setMaxPrice('');
   };
+
+  const resetFilters = () => {
+    setSortBy('relevance');
+    setInStockOnly(false);
+    setDiscountOnly(false);
+    setMinRating(0);
+    setMinPrice('');
+    setMaxPrice('');
+  };
+
+  const activeFilterCount =
+    (inStockOnly ? 1 : 0) +
+    (discountOnly ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (String(minPrice).trim() ? 1 : 0) +
+    (String(maxPrice).trim() ? 1 : 0) +
+    (sortBy !== 'relevance' ? 1 : 0);
 
   const renderCategoryCard = ({ item }: { item: Category }) => (
     <TouchableOpacity
@@ -243,7 +331,6 @@ const ProductListScreen = () => {
             {
               backgroundColor: isOutOfStock ? colors.textSecondary : colors.primary,
               borderColor: colors.border,
-              borderWidth: 1,
             },
           ]}
           onPress={(e) => {
@@ -323,7 +410,8 @@ const ProductListScreen = () => {
 
         <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>
           {selectedCategory
-            ? selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1).replace(/-/g, ' ')
+            ? selectedCategory.charAt(0).toUpperCase() +
+              selectedCategory.slice(1).replace(/-/g, ' ')
             : 'Categories'}
         </Text>
       </View>
@@ -351,6 +439,59 @@ const ProductListScreen = () => {
         </View>
       )}
 
+      {/* Minimal filter row (only in product list) */}
+      {selectedCategory && (
+        <View style={styles.filterRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterChips}
+          >
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[
+                styles.filterChip,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => setFiltersOpen(true)}
+            >
+              <Ionicons name="options-outline" size={16} color={colors.text} />
+              <Text style={[styles.filterChipText, { color: colors.text }]}>
+                Filters{activeFilterCount ? ` (${activeFilterCount})` : ''}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[
+                styles.filterChip,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => setSortBy((v) => (v === 'priceAsc' ? 'relevance' : 'priceAsc'))}
+            >
+              <Ionicons name="arrow-up-outline" size={16} color={colors.textSecondary} />
+              <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>Price ↑</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[
+                styles.filterChip,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => setInStockOnly((v) => !v)}
+            >
+              <Ionicons
+                name={inStockOnly ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                size={16}
+                color={inStockOnly ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.filterChipText, { color: colors.textSecondary }]}>In stock</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
       {selectedCategory ? (
         <FlatList
           data={filteredProducts}
@@ -372,6 +513,165 @@ const ProductListScreen = () => {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Filters modal */}
+      <Modal
+        visible={filtersOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFiltersOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setFiltersOpen(false)}>
+          <Pressable
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() => {}}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Filters</Text>
+              <TouchableOpacity onPress={resetFilters} activeOpacity={0.8}>
+                <Text style={[styles.modalAction, { color: colors.textSecondary }]}>Reset</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Sort</Text>
+              {(
+                [
+                  { key: 'relevance', label: 'Relevance' },
+                  { key: 'priceAsc', label: 'Price: Low → High' },
+                  { key: 'priceDesc', label: 'Price: High → Low' },
+                  { key: 'ratingDesc', label: 'Rating' },
+                  { key: 'discountDesc', label: 'Discount' },
+                ] as const
+              ).map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  activeOpacity={0.85}
+                  style={[styles.modalOption, { borderColor: colors.border }]}
+                  onPress={() => setSortBy(opt.key)}
+                >
+                  <Text style={[styles.modalOptionText, { color: colors.text }]}>{opt.label}</Text>
+                  <Ionicons
+                    name={sortBy === opt.key ? 'checkmark' : 'chevron-forward'}
+                    size={18}
+                    color={sortBy === opt.key ? colors.primary : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Availability</Text>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.modalOption, { borderColor: colors.border }]}
+                onPress={() => setInStockOnly((v) => !v)}
+              >
+                <Text style={[styles.modalOptionText, { color: colors.text }]}>In stock only</Text>
+                <Ionicons
+                  name={inStockOnly ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={18}
+                  color={inStockOnly ? colors.primary : colors.textSecondary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.modalOption, { borderColor: colors.border }]}
+                onPress={() => setDiscountOnly((v) => !v)}
+              >
+                <Text style={[styles.modalOptionText, { color: colors.text }]}>
+                  Discounted only
+                </Text>
+                <Ionicons
+                  name={discountOnly ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={18}
+                  color={discountOnly ? colors.primary : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>
+                Minimum rating
+              </Text>
+              <View style={styles.ratingRow}>
+                {[0, 3, 4, 4.5].map((r) => (
+                  <TouchableOpacity
+                    key={String(r)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.ratingPill,
+                      {
+                        backgroundColor: minRating === r ? colors.primary : colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    onPress={() => setMinRating(r)}
+                  >
+                    <Text
+                      style={[
+                        styles.ratingPillText,
+                        { color: minRating === r ? colors.background : colors.text },
+                      ]}
+                    >
+                      {r === 0 ? 'Any' : `${r}+`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>Price range</Text>
+              <View style={styles.priceRow}>
+                <View
+                  style={[
+                    styles.priceInputWrap,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.pricePrefix, { color: colors.textSecondary }]}>$</Text>
+                  <TextInput
+                    value={minPrice}
+                    onChangeText={setMinPrice}
+                    placeholder="Min"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    style={[styles.priceInput, { color: colors.text }]}
+                  />
+                </View>
+                <View
+                  style={[
+                    styles.priceInputWrap,
+                    { backgroundColor: colors.background, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.pricePrefix, { color: colors.textSecondary }]}>$</Text>
+                  <TextInput
+                    value={maxPrice}
+                    onChangeText={setMaxPrice}
+                    placeholder="Max"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    style={[styles.priceInput, { color: colors.text }]}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={[styles.modalDone, { backgroundColor: colors.primary }]}
+              onPress={() => setFiltersOpen(false)}
+            >
+              <Text style={[styles.modalDoneText, { color: colors.background }]}>Done</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -422,6 +722,127 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+  },
+  filterRow: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  filterChips: {
+    paddingRight: 10,
+    gap: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 16,
+    justifyContent: 'flex-end',
+    paddingBottom: 18,
+  },
+  modalCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    maxHeight: '86%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  modalAction: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalSection: {
+    marginTop: 12,
+  },
+  modalLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  modalOption: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  ratingPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  ratingPillText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  priceInputWrap: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pricePrefix: {
+    fontWeight: '800',
+    marginRight: 6,
+  },
+  priceInput: {
+    flex: 1,
+    padding: 0,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalDone: {
+    marginTop: 12,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDoneText: {
+    fontSize: 15,
+    fontWeight: '900',
   },
   searchIcon: {
     marginRight: 12,
@@ -575,6 +996,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
