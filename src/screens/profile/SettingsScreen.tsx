@@ -68,30 +68,6 @@ const SettingsScreen = () => {
     },
     {
       id: '3',
-      title: 'Biometric Authentication',
-      description: 'Use fingerprint or face ID to login',
-      type: 'toggle',
-      value: false,
-      icon: 'finger-print-outline',
-    },
-    {
-      id: '4',
-      title: 'Language',
-      description: 'Change app language',
-      type: 'select',
-      value: false,
-      icon: 'language-outline',
-    },
-    {
-      id: '5',
-      title: 'Currency',
-      description: 'Set your preferred currency',
-      type: 'select',
-      value: false,
-      icon: 'cash-outline',
-    },
-    {
-      id: '6',
       title: 'Clear Cache',
       description: 'Free up storage space',
       type: 'action',
@@ -99,7 +75,7 @@ const SettingsScreen = () => {
       icon: 'trash-outline',
     },
     {
-      id: '7',
+      id: '4',
       title: 'Privacy Policy',
       description: 'Read our privacy policy',
       type: 'action',
@@ -107,7 +83,7 @@ const SettingsScreen = () => {
       icon: 'shield-checkmark-outline',
     },
     {
-      id: '8',
+      id: '5',
       title: 'Terms of Service',
       description: 'Read our terms of service',
       type: 'action',
