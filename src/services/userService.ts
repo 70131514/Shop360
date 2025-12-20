@@ -1,0 +1,53 @@
+import { updateProfile } from '@react-native-firebase/auth';
+import { doc, getDoc, updateDoc } from '@react-native-firebase/firestore';
+import { firebaseAuth, firebaseDb } from './firebase';
+
+export type UserProfileDoc = {
+  uid: string;
+  name: string;
+  email: string;
+  role: 'user' | string;
+  createdAt: any;
+};
+
+function requireUid(): string {
+  const uid = firebaseAuth.currentUser?.uid;
+  if (!uid) {
+    throw new Error('No authenticated user');
+  }
+  return uid;
+}
+
+export async function getMyUserProfile(): Promise<UserProfileDoc> {
+  const uid = requireUid();
+  const snap = await getDoc(doc(firebaseDb, 'users', uid));
+  if (!snap.exists()) {
+    throw new Error('User profile not found');
+  }
+  return snap.data() as UserProfileDoc;
+}
+
+/**
+ * Update the current user's display name in BOTH:
+ * - Firestore: users/{uid}.name (required by your rules)
+ * - Firebase Auth: user.displayName (for UI convenience)
+ */
+export async function updateMyName(name: string): Promise<void> {
+  const uid = requireUid();
+  const trimmed = String(name ?? '').trim();
+  if (!trimmed) {
+    throw new Error('Name cannot be empty');
+  }
+
+  await updateDoc(doc(firebaseDb, 'users', uid), { name: trimmed } as any);
+
+  // Keep Firebase Auth displayName in sync (best-effort)
+  const current = firebaseAuth.currentUser;
+  if (current) {
+    try {
+      await updateProfile(current, { displayName: trimmed });
+    } catch {
+      // ignore auth profile sync failures; Firestore is the source of truth
+    }
+  }
+}

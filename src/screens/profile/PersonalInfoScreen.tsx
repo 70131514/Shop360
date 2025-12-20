@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   StyleSheet,
   View,
   Text,
@@ -13,21 +15,61 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { getMyUserProfile, updateMyName } from '../../services/userService';
 
 const PersonalInfoScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
-  const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 234 567 8900',
-    dateOfBirth: '1990-01-01',
-  });
+  const { user } = useAuth();
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    navigation.goBack();
+  const initialEmail = useMemo(() => user?.email ?? '', [user?.email]);
+  const initialName = useMemo(() => user?.displayName ?? '', [user?.displayName]);
+
+  const [name, setName] = useState(initialName);
+  const [email] = useState(initialEmail);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const profile = await getMyUserProfile();
+        if (!alive) {
+          return;
+        }
+        setName(profile?.name ?? initialName);
+      } catch {
+        // fallback to Auth displayName
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [initialName]);
+
+  const handleSave = async () => {
+    try {
+      if (saving) {
+        return;
+      }
+      setSaving(true);
+      await updateMyName(name);
+      Alert.alert('Saved', 'Your name has been updated.');
+      navigation.goBack();
+    } catch (e: any) {
+      Alert.alert('Could not save', e?.message ?? 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -48,110 +90,75 @@ const PersonalInfoScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>First Name</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={formData.firstName}
-              onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
+          {loading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Loading profile…
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Last Name</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={formData.lastName}
-              onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-              placeholderTextColor={colors.textSecondary}
-            />
-          </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.readOnlyInput,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.textSecondary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  value={email}
+                  editable={false}
+                  selectTextOnFocus={false}
+                />
+                <Text style={[styles.helper, { color: colors.textSecondary }]}>
+                  Email can’t be changed here.
+                </Text>
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={formData.email}
-              onChangeText={(text) => setFormData({ ...formData, email: text })}
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Phone Number</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={formData.phone}
-              onChangeText={(text) => setFormData({ ...formData, phone: text })}
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Date of Birth</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              value={formData.dateOfBirth}
-              onChangeText={(text) => setFormData({ ...formData, dateOfBirth: text })}
-              placeholderTextColor={colors.textSecondary}
-              placeholder="YYYY-MM-DD"
-            />
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                {
-                  backgroundColor: colors.primary,
-                  borderColor: colors.primary,
-                },
-              ]}
-              onPress={handleSave}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.saveButtonText, { color: colors.background }]}>Save</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.saveButton,
+                    {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.primary,
+                      opacity: saving ? 0.7 : 1,
+                    },
+                  ]}
+                  onPress={handleSave}
+                  activeOpacity={0.7}
+                  disabled={saving}
+                >
+                  <Text style={[styles.saveButtonText, { color: colors.background }]}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -202,12 +209,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 8,
   },
+  helper: {
+    marginTop: 8,
+    fontSize: 12,
+  },
   input: {
     height: 48,
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     borderWidth: 1,
+  },
+  readOnlyInput: {
+    opacity: 0.85,
+  },
+  loadingWrap: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
 });
 
