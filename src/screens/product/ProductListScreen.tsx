@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Alert,
   StyleSheet,
   View,
   Text,
@@ -16,6 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { addToCart } from '../../services/cartService';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 // Define types for the product data
 interface Product {
@@ -41,6 +41,7 @@ interface Category {
 const ProductListScreen = () => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { alert } = useAppAlert();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,9 +119,9 @@ const ProductListScreen = () => {
         brand: product.brand,
         inStock: (product.stock ?? 0) > 0,
       });
-      Alert.alert('Added to cart', `${product.title} has been added to your cart.`);
+      alert('Added to cart', `${product.title} has been added to your cart.`);
     } catch (e: any) {
-      Alert.alert('Could not add to cart', e?.message ?? 'Please try again.');
+      alert('Could not add to cart', e?.message ?? 'Please try again.');
     } finally {
       setAddingId(null);
     }

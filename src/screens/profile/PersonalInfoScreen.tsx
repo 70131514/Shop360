@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   View,
   Text,
@@ -17,11 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyUserProfile, updateMyName } from '../../services/userService';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 const PersonalInfoScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { alert } = useAppAlert();
 
   const initialEmail = useMemo(() => user?.email ?? '', [user?.email]);
   const initialName = useMemo(() => user?.displayName ?? '', [user?.displayName]);
@@ -63,10 +64,10 @@ const PersonalInfoScreen = () => {
       }
       setSaving(true);
       await updateMyName(name);
-      Alert.alert('Saved', 'Your name has been updated.');
+      alert('Saved', 'Your name has been updated.');
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Please try again.');
+      alert('Could not save', e?.message ?? 'Please try again.');
     } finally {
       setSaving(false);
     }

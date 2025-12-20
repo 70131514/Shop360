@@ -3,7 +3,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   StatusBar,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '../../components/ThemedText';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 import { placeOrderFromCart } from '../../services/orderService';
 import {
   clearCart,
@@ -83,6 +83,7 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { alert } = useAppAlert();
 
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,7 +159,7 @@ export default function CartScreen() {
     }
 
     if (!user) {
-      Alert.alert('Sign in required', 'Please sign in to checkout.', [
+      alert('Sign in required', 'Please sign in to checkout.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign In', onPress: () => navigation.navigate('Login', { redirectToTab: 'Cart' }) },
         { text: 'Sign Up', onPress: () => navigation.navigate('Signup', { redirectToTab: 'Cart' }) },
@@ -167,7 +168,7 @@ export default function CartScreen() {
     }
 
     if (!user.emailVerified) {
-      Alert.alert(
+      alert(
         'Verify your email',
         'Please verify your email to checkout. Check your inbox, then tap “I verified”.',
         [
@@ -190,11 +191,11 @@ export default function CartScreen() {
     try {
       setPlacingOrder(true);
       const { orderId } = await placeOrderFromCart(cartItems, { shipping });
-      Alert.alert('Order placed', `Your order #${orderId.slice(-6).toUpperCase()} was created.`);
+      alert('Order placed', `Your order #${orderId.slice(-6).toUpperCase()} was created.`);
       // Cart is cleared by the batch; snapshot will update UI automatically.
       navigation.navigate('Profile');
     } catch (e: any) {
-      Alert.alert('Checkout failed', e?.message ?? 'Please try again.');
+      alert('Checkout failed', e?.message ?? 'Please try again.');
     } finally {
       setPlacingOrder(false);
     }

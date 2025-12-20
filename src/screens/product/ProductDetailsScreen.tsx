@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   StyleSheet,
   View,
   Text,
@@ -18,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 import {
   addToWishlist,
   isWishlisted as isWishlistedRemote,
@@ -55,6 +55,7 @@ export default function ProductDetailsScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { alert } = useAppAlert();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +106,7 @@ export default function ProductDetailsScreen() {
   const toggleWishlist = async () => {
     try {
       if (!user) {
-        Alert.alert('Sign in required', 'Please sign in to use wishlist.', [
+        alert('Sign in required', 'Please sign in to use wishlist.', [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Sign In', onPress: () => navigation.navigate('Login') },
           { text: 'Sign Up', onPress: () => navigation.navigate('Signup') },
@@ -114,7 +115,7 @@ export default function ProductDetailsScreen() {
       }
 
       if (!user.emailVerified) {
-        Alert.alert(
+        alert(
           'Verify your email',
           'Please verify your email to use wishlist. Check your inbox, then tap “I verified”.',
           [
@@ -150,10 +151,10 @@ export default function ProductDetailsScreen() {
         };
         await addToWishlist(newItem);
         setIsWishlisted(true);
-        Alert.alert('Added to wishlist', `${product.title} has been added to your wishlist.`);
+        alert('Added to wishlist', `${product.title} has been added to your wishlist.`);
       }
     } catch (e: any) {
-      Alert.alert('Wishlist update failed', e?.message ?? 'Please try again.');
+      alert('Wishlist update failed', e?.message ?? 'Please try again.');
     }
   };
 
@@ -181,9 +182,9 @@ export default function ProductDetailsScreen() {
         brand: product.brand,
         inStock: product.stock > 0,
       });
-      Alert.alert('Added to cart', `${product.title} has been added to your cart.`);
+      alert('Added to cart', `${product.title} has been added to your cart.`);
     } catch (e: any) {
-      Alert.alert('Could not add to cart', e?.message ?? 'Please try again.');
+      alert('Could not add to cart', e?.message ?? 'Please try again.');
     } finally {
       setAddingToCart(false);
     }

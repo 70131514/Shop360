@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   View,
   Text,
@@ -16,10 +15,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getWishlist, removeFromWishlist, WishlistItem } from '../../services/wishlistService';
 import { addToCart } from '../../services/cartService';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 const WishlistScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const { alert } = useAppAlert();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -62,7 +63,7 @@ const WishlistScreen = () => {
       brand: item.brand,
       inStock: item.inStock,
     });
-    Alert.alert('Added to cart', `${item.name} has been added to your cart.`);
+    alert('Added to cart', `${item.name} has been added to your cart.`);
     await handleRemoveItem(id);
   };
 

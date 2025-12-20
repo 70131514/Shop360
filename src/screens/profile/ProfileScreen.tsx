@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   View,
   Text,
@@ -17,6 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 type MenuItem = {
   icon: string;
@@ -31,6 +31,7 @@ const ProfileScreen = () => {
   const auth = useAuth();
   const logout = auth?.logout || (() => console.log('Logout not implemented'));
   const user = auth?.user;
+  const { alert } = useAppAlert();
 
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -136,14 +137,14 @@ const ProfileScreen = () => {
     } catch (e: any) {
       // Even if something went wrong, avoid unhandled promise rejections.
       const msg = e?.message ?? 'Failed to log out';
-      Alert.alert('Logout', msg);
+      alert('Logout', msg);
     } finally {
       setLoggingOut(false);
     }
   };
 
   const promptAuth = (reason: string, redirectToTab: 'Profile' | 'Cart' | 'Home' | 'Products') => {
-    Alert.alert('Sign in required', reason, [
+    alert('Sign in required', reason, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign In', onPress: () => navigation.navigate('Login', { redirectToTab }) },
       { text: 'Create Account', onPress: () => navigation.navigate('Signup', { redirectToTab }) },

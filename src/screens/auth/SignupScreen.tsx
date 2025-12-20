@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 type SignupRouteParams =
   | {
@@ -29,6 +29,7 @@ const SignupScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { register } = useAuth();
+  const { alert } = useAppAlert();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,19 +45,19 @@ const SignupScreen = () => {
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      alert('Error', 'Passwords do not match');
       return;
     }
 
     if (!name || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      alert('Error', 'Please fill in all fields');
       return;
     }
 
     try {
       setSubmitting(true);
       await register(email, password, name);
-      Alert.alert(
+      alert(
         'Account created',
         'We sent a verification email. Please verify your email to use wishlist and checkout.',
       );
@@ -85,7 +86,7 @@ const SignupScreen = () => {
         errorMessage = 'Signup failed: Firestore is unavailable. Check your internet connection.';
       }
 
-      Alert.alert('Signup Failed', errorMessage);
+      alert('Signup Failed', errorMessage);
     } finally {
       setSubmitting(false);
     }

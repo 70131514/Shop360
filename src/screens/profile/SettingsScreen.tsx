@@ -8,11 +8,11 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 import {
   storeNotificationPreferences,
   getNotificationPreferences,
@@ -30,6 +30,7 @@ type SettingItem = {
 
 const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
+  const { alert } = useAppAlert();
   const [settings, setSettings] = useState<SettingItem[]>([
     {
       id: '1',
@@ -147,7 +148,7 @@ const SettingsScreen = () => {
     switch (id) {
       case '6':
         // Clear cache logic
-        Alert.alert(
+        alert(
           'Clear Cache',
           'Are you sure you want to clear all app data? This will remove your wishlist, cart, and other saved preferences.',
           [
@@ -169,10 +170,10 @@ const SettingsScreen = () => {
                       value: setting.id === '1' ? isDark : false,
                     })),
                   );
-                  Alert.alert('Success', 'Cache cleared successfully');
+                  alert('Success', 'Cache cleared successfully');
                 } catch (error) {
                   console.error('Clear cache error:', error);
-                  Alert.alert('Error', 'Failed to clear cache. Please try again.');
+                  alert('Error', 'Failed to clear cache. Please try again.');
                 } finally {
                   setIsClearing(false);
                 }

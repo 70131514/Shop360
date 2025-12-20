@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 type LoginRouteParams =
   | {
@@ -29,6 +29,7 @@ const LoginScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { alert } = useAppAlert();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +39,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+      alert('Error', 'Please enter both email and password');
       return;
     }
 
@@ -68,7 +69,7 @@ const LoginScreen = () => {
         errorMessage = 'Invalid credentials provided';
       }
 
-      Alert.alert('Login Failed', errorMessage);
+      alert('Login Failed', errorMessage);
     } finally {
       setSubmitting(false);
     }
