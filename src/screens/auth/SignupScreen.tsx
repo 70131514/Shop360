@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { getMyUserProfile } from '../../services/userService';
 
 type SignupRouteParams =
   | {
@@ -98,13 +99,37 @@ const SignupScreen = () => {
         alert('Verify your account', 'Please verify your email before using the app.');
         return;
       }
+
+      // Check if user is admin
+      let isAdmin = false;
+      try {
+        const profile = await getMyUserProfile();
+        isAdmin = profile?.role === 'admin';
+      } catch {
+        // ignore role lookup failures; default to user flow
+      }
+
+      if (isAdmin) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AdminTabs' }],
+        });
+        return;
+      }
+
+      // Regular users go to MainTabs
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
       });
     } catch (e: any) {
-      const code = e?.code ? ` (${String(e.code)})` : '';
-      alert('Google Sign-Up failed', `${e?.message ?? 'Please try again.'}${code}`);
+      // Don't show alert for user cancellation - it's expected behavior
+      if (e?.code === 'SIGN_IN_CANCELLED' || e?.message?.includes('cancelled') || e?.message?.includes('canceled')) {
+        // User cancelled - no need to show error
+        return;
+      }
+      // Show user-friendly error message (already filtered in authService)
+      alert('Google Sign-Up', e?.message ?? 'Sign-up failed. Please try again.');
     } finally {
       setSubmitting(false);
     }

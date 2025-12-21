@@ -42,15 +42,32 @@ const AddressFormScreen = () => {
   const [locationStatus, setLocationStatus] = useState<string>('');
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
 
-  // Request location permission on mount
+  // Check location services setting and request permission on mount
   useEffect(() => {
-    requestLocationPermission();
+    const checkLocationServices = async () => {
+      try {
+        const { getNotificationPreferences } = await import('../../utils/storage');
+        const preferences = await getNotificationPreferences();
+        if (preferences && preferences.locationServices === false) {
+          setLocationStatus('Location services disabled in settings');
+          setHasLocationPermission(false);
+        } else {
+          // Only request permission if location services are enabled
+          await requestLocationPermission();
+        }
+      } catch (error) {
+        // If we can't check preferences, try to request permission anyway
+        await requestLocationPermission();
+      }
+    };
+    checkLocationServices();
 
     return () => {
       // Cleanup: stop watching location when component unmounts
       const watchId = watchIdRef.current;
       if (watchId !== null) {
         Geolocation.clearWatch(watchId);
+        watchIdRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,64 +85,47 @@ const AddressFormScreen = () => {
           return true;
         }
 
-        return new Promise((resolve) => {
-          alert(
-            'Location Access',
-            'Shop360 needs your location to help you add delivery addresses quickly and accurately. You can choose to allow access only while using the app or all the time.',
-            [
-              {
-                text: 'Not Now',
-                style: 'cancel',
-                onPress: () => {
-                  setHasLocationPermission(false);
-                  resolve(false);
-                },
-              },
-              {
-                text: 'Allow',
-                onPress: async () => {
-                  try {
-                    const granted = await PermissionsAndroid.request(
-                      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-                      {
-                        title: 'Location Permission',
-                        message: 'Shop360 would like to access your location',
-                        buttonPositive: 'Allow',
-                        buttonNegative: 'Deny',
-                      },
-                    );
-
-                    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-                      setHasLocationPermission(true);
-                      resolve(true);
-                    } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-                      alert(
-                        'Permission Required',
-                        'Location permission has been blocked. Please enable it in Settings > Apps > Shop360 > Permissions.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Open Settings',
-                            onPress: () => Linking.openSettings(),
-                          },
-                        ],
-                      );
-                      setHasLocationPermission(false);
-                      resolve(false);
-                    } else {
-                      setHasLocationPermission(false);
-                      resolve(false);
-                    }
-                  } catch (err) {
-                    console.warn(err);
-                    setHasLocationPermission(false);
-                    resolve(false);
-                  }
-                },
-              },
-            ],
+        // Request permission directly - Android will show the system dialog with options
+        // "While using the app", "Only this time", "Don't allow"
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message:
+                'Shop360 needs your location to help you add delivery addresses quickly and accurately. You can choose to allow access only while using the app or all the time.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Deny',
+              buttonPositive: 'Allow',
+            },
           );
-        });
+
+          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            setHasLocationPermission(true);
+            return true;
+          } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+            alert(
+              'Permission Required',
+              'Location permission has been blocked. Please enable it in Settings > Apps > Shop360 > Permissions > Location.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Open Settings',
+                  onPress: () => Linking.openSettings(),
+                },
+              ],
+            );
+            setHasLocationPermission(false);
+            return false;
+          } else {
+            setHasLocationPermission(false);
+            return false;
+          }
+        } catch (err) {
+          console.warn(err);
+          setHasLocationPermission(false);
+          return false;
+        }
       } catch (err) {
         console.warn(err);
         return false;
@@ -182,6 +182,33 @@ const AddressFormScreen = () => {
         'Location services are not available. Please check your device settings.',
       );
       return;
+    }
+
+    // Check if location services are enabled in settings
+    try {
+      const { getNotificationPreferences } = await import('../../utils/storage');
+      const preferences = await getNotificationPreferences();
+      if (preferences && preferences.locationServices === false) {
+        alert(
+          'Location Services Disabled',
+          'Location services are disabled in Settings. Please enable them in Profile > Settings > Location Services to use this feature.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => {
+                // Navigate to settings screen
+                navigation.navigate('Settings');
+              },
+            },
+          ],
+        );
+        setLocationStatus('Location services disabled in settings');
+        return;
+      }
+    } catch (error) {
+      // If we can't check preferences, continue anyway
+      console.warn('Could not check location preferences:', error);
     }
 
     const hasPermission = await requestLocationPermission();

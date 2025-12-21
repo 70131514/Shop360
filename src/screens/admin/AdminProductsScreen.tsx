@@ -58,6 +58,21 @@ export default function AdminProductsScreen() {
         <View style={styles.center}>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Not authorized</Text>
         </View>
+      ) : products.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="cube-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No products found</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Add your first product to get started
+          </Text>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('AdminProductEdit')}
+          >
+            <Ionicons name="add" size={20} color={colors.background} />
+            <Text style={[styles.addButtonText, { color: colors.background }]}>Add Product</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={products}
@@ -104,6 +119,37 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 15, fontWeight: '800' },
   meta: { fontSize: 12, marginTop: 2 },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 20,
+    gap: 8,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
 

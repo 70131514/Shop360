@@ -35,6 +35,7 @@ const SettingsScreen = () => {
   const { preset, setPreset } = useFontSize();
   const { user, linkGoogleAccount } = useAuth();
   const [locationEnabled, setLocationEnabled] = useState<boolean>(true);
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
 
   const [isClearing, setIsClearing] = useState(false);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
@@ -53,24 +54,59 @@ const SettingsScreen = () => {
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
+        // Check current permission status
+        const hasPermission = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+
+        if (hasPermission) {
+          return true;
+        }
+
+        // Request permission with proper Android options
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
-            message: 'Shop360 needs access to your location to provide location-based features like address autofill and delivery tracking.',
+            message:
+              'Shop360 needs access to your location to help you add delivery addresses quickly and accurately. You can choose to allow access only while using the app or all the time.',
             buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
+            buttonNegative: 'Deny',
+            buttonPositive: 'Allow',
           },
         );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
+
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          return true;
+        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          alert(
+            'Permission Blocked',
+            'Location permission has been blocked. Please enable it in Settings > Apps > Shop360 > Permissions > Location.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => Linking.openSettings(),
+              },
+            ],
+          );
+          return false;
+        }
+        return false;
       } catch (err) {
         console.warn(err);
         return false;
       }
+    } else {
+      // iOS permissions
+      try {
+        const authStatus = await Geolocation.requestAuthorization('whenInUse');
+        return authStatus === 'granted';
+      } catch (error) {
+        console.warn('iOS authorization error:', error);
+        return false;
+      }
     }
-    // iOS permissions are handled via Info.plist
-    return true;
   };
 
   const checkLocationPermission = async (): Promise<boolean> => {
@@ -91,26 +127,62 @@ const SettingsScreen = () => {
       // Request permission when enabling
       const hasPermission = await checkLocationPermission();
       if (!hasPermission) {
-        const granted = await requestLocationPermission();
-        if (!granted) {
-          alert(
-            'Permission Required',
-            'Location permission is required to use location services. You can enable it in your device settings.',
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => setLocationEnabled(false) },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  if (Platform.OS === 'android') {
-                    Linking.openSettings();
+        // Show informative dialog before requesting permission
+        alert(
+          'Enable Location Services',
+          'Location services are used to help you add delivery addresses quickly by detecting your current location. You can choose to allow access only while using the app or all the time.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setLocationEnabled(false),
+            },
+            {
+              text: 'Continue',
+              onPress: async () => {
+                const granted = await requestLocationPermission();
+                if (granted) {
+                  setLocationEnabled(true);
+                  try {
+                    await storeNotificationPreferences({ locationServices: true });
+                  } catch {
+                    // ignore
                   }
-                },
+                } else {
+                  setLocationEnabled(false);
+                }
               },
-            ],
-          );
-          return;
-        }
+            },
+          ],
+        );
+        return;
       }
+    } else {
+      // When disabling, inform user about impact
+      alert(
+        'Disable Location Services',
+        'Disabling location services will prevent the app from automatically detecting your location when adding addresses. You can still manually enter addresses.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setLocationEnabled(true),
+          },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              setLocationEnabled(false);
+              try {
+                await storeNotificationPreferences({ locationServices: false });
+              } catch {
+                // ignore
+              }
+            },
+          },
+        ],
+      );
+      return;
     }
 
     setLocationEnabled(next);
@@ -147,30 +219,71 @@ const SettingsScreen = () => {
     );
   };
 
-  const handleLinkGoogle = () => {
+  const isGoogleLinked = () => {
+    if (!user || !user.providerData) return false;
+    return user.providerData.some((provider) => provider.providerId === 'google.com');
+  };
+
+  const handleLinkGoogle = async () => {
     if (!user) {
       alert('Sign in required', 'Please sign in to link your Google account.');
       return;
     }
-    alert(
-      'Link Google account',
-      'This will link Google Sign-In to your existing account (must use the same email).',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Link',
-          onPress: async () => {
-            try {
-              await linkGoogleAccount();
-              alert('Success', 'Google account linked successfully.');
-            } catch (e: any) {
-              const msg = e?.message ?? 'Failed to link Google account.';
-              alert('Error', msg);
-            }
-          },
-        },
-      ],
+
+    // Check if Google is already linked
+    if (isGoogleLinked()) {
+      alert('Already linked', 'Your Google account is already linked to this account.');
+      return;
+    }
+
+    // Check if user is logged in with email/password (not Google)
+    const hasEmailPassword = user.providerData.some(
+      (provider) => provider.providerId === 'password',
     );
+    if (!hasEmailPassword) {
+      alert(
+        'Email account required',
+        'Please link an email/password account first before linking Google.',
+      );
+      return;
+    }
+
+    setIsLinkingGoogle(true);
+    try {
+      await linkGoogleAccount();
+      alert('Success', 'Google account linked successfully. You can now sign in with either email or Google.');
+    } catch (e: any) {
+      // Handle user cancellation gracefully
+      if (
+        e?.code === 'SIGN_IN_CANCELLED' ||
+        e?.message?.includes('cancelled') ||
+        e?.message?.includes('canceled')
+      ) {
+        // User cancelled, don't show error
+        return;
+      }
+
+      // Handle email mismatch
+      if (e?.message?.includes('same email') || e?.code === 'auth/email-already-in-use') {
+        alert(
+          'Email mismatch',
+          'The Google account email must match your current account email. Please choose the Google account with the same email address.',
+        );
+        return;
+      }
+
+      // Handle already linked (shouldn't happen due to check above, but just in case)
+      if (e?.code === 'auth/provider-already-linked') {
+        alert('Already linked', 'Your Google account is already linked.');
+        return;
+      }
+
+      // Generic error
+      const msg = e?.message ?? 'Failed to link Google account. Please try again.';
+      alert('Error', msg);
+    } finally {
+      setIsLinkingGoogle(false);
+    }
   };
 
   return (
@@ -278,21 +391,36 @@ const SettingsScreen = () => {
 
         <TouchableOpacity
           activeOpacity={0.85}
-          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[
+            styles.rowCard,
+            styles.linkGoogleCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
           onPress={handleLinkGoogle}
+          disabled={isLinkingGoogle}
         >
           <View style={styles.rowLeft}>
             <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
               <Ionicons name="logo-google" size={20} color={colors.text} />
             </View>
             <View style={styles.rowInfo}>
-              <Text style={[styles.rowTitle, { color: colors.text }]}>Link Google account</Text>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>
+                {isGoogleLinked() ? 'Google account linked' : 'Link Google account'}
+              </Text>
               <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
-                Add Google Sign-In to your existing account
+                {isGoogleLinked()
+                  ? 'You can sign in with Google or email'
+                  : 'Add Google Sign-In to your existing account'}
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          {isLinkingGoogle ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : isGoogleLinked() ? (
+            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          )}
         </TouchableOpacity>
 
         {/* Remaining options */}
@@ -347,7 +475,7 @@ const SettingsScreen = () => {
         <TouchableOpacity
           activeOpacity={0.85}
           style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => alert('Coming soon', 'Privacy Policy will be available here.')}
+          onPress={() => navigation.navigate('PrivacyPolicy')}
         >
           <View style={styles.rowLeft}>
             <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
@@ -366,7 +494,7 @@ const SettingsScreen = () => {
         <TouchableOpacity
           activeOpacity={0.85}
           style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          onPress={() => alert('Coming soon', 'Terms of Service will be available here.')}
+          onPress={() => navigation.navigate('TermsOfService')}
         >
           <View style={styles.rowLeft}>
             <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
@@ -499,6 +627,7 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
   actionCard: {
     flex: 1,
@@ -506,6 +635,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     minHeight: 140,
+  },
+  linkGoogleCard: {
+    marginTop: 12,
   },
   cardIcon: {
     width: 42,

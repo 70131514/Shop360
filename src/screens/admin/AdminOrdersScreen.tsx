@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,6 +44,14 @@ export default function AdminOrdersScreen() {
       ) : !isAdmin ? (
         <View style={styles.center}>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Not authorized</Text>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="receipt-outline" size={64} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No orders found</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Orders will appear here when customers make purchases
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -89,6 +98,23 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: '800' },
   meta: { fontSize: 12, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '800' },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
 });
 
 

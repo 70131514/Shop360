@@ -39,6 +39,8 @@ import SettingsScreen from '../screens/profile/SettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 import ChangeEmailScreen from '../screens/profile/ChangeEmailScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
+import PrivacyPolicyScreen from '../screens/profile/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/profile/TermsOfServiceScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -408,6 +410,16 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="HelpSupport"
           component={HelpSupportScreen}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
+          name="PrivacyPolicy"
+          component={PrivacyPolicyScreen}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
+          name="TermsOfService"
+          component={TermsOfServiceScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
 

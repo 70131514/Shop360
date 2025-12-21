@@ -60,13 +60,16 @@ export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredenti
     } catch {
       // ignore
     }
-    await GoogleSignin.signIn();
+    const signInResult = await GoogleSignin.signIn();
     // In newer versions, tokens are retrieved via getTokens() (signIn may not include idToken).
     const tokens = await GoogleSignin.getTokens();
     const idToken = tokens?.idToken;
     const accessToken = tokens?.accessToken;
     if (!idToken && !accessToken) {
-      throw new Error('Google sign-in failed: missing tokens (idToken/accessToken)');
+      // User likely cancelled the sign-in or sign-in didn't complete
+      const err: any = new Error('Sign-in was cancelled or incomplete. Please try again.');
+      err.code = statusCodes.SIGN_IN_CANCELLED;
+      throw err;
     }
 
     const credential = GoogleAuthProvider.credential(idToken ?? undefined, accessToken);
@@ -120,6 +123,18 @@ export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredenti
     // eslint-disable-next-line no-console
     console.error('Google sign-in error (raw):', e);
 
+    // Handle user cancellation gracefully
+    if (
+      e?.code === statusCodes.SIGN_IN_CANCELLED ||
+      e?.code === 'SIGN_IN_CANCELLED' ||
+      e?.message?.includes('cancelled') ||
+      e?.message?.includes('canceled')
+    ) {
+      const err: any = new Error('Sign-in was cancelled. Please try again when ready.');
+      err.code = statusCodes.SIGN_IN_CANCELLED;
+      throw err;
+    }
+
     // Improve the common Google Sign-In "DEVELOPER_ERROR" with actionable guidance.
     if (e?.code === statusCodes.DEVELOPER_ERROR || e?.message?.includes('DEVELOPER_ERROR')) {
       const err: any = new Error(
@@ -130,9 +145,23 @@ export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredenti
       err.code = e?.code ?? statusCodes.DEVELOPER_ERROR;
       throw err;
     }
-    const code = e?.code ? ` (${String(e.code)})` : '';
-    const msg = e?.message ? String(e.message) : 'Unknown error';
-    const err: any = new Error(`Google Sign-In failed${code}: ${msg}`);
+
+    // Provide user-friendly error messages (hide technical details like tokens)
+    let userMessage = 'Sign-in failed. Please try again.';
+    if (e?.message?.includes('token')) {
+      userMessage = 'Sign-in was cancelled or incomplete. Please try again.';
+    } else if (e?.message) {
+      // Only show message if it's user-friendly (not technical)
+      const technicalTerms = ['token', 'idToken', 'accessToken', 'credential', 'DEVELOPER_ERROR'];
+      const isTechnical = technicalTerms.some((term) =>
+        e.message.toLowerCase().includes(term.toLowerCase()),
+      );
+      if (!isTechnical) {
+        userMessage = e.message;
+      }
+    }
+
+    const err: any = new Error(userMessage);
     err.code = e?.code;
     throw err;
   }
@@ -159,13 +188,34 @@ export async function linkGoogleToCurrentUser(): Promise<void> {
   } catch {
     // ignore
   }
-  const res = await GoogleSignin.signIn();
+  
+  let res;
+  try {
+    res = await GoogleSignin.signIn();
+  } catch (e: any) {
+    // Handle user cancellation gracefully
+    if (
+      e?.code === statusCodes.SIGN_IN_CANCELLED ||
+      e?.code === 'SIGN_IN_CANCELLED' ||
+      e?.message?.includes('cancelled') ||
+      e?.message?.includes('canceled')
+    ) {
+      const err: any = new Error('Sign-in was cancelled.');
+      err.code = statusCodes.SIGN_IN_CANCELLED;
+      throw err;
+    }
+    throw e;
+  }
+  
   const googleEmail = (res?.user?.email ?? '').trim().toLowerCase();
   const tokens = await GoogleSignin.getTokens();
   const idToken = tokens?.idToken;
   const accessToken = tokens?.accessToken;
   if (!idToken && !accessToken) {
-    throw new Error('Google sign-in failed: missing tokens (idToken/accessToken)');
+    // User likely cancelled the sign-in or sign-in didn't complete
+    const err: any = new Error('Google sign-in was cancelled or incomplete.');
+    err.code = statusCodes.SIGN_IN_CANCELLED;
+    throw err;
   }
   if (googleEmail && googleEmail !== currentEmail) {
     throw new Error(`Please choose the Google account with the same email: ${current.email}`);

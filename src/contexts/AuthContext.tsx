@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, ReactNod
 import {
   FirebaseAuthTypes,
   onAuthStateChanged as onAuthStateChangedModular,
+  reload as reloadModular,
   signOut as signOutModular,
 } from '@react-native-firebase/auth';
 import {
@@ -325,6 +326,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('Please verify your email first, then try again.');
     }
     await linkGoogleToCurrentUser();
+    // Reload user to get updated providerData
+    await reloadModular(current);
     // Refresh local user reference
     setUser(firebaseAuth.currentUser);
   };

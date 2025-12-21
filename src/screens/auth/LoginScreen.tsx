@@ -103,6 +103,25 @@ const LoginScreen = () => {
         alert('Verify your account', 'Please verify your email before using the app.');
         return;
       }
+
+      // Check if user is admin
+      let isAdmin = false;
+      try {
+        const profile = await getMyUserProfile();
+        isAdmin = profile?.role === 'admin';
+      } catch {
+        // ignore role lookup failures; default to user flow
+      }
+
+      if (isAdmin) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AdminTabs' }],
+        });
+        return;
+      }
+
+      // Regular users go to MainTabs
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -110,8 +129,13 @@ const LoginScreen = () => {
         }),
       );
     } catch (e: any) {
-      const code = e?.code ? ` (${String(e.code)})` : '';
-      alert('Google Sign-In failed', `${e?.message ?? 'Please try again.'}${code}`);
+      // Don't show alert for user cancellation - it's expected behavior
+      if (e?.code === 'SIGN_IN_CANCELLED' || e?.message?.includes('cancelled') || e?.message?.includes('canceled')) {
+        // User cancelled - no need to show error
+        return;
+      }
+      // Show user-friendly error message (already filtered in authService)
+      alert('Google Sign-In', e?.message ?? 'Sign-in failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
