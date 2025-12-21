@@ -1,61 +1,83 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
-
-type Address = {
-  id: string;
-  name: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  isDefault: boolean;
-};
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
+import { subscribeMyAddresses, deleteAddress, setDefaultAddress, type Address } from '../../services/addressService';
 
 const ShippingAddressesScreen = () => {
   const { colors } = useTheme();
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: '1',
-      name: 'Home',
-      street: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'United States',
-      isDefault: true,
-    },
-    {
-      id: '2',
-      name: 'Office',
-      street: '456 Business Ave',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10002',
-      country: 'United States',
-      isDefault: false,
-    },
-  ]);
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const { alert } = useAppAlert();
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleEditAddress = (id: string) => {
-    console.log('Navigate to Edit Address', id);
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = subscribeMyAddresses(
+      (addressList) => {
+        setAddresses(addressList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Error loading addresses:', error);
+        setLoading(false);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  const handleEditAddress = (address: Address) => {
+    navigation.navigate('AddressForm', { address });
   };
 
   const handleDeleteAddress = (id: string) => {
-    setAddresses(addresses.filter((address) => address.id !== id));
+    alert(
+      'Delete Address',
+      'Are you sure you want to delete this address?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAddress(id);
+            } catch (error: any) {
+              alert('Error', error.message || 'Failed to delete address.');
+            }
+          },
+        },
+      ],
+    );
   };
 
-  const handleSetDefault = (id: string) => {
-    setAddresses(
-      addresses.map((address) => ({
-        ...address,
-        isDefault: address.id === id,
-      })),
-    );
+  const handleSetDefault = async (id: string) => {
+    try {
+      await setDefaultAddress(id);
+    } catch (error: any) {
+      alert('Error', error.message || 'Failed to set default address.');
+    }
+  };
+
+  const handleAddAddress = () => {
+    if (!user) {
+      alert('Sign in required', 'Please sign in to add addresses.');
+      return;
+    }
+    navigation.navigate('AddressForm');
   };
 
   return (
@@ -70,8 +92,39 @@ const ShippingAddressesScreen = () => {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Shipping Addresses</Text>
-        {addresses.map((address) => (
+        <View style={styles.headerRow}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>Shipping Addresses</Text>
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: colors.primary }]}
+            onPress={handleAddAddress}
+          >
+            <Ionicons name="add" size={20} color={colors.background} />
+            <Text style={[styles.addButtonText, { color: colors.background }]}>Add</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading addresses...</Text>
+          </View>
+        ) : addresses.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="location-outline" size={64} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No addresses saved</Text>
+            <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+              Add an address to get started
+            </Text>
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: colors.primary, marginTop: 20 }]}
+              onPress={handleAddAddress}
+            >
+              <Ionicons name="add" size={20} color={colors.background} />
+              <Text style={[styles.addButtonText, { color: colors.background }]}>Add Address</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          addresses.map((address) => (
           <View key={address.id} style={[styles.addressCard, { backgroundColor: colors.surface }]}>
             <View style={styles.addressHeader}>
               <View style={styles.addressTitleContainer}>
@@ -87,7 +140,7 @@ const ShippingAddressesScreen = () => {
               <View style={styles.addressActions}>
                 <TouchableOpacity
                   style={styles.actionButton}
-                  onPress={() => handleEditAddress(address.id)}
+                  onPress={() => handleEditAddress(address)}
                 >
                   <Ionicons name="pencil" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -115,7 +168,8 @@ const ShippingAddressesScreen = () => {
               </TouchableOpacity>
             )}
           </View>
-        ))}
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -128,10 +182,49 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
   pageTitle: {
     fontSize: 26,
     fontWeight: '800',
-    marginBottom: 14,
+    flex: 1,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+  },
+  addButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    paddingTop: 60,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    paddingTop: 60,
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
   },
   addressCard: {
     borderRadius: 16,

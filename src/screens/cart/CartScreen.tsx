@@ -88,7 +88,6 @@ export default function CartScreen() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
-  const [placingOrder, setPlacingOrder] = useState(false);
 
   useEffect(() => {
     let unsub: undefined | (() => void);
@@ -154,7 +153,7 @@ export default function CartScreen() {
   };
 
   const handleCheckout = async () => {
-    if (cartItems.length === 0 || placingOrder) {
+    if (cartItems.length === 0) {
       return;
     }
 
@@ -188,17 +187,8 @@ export default function CartScreen() {
       return;
     }
 
-    try {
-      setPlacingOrder(true);
-      const { orderId } = await placeOrderFromCart(cartItems, { shipping });
-      alert('Order placed', `Your order #${orderId.slice(-6).toUpperCase()} was created.`);
-      // Cart is cleared by the batch; snapshot will update UI automatically.
-      navigation.navigate('Profile');
-    } catch (e: any) {
-      alert('Checkout failed', e?.message ?? 'Please try again.');
-    } finally {
-      setPlacingOrder(false);
-    }
+    // Navigate to checkout screen for address selection
+    navigation.navigate('Checkout', { cartItems, shipping });
   };
 
   return (
@@ -312,10 +302,10 @@ export default function CartScreen() {
         <TouchableOpacity
           style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
           onPress={handleCheckout}
-          disabled={cartItems.length === 0 || placingOrder}
+          disabled={cartItems.length === 0}
         >
           <ThemedText style={[styles.checkoutButtonText, { color: colors.background }]}>
-            {placingOrder ? 'Placing Order...' : 'Proceed to Checkout'}
+            Proceed to Checkout
           </ThemedText>
         </TouchableOpacity>
       </View>

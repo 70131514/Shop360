@@ -9,6 +9,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import HomeScreen from '../screens/home/HomeScreen';
 import ProductListScreen from '../screens/product/ProductListScreen';
 import CartScreen from '../screens/cart/CartScreen';
+import CheckoutScreen from '../screens/cart/CheckoutScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import ProductDetailsScreen from '../screens/product/ProductDetailsScreen';
 import { ARViewScreen } from '../screens/ar/ARViewScreen';
@@ -29,6 +30,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 // Profile screens
 import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
 import ShippingAddressesScreen from '../screens/profile/ShippingAddressesScreen';
+import AddressFormScreen from '../screens/profile/AddressFormScreen';
 import PaymentMethodsScreen from '../screens/profile/PaymentMethodsScreen';
 import WishlistScreen from '../screens/profile/WishlistScreen';
 import OrderHistoryScreen from '../screens/profile/OrderHistoryScreen';
@@ -339,6 +341,11 @@ export const AppNavigator = () => {
         />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
           name="ARView"
           component={ARViewScreen}
           options={{
@@ -356,6 +363,11 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="ShippingAddresses"
           component={ShippingAddressesScreen}
+          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
+          name="AddressForm"
+          component={AddressFormScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
         <Stack.Screen

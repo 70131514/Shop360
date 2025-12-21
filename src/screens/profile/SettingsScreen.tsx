@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Platform,
+  Linking,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +25,8 @@ import {
   getNotificationPreferences,
   clearAllStorage,
 } from '../../utils/storage';
+import { PermissionsAndroid } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 
 const SettingsScreen = () => {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -46,7 +50,69 @@ const SettingsScreen = () => {
     loadPreferences();
   }, []);
 
+  const requestLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'Shop360 needs access to your location to provide location-based features like address autofill and delivery tracking.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    // iOS permissions are handled via Info.plist
+    return true;
+  };
+
+  const checkLocationPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        return result;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
+
   const persistLocation = async (next: boolean) => {
+    if (next) {
+      // Request permission when enabling
+      const hasPermission = await checkLocationPermission();
+      if (!hasPermission) {
+        const granted = await requestLocationPermission();
+        if (!granted) {
+          alert(
+            'Permission Required',
+            'Location permission is required to use location services. You can enable it in your device settings.',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => setLocationEnabled(false) },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  if (Platform.OS === 'android') {
+                    Linking.openSettings();
+                  }
+                },
+              },
+            ],
+          );
+          return;
+        }
+      }
+    }
+
     setLocationEnabled(next);
     try {
       await storeNotificationPreferences({ locationServices: next });

@@ -113,6 +113,57 @@ service cloud.firestore {
         allow delete: if isOwner(uid) && isEmailVerified();
       }
 
+      // ✅ Addresses subcollection (per-user)
+      match /addresses/{addressId} {
+        allow get, list: if isOwner(uid) && isEmailVerified();
+
+        allow create: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'name',
+            'street',
+            'city',
+            'state',
+            'zipCode',
+            'country',
+            'isDefault',
+            'latitude',
+            'longitude',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.street is string
+          && request.resource.data.city is string
+          && request.resource.data.state is string
+          && request.resource.data.zipCode is string
+          && request.resource.data.country is string
+          && request.resource.data.isDefault is bool;
+
+        allow update: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'name',
+            'street',
+            'city',
+            'state',
+            'zipCode',
+            'country',
+            'isDefault',
+            'latitude',
+            'longitude',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.name is string
+          && request.resource.data.street is string
+          && request.resource.data.city is string
+          && request.resource.data.state is string
+          && request.resource.data.zipCode is string
+          && request.resource.data.country is string
+          && request.resource.data.isDefault is bool;
+
+        allow delete: if isOwner(uid) && isEmailVerified();
+      }
+
       // ✅ Orders subcollection (per-user)
       match /orders/{orderId} {
         // Users can only read/list their own orders
@@ -129,10 +180,12 @@ service cloud.firestore {
             'itemCount',
             'subtotal',
             'shipping',
-            'total'
+            'total',
+            'address'
           ])
           && request.resource.data.userId == uid
-          && request.resource.data.items is list;
+          && request.resource.data.items is list
+          && request.resource.data.address is map;
 
         // Typically orders shouldn't be editable by the client after creation
         allow update, delete: if false;

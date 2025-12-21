@@ -24,6 +24,17 @@ export type OrderItem = {
   originalPrice?: number | null;
 };
 
+export type OrderAddress = {
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  latitude?: number | null;
+  longitude?: number | null;
+};
+
 export type Order = {
   id: string;
   userId: string;
@@ -35,6 +46,7 @@ export type Order = {
   subtotal: number;
   shipping: number;
   total: number;
+  address: OrderAddress;
 };
 
 function requireUid(): string {
@@ -75,11 +87,15 @@ function calcSubtotal(items: OrderItem[]) {
  */
 export async function placeOrderFromCart(
   cartItems: CartItem[],
-  opts?: { shipping?: number },
+  opts?: { shipping?: number; address?: OrderAddress },
 ): Promise<{ orderId: string }> {
   const uid = requireUid();
   if (!cartItems || cartItems.length === 0) {
     throw new Error('Cart is empty');
+  }
+
+  if (!opts?.address) {
+    throw new Error('Delivery address is required');
   }
 
   const items = normalizeOrderItems(cartItems);
@@ -101,6 +117,7 @@ export async function placeOrderFromCart(
     subtotal,
     shipping,
     total,
+    address: opts.address,
   } as Omit<Order, 'id'>);
 
   // Clear cart documents

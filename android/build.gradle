@@ -16,6 +16,11 @@ buildscript {
         defaultKotlinJvmTarget = "11"
         firebaseJavaVersion = JavaVersion.VERSION_17
         firebaseKotlinJvmTarget = "17"
+        
+        // Google Play Services version - use a compatible version for location services
+        // Using version compatible with Firebase and modern Android
+        googlePlayServicesVersion = "21.2.0"
+        playServicesLocationVersion = "21.2.0"
     }
 
     repositories {
@@ -76,6 +81,15 @@ subprojects {
                 compileOptions {
                     sourceCompatibility javaVersionToUse
                     targetCompatibility javaVersionToUse
+                }
+            }
+        }
+        
+        // Force compatible Google Play Services Location version for react-native-geolocation-service
+        if (project.name == "react-native-geolocation-service") {
+            project.configurations.all {
+                resolutionStrategy {
+                    force "com.google.android.gms:play-services-location:${rootProject.ext.googlePlayServicesVersion}"
                 }
             }
         }
