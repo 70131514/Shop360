@@ -71,7 +71,7 @@ const HelpSupportScreen = () => {
     {
       id: '2',
       title: 'Email Support',
-      description: 'support@shop360.com',
+      description: 'mailmeatazeem@gmail.com',
       icon: 'mail-outline',
       action: () => {
         // Implement email support
@@ -80,21 +80,21 @@ const HelpSupportScreen = () => {
     {
       id: '3',
       title: 'Phone Support',
-      description: '+1 (800) 123-4567',
+      description: '+92 323 1697787',
       icon: 'call-outline',
       action: () => {
         // Implement phone support
       },
     },
-    {
-      id: '4',
-      title: 'Social Media',
-      description: 'Follow us for updates',
-      icon: 'share-social-outline',
-      action: () => {
-        // Implement social media links
-      },
-    },
+    // {
+    //   id: '4',
+    //   title: 'Social Media',
+    //   description: 'Follow us for updates',
+    //   icon: 'share-social-outline',
+    //   action: () => {
+    //     // Implement social media links
+    //   },
+    // },
   ];
 
   const handleSendMessage = () => {
