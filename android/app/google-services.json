@@ -12,7 +12,20 @@
           "package_name": "com.shop360"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "294453693408-1rgkin7a0cb8r1jndf7njvjflcue3r3u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shop360",
+            "certificate_hash": "6a3645388242d1043f06f9fd7c5a0dfac50a56b4"
+          }
+        },
+        {
+          "client_id": "294453693408-5j2vttrgnm7tk5dhe8ai9j74uco85b4l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDqr9YDs7UcDx6rjbgjH-qceF6EXDFBVBU"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "294453693408-5j2vttrgnm7tk5dhe8ai9j74uco85b4l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

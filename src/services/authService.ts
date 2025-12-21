@@ -4,17 +4,22 @@ import {
   EmailAuthProvider,
   FirebaseAuthTypes,
   getIdToken as getIdTokenModular,
+  getIdTokenResult,
+  GoogleAuthProvider,
+  linkWithCredential,
   reauthenticateWithCredential,
   reload as reloadModular,
   sendEmailVerification as sendEmailVerificationModular,
   sendPasswordResetEmail as sendPasswordResetEmailModular,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut as signOutModular,
   updateEmail as updateEmailModular,
   updatePassword as updatePasswordModular,
   updateProfile,
 } from '@react-native-firebase/auth';
-import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { doc, getDoc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 
 export class EmailNotVerifiedError extends Error {
@@ -41,6 +46,153 @@ export const signIn = async (
     throw error;
   }
 };
+
+/**
+ * Sign in with Google and return Firebase auth credential.
+ * Also ensures a Firestore `users/{uid}` profile exists.
+ */
+export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredential> => {
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // Clear any stale session that can cause persistent DEVELOPER_ERROR on some devices.
+    try {
+      await GoogleSignin.signOut();
+    } catch {
+      // ignore
+    }
+    await GoogleSignin.signIn();
+    // In newer versions, tokens are retrieved via getTokens() (signIn may not include idToken).
+    const tokens = await GoogleSignin.getTokens();
+    const idToken = tokens?.idToken;
+    const accessToken = tokens?.accessToken;
+    if (!idToken && !accessToken) {
+      throw new Error('Google sign-in failed: missing tokens (idToken/accessToken)');
+    }
+
+    const credential = GoogleAuthProvider.credential(idToken ?? undefined, accessToken);
+    const userCredential = await signInWithCredential(firebaseAuth, credential);
+    const u = userCredential.user;
+
+    // IMPORTANT: refresh the ID token so Firestore rules see the latest claims immediately.
+    try {
+      await getIdTokenModular(u, true);
+    } catch {
+      // ignore; we will just best-effort profile creation below
+    }
+
+    // Use the ID token claim, not `user.emailVerified` (which can lag briefly).
+    let tokenEmailVerified = false;
+    try {
+      const token = await getIdTokenResult(u, true);
+      tokenEmailVerified = token?.claims?.email_verified === true;
+    } catch {
+      // ignore
+    }
+
+    // Ensure Firestore profile exists (best-effort).
+    // If the account is not email-verified per token, rules will deny reads/writes: skip without failing login.
+    if (tokenEmailVerified) {
+      try {
+        const uid = u.uid;
+        const ref = doc(firebaseDb, 'users', uid);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          const email = u.email ?? '';
+          const name = u.displayName ?? (email ? email.split('@')[0] : 'User');
+          await setDoc(ref, {
+            uid,
+            name,
+            email,
+            role: 'user',
+            isEmailVerified: true,
+            createdAt: serverTimestamp(),
+          });
+        }
+      } catch (fireErr: any) {
+        // eslint-disable-next-line no-console
+        console.error('Google sign-in profile ensure failed (non-fatal):', fireErr);
+      }
+    }
+
+    return userCredential;
+  } catch (e: any) {
+    // Keep the raw error visible in Metro logs for diagnosis.
+    // eslint-disable-next-line no-console
+    console.error('Google sign-in error (raw):', e);
+
+    // Improve the common Google Sign-In "DEVELOPER_ERROR" with actionable guidance.
+    if (e?.code === statusCodes.DEVELOPER_ERROR || e?.message?.includes('DEVELOPER_ERROR')) {
+      const err: any = new Error(
+        'Google Sign-In configuration error (DEVELOPER_ERROR). ' +
+          'Fix: enable Google provider in Firebase Console, add your Android SHA-1 to the Firebase Android app, ' +
+          'then re-download and replace android/app/google-services.json and rebuild the app.',
+      );
+      err.code = e?.code ?? statusCodes.DEVELOPER_ERROR;
+      throw err;
+    }
+    const code = e?.code ? ` (${String(e.code)})` : '';
+    const msg = e?.message ? String(e.message) : 'Unknown error';
+    const err: any = new Error(`Google Sign-In failed${code}: ${msg}`);
+    err.code = e?.code;
+    throw err;
+  }
+};
+
+/**
+ * Link Google provider to the CURRENT signed-in Firebase user.
+ * Enforces that the Google account email matches the user's existing auth email.
+ */
+export async function linkGoogleToCurrentUser(): Promise<void> {
+  const current = firebaseAuth.currentUser;
+  if (!current) {
+    throw new Error('No authenticated user');
+  }
+  const currentEmail = (current.email ?? '').trim().toLowerCase();
+  if (!currentEmail) {
+    throw new Error('This account has no email address to match.');
+  }
+
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Clear any stale session before linking to reduce DEVELOPER_ERROR cases.
+  try {
+    await GoogleSignin.signOut();
+  } catch {
+    // ignore
+  }
+  const res = await GoogleSignin.signIn();
+  const googleEmail = (res?.user?.email ?? '').trim().toLowerCase();
+  const tokens = await GoogleSignin.getTokens();
+  const idToken = tokens?.idToken;
+  const accessToken = tokens?.accessToken;
+  if (!idToken && !accessToken) {
+    throw new Error('Google sign-in failed: missing tokens (idToken/accessToken)');
+  }
+  if (googleEmail && googleEmail !== currentEmail) {
+    throw new Error(`Please choose the Google account with the same email: ${current.email}`);
+  }
+
+  const credential = GoogleAuthProvider.credential(idToken ?? undefined, accessToken);
+
+  try {
+    await linkWithCredential(current, credential);
+  } catch (e: any) {
+    // eslint-disable-next-line no-console
+    console.error('Google link error (raw):', e);
+
+    // If already linked, treat as success.
+    if (e?.code === 'auth/provider-already-linked') {
+      return;
+    }
+    throw e;
+  }
+
+  // Refresh token so claims/providers are immediately consistent.
+  try {
+    await getIdTokenModular(current, true);
+  } catch {
+    // ignore
+  }
+}
 
 /**
  * Sign up with email, password, and additional details

@@ -28,7 +28,8 @@ service cloud.firestore {
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.role == 'user'
-        && request.resource.data.isEmailVerified == false;
+        // Email/password users will be false here, Google users will be true here.
+        && request.resource.data.isEmailVerified == (request.auth.token.email_verified == true);
 
       // Read your own profile
       allow get: if isOwner(uid) && isEmailVerified();

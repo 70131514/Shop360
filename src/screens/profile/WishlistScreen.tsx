@@ -111,28 +111,28 @@ const WishlistScreen = () => {
               const removeText = getReadableTextColor(removeBg);
 
               return (
-                <View
-                  key={item.id}
-                  style={[styles.itemContainer, { backgroundColor: colors.surface }]}
-                >
-                  <Image source={{ uri: item.image }} style={styles.itemImage} />
-                  <View style={styles.itemDetails}>
-                    <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
-                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                    <View style={styles.priceContainer}>
+              <View
+                key={item.id}
+                style={[styles.itemContainer, { backgroundColor: colors.surface }]}
+              >
+                <Image source={{ uri: item.image }} style={styles.itemImage} />
+                <View style={styles.itemDetails}>
+                  <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
+                  <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                  <View style={styles.priceContainer}>
                       <Text style={[styles.itemPrice, { color: colors.text }]}>${price}</Text>
                       {originalPrice > price && (
-                        <Text style={[styles.originalPrice, { color: colors.text }]}>
+                      <Text style={[styles.originalPrice, { color: colors.text }]}>
                           ${originalPrice}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.buttonContainer}>
-                      <TouchableOpacity
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity
                         style={[styles.moveToCartButton, { backgroundColor: moveBg }]}
-                        onPress={() => handleMoveToCart(item.id)}
-                        disabled={!item.inStock}
-                      >
+                      onPress={() => handleMoveToCart(item.id)}
+                      disabled={!item.inStock}
+                    >
                         <Text
                           style={[
                             styles.buttonText,
@@ -140,15 +140,15 @@ const WishlistScreen = () => {
                             { color: moveText },
                           ]}
                         >
-                          {item.inStock ? 'Move to Cart' : 'Out of Stock'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
+                        {item.inStock ? 'Move to Cart' : 'Out of Stock'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                         style={[styles.removeButton, { backgroundColor: removeBg }]}
-                        onPress={() => handleRemoveItem(item.id)}
-                      >
+                      onPress={() => handleRemoveItem(item.id)}
+                    >
                         <Text style={[styles.buttonText, { color: removeText }]}>Remove</Text>
-                      </TouchableOpacity>
+                    </TouchableOpacity>
                     </View>
                   </View>
                 </View>

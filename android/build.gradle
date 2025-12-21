@@ -68,6 +68,11 @@ subprojects {
 
         if (project.hasProperty("android")) {
             project.android {
+                // Some libraries (e.g. Google Sign-In) add BuildConfig fields; AGP can disable this by default.
+                // Force-enable BuildConfig generation so those modules configure successfully.
+                buildFeatures {
+                    buildConfig true
+                }
                 compileOptions {
                     sourceCompatibility javaVersionToUse
                     targetCompatibility javaVersionToUse

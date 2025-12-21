@@ -28,7 +28,7 @@ const SignupScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { alert } = useAppAlert();
 
   const [name, setName] = useState('');
@@ -88,6 +88,26 @@ const SignupScreen = () => {
 
   const toggleShowConfirmPassword = () => {
     setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      setSubmitting(true);
+      const { emailVerified } = await loginWithGoogle();
+      if (!emailVerified) {
+        alert('Verify your account', 'Please verify your email before using the app.');
+        return;
+      }
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+      });
+    } catch (e: any) {
+      const code = e?.code ? ` (${String(e.code)})` : '';
+      alert('Google Sign-Up failed', `${e?.message ?? 'Please try again.'}${code}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -258,6 +278,21 @@ const SignupScreen = () => {
           )}
         </TouchableOpacity>
 
+        <View style={styles.dividerContainer}>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={handleGoogleSignup}
+          disabled={submitting}
+        >
+          <Ionicons name="logo-google" size={20} color={colors.textSecondary} />
+          <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
+        </TouchableOpacity>
+
         <View style={styles.loginContainer}>
           <Text style={[styles.loginText, { color: colors.textSecondary }]}>
             Already have an account?{' '}
@@ -360,6 +395,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 18,
+    marginTop: 6,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  googleButton: {
+    borderRadius: 12,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+  },
+  googleButtonText: {
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '600',
   },
   loginText: {
     fontSize: 14,

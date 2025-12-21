@@ -20,7 +20,7 @@ import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getMyUserProfile } from '../../services/userService';
 
 const LoginScreen = () => {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   useRoute<any>();
@@ -95,6 +95,28 @@ const LoginScreen = () => {
     setShowPassword(!showPassword);
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setSubmitting(true);
+      const { emailVerified } = await loginWithGoogle();
+      if (!emailVerified) {
+        alert('Verify your account', 'Please verify your email before using the app.');
+        return;
+      }
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        }),
+      );
+    } catch (e: any) {
+      const code = e?.code ? ` (${String(e.code)})` : '';
+      alert('Google Sign-In failed', `${e?.message ?? 'Please try again.'}${code}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
@@ -130,7 +152,7 @@ const LoginScreen = () => {
             style={[
               styles.inputWrapper,
               { backgroundColor: colors.surface, borderColor: colors.border },
-              isEmailFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+              isEmailFocused && { borderColor: colors.primary },
             ]}
           >
             <Ionicons
@@ -158,7 +180,7 @@ const LoginScreen = () => {
             style={[
               styles.inputWrapper,
               { backgroundColor: colors.surface, borderColor: colors.border },
-              isPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 },
+              isPasswordFocused && { borderColor: colors.primary },
             ]}
           >
             <Ionicons
@@ -222,6 +244,8 @@ const LoginScreen = () => {
               styles.socialButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={handleGoogleSignIn}
+            disabled={submitting}
           >
             <Ionicons name="logo-google" size={20} color={colors.textSecondary} />
             <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>

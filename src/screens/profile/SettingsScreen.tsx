@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { useFontSize } from '../../contexts/FontSizeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   storeNotificationPreferences,
   getNotificationPreferences,
@@ -28,6 +29,7 @@ const SettingsScreen = () => {
   const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
   const { preset, setPreset } = useFontSize();
+  const { user, linkGoogleAccount } = useAuth();
   const [locationEnabled, setLocationEnabled] = useState<boolean>(true);
 
   const [isClearing, setIsClearing] = useState(false);
@@ -72,6 +74,32 @@ const SettingsScreen = () => {
               alert('Error', 'Failed to clear cache. Please try again.');
             } finally {
               setIsClearing(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleLinkGoogle = () => {
+    if (!user) {
+      alert('Sign in required', 'Please sign in to link your Google account.');
+      return;
+    }
+    alert(
+      'Link Google account',
+      'This will link Google Sign-In to your existing account (must use the same email).',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Link',
+          onPress: async () => {
+            try {
+              await linkGoogleAccount();
+              alert('Success', 'Google account linked successfully.');
+            } catch (e: any) {
+              const msg = e?.message ?? 'Failed to link Google account.';
+              alert('Error', msg);
             }
           },
         },
@@ -181,6 +209,25 @@ const SettingsScreen = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.rowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={handleLinkGoogle}
+        >
+          <View style={styles.rowLeft}>
+            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+              <Ionicons name="logo-google" size={20} color={colors.text} />
+            </View>
+            <View style={styles.rowInfo}>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>Link Google account</Text>
+              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                Add Google Sign-In to your existing account
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* Remaining options */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Preferences</Text>

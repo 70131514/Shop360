@@ -7,9 +7,11 @@ import {
 import {
   changeEmailAddress,
   changePassword,
+  linkGoogleToCurrentUser,
   reloadCurrentUser,
   resendEmailVerification,
   sendPasswordResetEmail,
+  signInWithGoogle,
   signIn,
   signOut,
   signUp,
@@ -42,6 +44,8 @@ type AuthContextType = {
   resetPassword: (email: string) => Promise<void>;
   updateEmail: (newEmail: string, currentPassword: string) => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  loginWithGoogle: () => Promise<{ emailVerified: boolean }>;
+  linkGoogleAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -205,7 +209,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch {
           // ignore
         }
-        await migrateGuestCartToUserCart();
+      await migrateGuestCartToUserCart();
       } else {
         // Best-effort: send verification email again
         try {
@@ -237,7 +241,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch {
           // ignore
         }
-        await migrateGuestCartToUserCart();
+      await migrateGuestCartToUserCart();
       }
 
       return { emailVerified: verified };
@@ -293,6 +297,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await changePassword(currentPassword, newPassword);
   };
 
+  const loginWithGoogle = async () => {
+    await signInWithGoogle();
+    setUser(firebaseAuth.currentUser);
+    const verified = await reloadCurrentUser();
+    setUser(firebaseAuth.currentUser);
+    setIsEmailVerified(verified);
+
+    if (verified) {
+      try {
+        await markMyEmailVerified();
+      } catch {
+        // ignore
+      }
+      await migrateGuestCartToUserCart();
+    }
+
+    return { emailVerified: verified };
+  };
+
+  const linkGoogleAccount = async () => {
+    const current = firebaseAuth.currentUser;
+    if (!current) {
+      throw new Error('No authenticated user');
+    }
+    if (current.emailVerified !== true) {
+      throw new Error('Please verify your email first, then try again.');
+    }
+    await linkGoogleToCurrentUser();
+    // Refresh local user reference
+    setUser(firebaseAuth.currentUser);
+  };
+
   const logout = async () => {
     try {
       // signOut is safe even if already signed out; treat "no-current-user" as success.
@@ -334,6 +370,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetPassword,
         updateEmail,
         updatePassword,
+        loginWithGoogle,
+        linkGoogleAccount,
       }}
     >
       {children}

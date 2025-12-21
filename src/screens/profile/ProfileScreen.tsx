@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { getAddresses } from '../../utils/storage';
 
 type MenuItem = {
   icon: string;
@@ -38,10 +39,17 @@ const ProfileScreen = () => {
   const navigation = useNavigation<any>();
   const [wishlistCount, setWishlistCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
+  const [addressCount, setAddressCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const isGuest = !user;
 
   useEffect(() => {
+    // Only load wishlist count when user is logged in
+    if (!user) {
+      setWishlistCount(0);
+      return;
+    }
+
     const loadWishlistCount = async () => {
       try {
         const wishlist = await getWishlist();
@@ -54,13 +62,23 @@ const ProfileScreen = () => {
 
     // Add focus listener to refresh data
     const unsubscribe = navigation.addListener('focus', () => {
-      loadWishlistCount();
+      if (user) {
+        loadWishlistCount();
+      } else {
+        setWishlistCount(0);
+      }
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, user]);
 
   useEffect(() => {
+    // Reset order count when logged out
+    if (!user) {
+      setOrderCount(0);
+      return;
+    }
+
     // Live order count for the signed-in user
     let unsub: undefined | (() => void);
     try {
@@ -78,7 +96,36 @@ const ProfileScreen = () => {
         unsub();
       }
     };
-  }, [user?.uid]);
+  }, [user]);
+
+  useEffect(() => {
+    // Only load address count when user is logged in
+    if (!user) {
+      setAddressCount(0);
+      return;
+    }
+
+    const loadAddressCount = async () => {
+      try {
+        const addresses = await getAddresses();
+        setAddressCount(Array.isArray(addresses) ? addresses.length : 0);
+      } catch {
+        setAddressCount(0);
+      }
+    };
+    loadAddressCount();
+
+    // Add focus listener to refresh data
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (user) {
+        loadAddressCount();
+      } else {
+        setAddressCount(0);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, user]);
 
   const menuItems: MenuItem[] = [
     {
@@ -331,7 +378,7 @@ const ProfileScreen = () => {
               color={colors.primary}
               style={styles.statIcon}
             />
-            <Text style={[styles.statNumber, { color: colors.text }]}>2</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
           </View>
         </View>
