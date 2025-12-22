@@ -19,7 +19,17 @@ import {
   updateProfile,
 } from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { doc, getDoc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 
 export class EmailNotVerifiedError extends Error {
@@ -259,6 +269,28 @@ export const signUp = async (
   role: string = 'user',
 ): Promise<FirebaseAuthTypes.UserCredential> => {
   try {
+    // Check for pre-assigned role by email
+    let finalRole = role;
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const roleAssignmentsQuery = query(
+        collection(firebaseDb, 'roleAssignments'),
+        where('email', '==', normalizedEmail),
+      );
+      const roleAssignmentsSnapshot = await getDocs(roleAssignmentsQuery);
+      if (!roleAssignmentsSnapshot.empty) {
+        const assignedRole = roleAssignmentsSnapshot.docs[0].data().role;
+        if (assignedRole) {
+          finalRole = assignedRole;
+          // Delete the role assignment document since it's now applied
+          await deleteDoc(roleAssignmentsSnapshot.docs[0].ref);
+        }
+      }
+    } catch (error) {
+      // If role assignment check fails, continue with default role
+      console.warn('Failed to check role assignment:', error);
+    }
+
     // 1. Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
     const { uid } = userCredential.user;
@@ -274,7 +306,7 @@ export const signUp = async (
         uid,
         name,
         email: authEmail,
-        role,
+        role: finalRole,
         isEmailVerified: false,
         createdAt: serverTimestamp(),
       });

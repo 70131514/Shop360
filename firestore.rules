@@ -17,22 +17,27 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     match /users/{uid} {
 
       // Create your own user document at signup
+      // Allow any role if it matches a pre-assigned role, otherwise default to 'user'
       allow create: if isOwner(uid)
         && request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt'])
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == 'user'
+        && (request.resource.data.role == 'user' || request.resource.data.role is string)
         // Email/password users will be false here, Google users will be true here.
         && request.resource.data.isEmailVerified == (request.auth.token.email_verified == true);
 
       // Read your own profile
       allow get: if isOwner(uid) && isEmailVerified();
+
+      // Admins can read any user profile
+      allow get: if isAdmin() && isEmailVerified();
 
       function profileKeysOk() {
         return request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt']);
@@ -79,6 +84,17 @@ service cloud.firestore {
 
       allow update: if isOwner(uid) && (safeVerifiedProfileUpdate() || verifyFlagUpdate() || emailChangeUpdate());
 
+      // Admins can update user roles
+      allow update: if isAdmin() && isEmailVerified()
+        && request.resource.data.keys().hasAll(['uid','name','email','role','isEmailVerified','createdAt'])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.name == resource.data.name
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.isEmailVerified == resource.data.isEmailVerified
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.role is string
+        && request.resource.data.role != resource.data.role;
+
       // Optional: allow delete your doc (usually false in prod)
       allow delete: if false;
 
@@ -115,7 +131,7 @@ service cloud.firestore {
 
       // ✅ Addresses subcollection (per-user)
       match /addresses/{addressId} {
-        allow get, list: if isOwner(uid) && isEmailVerified();
+        allow get, list: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
 
         allow create: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
@@ -198,11 +214,61 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ✅ Role assignments collection (pre-assigned roles by email)
+    match /roleAssignments/{email} {
+      // Only admins can create/read/delete role assignments
+      allow create, read, delete: if isAdmin() && isEmailVerified();
+      allow update: if false; // Role assignments are immutable, delete and recreate to change
+    }
+
+    // ✅ Tickets collection (support inquiries)
+    match /tickets/{ticketId} {
+      // Only verified users can create tickets (guests cannot)
+      allow create: if isSignedIn() && isEmailVerified()
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'userEmail',
+          'userName',
+          'message',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'viewedByAdmin',
+          'timeline'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.status == 'open'
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.viewedByAdmin == false;
+
+      // Users can read their own tickets (must be verified)
+      allow get, list: if isSignedIn() && isEmailVerified()
+        && resource.data.userId == request.auth.uid;
+
+      // Admins can read all tickets
+      allow get, list: if isAdmin() && isEmailVerified();
+
+      // Only admins can update tickets (to change status, mark as viewed, etc.)
+      // Timeline is optional and can be added/updated
+      function validTicketUpdate() {
+        return request.resource.data.userId == resource.data.userId
+          && request.resource.data.userEmail == resource.data.userEmail
+          && request.resource.data.userName == resource.data.userName
+          && request.resource.data.message == resource.data.message
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.status is string;
+      }
+      allow update: if isAdmin() && isEmailVerified() && validTicketUpdate();
+
+      // No one can delete tickets (for record keeping)
+      allow delete: if false;
+    }
+
     // Everything else locked down
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
-

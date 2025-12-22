@@ -1,16 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+} from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeAllUsers, type AdminUserRow } from '../../services/admin/adminService';
+import { useNavigation } from '@react-navigation/native';
+import {
+  subscribeAllUsers,
+  assignRoleByEmail,
+  type AdminUserRow,
+} from '../../services/admin/adminService';
+import { subscribeUnreadTicketCount } from '../../services/ticketService';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 
 export default function AdminUsersScreen() {
   const { colors } = useTheme();
   const { isAdmin } = useAuth();
+  const { alert } = useAppAlert();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [assignEmail, setAssignEmail] = useState('');
+  const [assignRole, setAssignRole] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -27,6 +50,53 @@ export default function AdminUsersScreen() {
     return unsub;
   }, [isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    const unsub = subscribeUnreadTicketCount(
+      (count) => setUnreadCount(count),
+      () => {},
+    );
+    return unsub;
+  }, [isAdmin]);
+
+  const handleAssignRole = async () => {
+    if (!assignEmail.trim()) {
+      alert('Error', 'Please enter an email address.');
+      return;
+    }
+    if (!assignRole.trim()) {
+      alert('Error', 'Please enter a role.');
+      return;
+    }
+
+    setAssigning(true);
+    try {
+      await assignRoleByEmail(assignEmail.trim(), assignRole.trim());
+      setAssignEmail('');
+      setAssignRole('');
+      alert('Success', 'Role assigned successfully. The user will have this role when they sign up or log in.');
+    } catch (error: any) {
+      console.error('Failed to assign role:', error);
+      alert('Error', error?.message || 'Failed to assign role. Please try again.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // Filter users based on search query (by email, name, or ID)
+  const filteredUsers = React.useMemo(() => {
+    if (!searchQuery.trim()) {
+      return users;
+    }
+    const query = searchQuery.trim().toLowerCase();
+    return users.filter(
+      (user) =>
+        user.email?.toLowerCase().includes(query) ||
+        user.name?.toLowerCase().includes(query) ||
+        user.uid?.toLowerCase().includes(query),
+    );
+  }, [users, searchQuery]);
+
   return (
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
@@ -35,6 +105,116 @@ export default function AdminUsersScreen() {
           {isAdmin ? `${users.length} users` : 'Admin only'}
         </Text>
       </View>
+
+      {isAdmin && (
+        <>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AdminInquiries')}
+            style={[styles.inquiriesButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+          >
+            <View style={styles.inquiriesButtonLeft}>
+              <Ionicons name="chatbubbles-outline" size={20} color={colors.background} />
+              <Text style={[styles.inquiriesButtonText, { color: colors.background }]}>
+                User Inquiries
+              </Text>
+            </View>
+            {unreadCount > 0 && (
+              <View style={[styles.unreadCountBadge, { backgroundColor: colors.background }]}>
+                <Text style={[styles.unreadCountText, { color: colors.primary }]}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View style={[styles.roleAssignmentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.roleAssignmentTitle, { color: colors.text }]}>Assign Role by Email</Text>
+            <Text style={[styles.roleAssignmentHint, { color: colors.textSecondary }]}>
+              Assign a role to a user by email. If the user doesn't exist yet, the role will be applied when they sign up.
+            </Text>
+            <View style={styles.roleInputRow}>
+              <TextInput
+                style={[
+                  styles.roleInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+                placeholder="Email address"
+                placeholderTextColor={colors.textSecondary}
+                value={assignEmail}
+                onChangeText={setAssignEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput
+                style={[
+                  styles.roleInput,
+                  {
+                    backgroundColor: colors.background,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+                placeholder="Role (e.g., admin, user)"
+                placeholderTextColor={colors.textSecondary}
+                value={assignRole}
+                onChangeText={setAssignRole}
+                autoCapitalize="none"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleAssignRole}
+              disabled={assigning || !assignEmail.trim() || !assignRole.trim()}
+              style={[
+                styles.assignButton,
+                {
+                  backgroundColor:
+                    assigning || !assignEmail.trim() || !assignRole.trim()
+                      ? colors.border
+                      : colors.primary,
+                },
+              ]}
+            >
+              {assigning ? (
+                <ActivityIndicator size="small" color={colors.background} />
+              ) : (
+                <Text style={[styles.assignButtonText, { color: colors.background }]}>Assign Role</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.searchInputContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search users by email, name, or ID..."
+                placeholderTextColor={colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={styles.clearButton}
+                >
+                  <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+            {searchQuery.trim() && (
+              <Text style={[styles.searchResultsText, { color: colors.textSecondary }]}>
+                {filteredUsers.length} {filteredUsers.length === 1 ? 'user found' : 'users found'}
+              </Text>
+            )}
+          </View>
+        </>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -46,11 +226,33 @@ export default function AdminUsersScreen() {
         </View>
       ) : (
         <FlatList
-          data={users}
+          data={filteredUsers}
           keyExtractor={(u) => u.uid}
           contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            searchQuery.trim() ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  No users found matching "{searchQuery}"
+                </Text>
+                <Text style={[styles.emptyHint, { color: colors.textSecondary }]}>
+                  Try searching by email, name, or user ID
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="people-outline" size={48} color={colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No users found</Text>
+              </View>
+            )
+          }
           renderItem={({ item }) => (
-            <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AdminUserDetail', { userId: item.uid })}
+              activeOpacity={0.7}
+              style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
               <View style={{ flex: 1 }}>
                 <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
                   {item.name || '—'}
@@ -64,7 +266,8 @@ export default function AdminUsersScreen() {
                   {item.role || 'user'}
                 </Text>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           )}
         />
       )}
@@ -91,6 +294,117 @@ const styles = StyleSheet.create({
   email: { fontSize: 12, marginTop: 2 },
   badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   badgeText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+  inquiriesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  inquiriesButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inquiriesButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  unreadCountBadge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  unreadCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  roleAssignmentCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  roleAssignmentTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  roleAssignmentHint: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  roleInputRow: {
+    gap: 12,
+  },
+  roleInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+  },
+  assignButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assignButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  searchContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 14,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  searchResultsText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
 });
 
 

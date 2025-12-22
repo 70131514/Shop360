@@ -20,6 +20,8 @@ import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
 import AdminProductEditScreen from '../screens/admin/AdminProductEditScreen';
+import AdminInquiriesScreen from '../screens/admin/AdminInquiriesScreen';
+import AdminUserDetailScreen from '../screens/admin/AdminUserDetailScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -37,6 +39,7 @@ import OrderHistoryScreen from '../screens/profile/OrderHistoryScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
+import MyTicketsScreen from '../screens/profile/MyTicketsScreen';
 import ChangeEmailScreen from '../screens/profile/ChangeEmailScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 import PrivacyPolicyScreen from '../screens/profile/PrivacyPolicyScreen';
@@ -341,6 +344,16 @@ export const AppNavigator = () => {
           component={AdminProductEditScreen}
           options={{ headerShown: true, title: 'Product' }}
         />
+        <Stack.Screen
+          name="AdminInquiries"
+          component={AdminInquiriesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminUserDetail"
+          component={AdminUserDetailScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen
           name="Checkout"
@@ -411,6 +424,11 @@ export const AppNavigator = () => {
           name="HelpSupport"
           component={HelpSupportScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
+          name="MyTickets"
+          component={MyTicketsScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="PrivacyPolicy"
