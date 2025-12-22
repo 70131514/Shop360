@@ -457,7 +457,7 @@ export default function AdminInquiriesScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => ( // Ticket Card
             <TouchableOpacity
               onPress={() => handleViewTicket(item)}
               style={[
