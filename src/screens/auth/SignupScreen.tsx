@@ -20,17 +20,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getMyUserProfile } from '../../services/userService';
 
-type SignupRouteParams =
-  | {
-      redirectToTab?: 'Home' | 'Products' | 'Cart' | 'Profile';
-    }
-  | undefined;
-
 const SignupScreen = () => {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { register, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle, requestWelcomeBack } = useAuth();
   const { alert } = useAppAlert();
 
   const [name, setName] = useState('');
@@ -59,7 +53,10 @@ const SignupScreen = () => {
     try {
       setSubmitting(true);
       await register(email, password, name);
-      alert('Verify your account', 'We sent a verification email. Please verify your email to log in.');
+      alert(
+        'Verify your account',
+        'We sent a verification email. Please verify your email to log in.',
+      );
       // Do not navigate here — AppNavigator will hard-gate signed-in-but-unverified users
       // into the VerifyEmail screen automatically.
     } catch (error: any) {
@@ -111,6 +108,7 @@ const SignupScreen = () => {
       }
 
       if (isAdmin) {
+        requestWelcomeBack();
         navigation.reset({
           index: 0,
           routes: [{ name: 'AdminTabs' }],
@@ -119,13 +117,18 @@ const SignupScreen = () => {
       }
 
       // Regular users go to MainTabs
+      requestWelcomeBack();
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
       });
     } catch (e: any) {
       // Don't show alert for user cancellation - it's expected behavior
-      if (e?.code === 'SIGN_IN_CANCELLED' || e?.message?.includes('cancelled') || e?.message?.includes('canceled')) {
+      if (
+        e?.code === 'SIGN_IN_CANCELLED' ||
+        e?.message?.includes('cancelled') ||
+        e?.message?.includes('canceled')
+      ) {
         // User cancelled - no need to show error
         return;
       }
@@ -311,12 +314,17 @@ const SignupScreen = () => {
         </View>
 
         <TouchableOpacity
-          style={[styles.googleButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[
+            styles.googleButton,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
           onPress={handleGoogleSignup}
           disabled={submitting}
         >
           <Ionicons name="logo-google" size={20} color={colors.textSecondary} />
-          <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
+          <Text style={[styles.googleButtonText, { color: colors.text }]}>
+            Continue with Google
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.loginContainer}>

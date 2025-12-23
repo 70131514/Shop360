@@ -8,6 +8,7 @@ export type UserProfileDoc = {
   name: string;
   email: string;
   role: 'user' | string;
+  avatarId?: string;
   isEmailVerified?: boolean;
   createdAt: any;
 };
@@ -96,4 +97,13 @@ export async function updateMyEmailAndMarkUnverified(email: string): Promise<voi
     throw new Error('Email cannot be empty');
   }
   await updateDoc(doc(firebaseDb, 'users', uid), { email: nextEmail, isEmailVerified: false } as any);
+}
+
+export async function updateMyAvatarId(avatarId: string): Promise<void> {
+  const uid = requireUid();
+  const next = String(avatarId ?? '').trim();
+  if (!next) {
+    throw new Error('Avatar is required');
+  }
+  await updateDoc(doc(firebaseDb, 'users', uid), { avatarId: next } as any);
 }

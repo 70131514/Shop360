@@ -26,7 +26,7 @@ service cloud.firestore {
       // Create your own user document at signup
       // Allow any role if it matches a pre-assigned role, otherwise default to 'user'
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','name','email','role','avatarId','isEmailVerified','createdAt'])
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
         && (request.resource.data.role == 'user' || request.resource.data.role is string)
@@ -40,7 +40,7 @@ service cloud.firestore {
       allow get: if isAdmin() && isEmailVerified();
 
       function profileKeysOk() {
-        return request.resource.data.keys().hasOnly(['uid','name','email','role','isEmailVerified','createdAt']);
+        return request.resource.data.keys().hasOnly(['uid','name','email','role','avatarId','isEmailVerified','createdAt']);
       }
 
       function profileBaseUnchanged() {
@@ -92,6 +92,7 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.isEmailVerified == resource.data.isEmailVerified
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.avatarId == resource.data.avatarId
         && request.resource.data.role is string
         && request.resource.data.role != resource.data.role;
 
@@ -216,8 +217,11 @@ service cloud.firestore {
 
     // ✅ Role assignments collection (pre-assigned roles by email)
     match /roleAssignments/{email} {
-      // Only admins can create/read/delete role assignments
-      allow create, read, delete: if isAdmin() && isEmailVerified();
+      // Admins manage assignments
+      allow create, delete, list: if isAdmin() && isEmailVerified();
+      // Users can read ONLY their own assignment doc (docId == their auth email)
+      // This enables signup to apply pre-assigned roles safely.
+      allow get: if isSignedIn() && request.auth.token.email == email;
       allow update: if false; // Role assignments are immutable, delete and recreate to change
     }
 

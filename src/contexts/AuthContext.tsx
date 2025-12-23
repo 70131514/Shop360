@@ -37,6 +37,10 @@ type AuthContextType = {
   profile: UserProfileDoc | null;
   role: string | null;
   isAdmin: boolean;
+  welcomeBackRequestId: number;
+  requestWelcomeBack: () => void;
+  authTransitionActive: boolean;
+  clearAuthTransition: () => void;
   login: (email: string, password: string) => Promise<{ emailVerified: boolean }>;
   register: (email: string, password: string, name: string) => Promise<{ emailVerified: boolean }>;
   logout: () => Promise<void>;
@@ -59,12 +63,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isEmailVerified, setIsEmailVerified] = useState<boolean>(false);
   const [profile, setProfile] = useState<UserProfileDoc | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [welcomeBackRequestId, setWelcomeBackRequestId] = useState<number>(0);
+  const [authTransitionActive, setAuthTransitionActive] = useState(false);
 
   // Handle user state changes
   function handleAuthStateChanged(nextUser: User) {
     setUser(nextUser);
     setIsEmailVerified(nextUser?.emailVerified === true);
     setLoading(false);
+    if (!nextUser) {
+      setWelcomeBackRequestId(0);
+    }
   }
 
   /**
@@ -194,6 +203,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user, isEmailVerified]);
 
   const login = async (email: string, password: string) => {
+    setAuthTransitionActive(true);
     try {
       await signIn(email, password);
       // Ensure immediate UI update even if auth listener lags
@@ -222,6 +232,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       return { emailVerified: verified };
     } catch (error) {
+      setAuthTransitionActive(false);
       throw error;
     }
   };
@@ -299,6 +310,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginWithGoogle = async () => {
+    setAuthTransitionActive(true);
     await signInWithGoogle();
     setUser(firebaseAuth.currentUser);
     const verified = await reloadCurrentUser();
@@ -315,6 +327,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     return { emailVerified: verified };
+  };
+
+  const requestWelcomeBack = () => {
+    setWelcomeBackRequestId((v) => v + 1);
+  };
+
+  const clearAuthTransition = () => {
+    setAuthTransitionActive(false);
   };
 
   const linkGoogleAccount = async () => {
@@ -340,12 +360,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsEmailVerified(false);
       setProfile(null);
       setRole(null);
+      setAuthTransitionActive(false);
     } catch (error: any) {
       if (error?.code === 'auth/no-current-user') {
         setUser(null);
         setIsEmailVerified(false);
         setProfile(null);
         setRole(null);
+        setAuthTransitionActive(false);
         return;
       }
       throw error;
@@ -365,6 +387,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         profile,
         role,
         isAdmin,
+        welcomeBackRequestId,
+        requestWelcomeBack,
+        authTransitionActive,
+        clearAuthTransition,
         login,
         register,
         logout,

@@ -18,6 +18,7 @@ import { getWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getAddresses } from '../../utils/storage';
+import { AVATAR_SOURCES, resolveAvatarId } from '../../constants/avatars';
 
 type MenuItem = {
   icon: string;
@@ -33,6 +34,7 @@ const ProfileScreen = () => {
   const logout = auth?.logout || (() => console.log('Logout not implemented'));
   const user = auth?.user;
   const isAdmin = auth?.isAdmin === true;
+  const profile = auth?.profile ?? null;
   const { alert } = useAppAlert();
 
   const insets = useSafeAreaInsets();
@@ -42,6 +44,11 @@ const ProfileScreen = () => {
   const [addressCount, setAddressCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const isGuest = !user;
+  const avatarId = resolveAvatarId({
+    avatarId: profile?.avatarId,
+    isGuest,
+    isAdmin,
+  });
 
   useEffect(() => {
     // Only load wishlist count when user is logged in
@@ -133,6 +140,12 @@ const ProfileScreen = () => {
       title: 'Personal Information',
       subtitle: 'Update your profile details',
       route: 'PersonalInfo',
+    },
+    {
+      icon: 'image-outline',
+      title: 'Avatar',
+      subtitle: 'Choose or update your avatar',
+      route: 'AvatarPicker',
     },
     {
       icon: 'location-outline',
@@ -251,9 +264,7 @@ const ProfileScreen = () => {
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1000&auto=format&fit=crop',
-                }}
+                source={AVATAR_SOURCES[avatarId]}
                 style={[styles.profileImage, { borderColor: colors.primary }]}
               />
               <TouchableOpacity
@@ -264,7 +275,7 @@ const ProfileScreen = () => {
                     borderColor: colors.background,
                   },
                 ]}
-                onPress={() => {}}
+                onPress={() => navigation.navigate('AvatarPicker')}
               >
                 <Ionicons name="camera" size={16} color={colors.background} />
               </TouchableOpacity>

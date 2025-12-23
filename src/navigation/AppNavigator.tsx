@@ -44,6 +44,12 @@ import ChangeEmailScreen from '../screens/profile/ChangeEmailScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
 import PrivacyPolicyScreen from '../screens/profile/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../screens/profile/TermsOfServiceScreen';
+import AvatarWelcomeScreen from '../screens/onboarding/AvatarWelcomeScreen';
+import AvatarPickerScreen from '../screens/profile/AvatarPickerScreen';
+import { updateMyAvatarId } from '../services/userService';
+import AvatarFinalWelcomeScreen from '../screens/onboarding/AvatarFinalWelcomeScreen';
+import WelcomeBackScreen from '../screens/onboarding/WelcomeBackScreen';
+import AuthLoadingOverlay from '../components/common/AuthLoadingOverlay';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -258,7 +264,18 @@ const AdminTabsGate = () => {
 
 export const AppNavigator = () => {
   const { colors } = useTheme();
-  const { loading, checkingEmailVerification, emailVerificationChecked, isAdmin, user, isEmailVerified } =
+  const {
+    loading,
+    checkingEmailVerification,
+    emailVerificationChecked,
+    isAdmin,
+    user,
+    isEmailVerified,
+    profile,
+    welcomeBackRequestId,
+    authTransitionActive,
+    clearAuthTransition,
+  } =
     useAuth(); // Still wait for auth hydration, but app is accessible in guest mode.
 
   const navigationTheme = {
@@ -273,6 +290,60 @@ export const AppNavigator = () => {
   };
 
   const showBlockingLoader = loading || checkingEmailVerification;
+  const profileHydrating = user && isEmailVerified && profile === null;
+  const [showWelcomeBack, setShowWelcomeBack] = React.useState(false);
+  const lastHandledWelcomeReqRef = React.useRef(0);
+
+  // Best-effort: ensure admins always have the admin avatar stored.
+  React.useEffect(() => {
+    if (!user || !isEmailVerified || !isAdmin || !profile) {
+      return;
+    }
+    if (profile.avatarId === 'admin') {
+      return;
+    }
+    (async () => {
+      try {
+        await updateMyAvatarId('admin');
+      } catch {
+        // ignore
+      }
+    })();
+  }, [user?.uid, isEmailVerified, isAdmin, profile?.avatarId]);
+
+  const needsAvatarOnboarding =
+    user && isEmailVerified && !isAdmin && emailVerificationChecked && profile && !profile.avatarId;
+
+  // Only show welcome-back when explicitly requested (e.g., after pressing "Sign in"),
+  // to avoid glitching during hydration / profile updates.
+  React.useEffect(() => {
+    if (!welcomeBackRequestId) {
+      return;
+    }
+    if (welcomeBackRequestId === lastHandledWelcomeReqRef.current) {
+      return;
+    }
+    lastHandledWelcomeReqRef.current = welcomeBackRequestId;
+    // Show immediately (even if profile hasn't loaded yet) so the user doesn't see Home flash.
+    setShowWelcomeBack(true);
+    // Smoothly transition from auth loading overlay -> welcome back overlay.
+    clearAuthTransition();
+  }, [welcomeBackRequestId]);
+
+  // If avatar onboarding becomes necessary, hide welcome-back immediately.
+  React.useEffect(() => {
+    if (showWelcomeBack && needsAvatarOnboarding) {
+      setShowWelcomeBack(false);
+    }
+  }, [needsAvatarOnboarding, showWelcomeBack]);
+
+  React.useEffect(() => {
+    if (!user) {
+      lastHandledWelcomeReqRef.current = 0;
+      setShowWelcomeBack(false);
+      clearAuthTransition();
+    }
+  }, [clearAuthTransition, user]);
 
   // If the user is signed in but not verified, hard-gate them into the verification flow.
   // They can log out from that screen to continue as guest.
@@ -294,6 +365,66 @@ export const AppNavigator = () => {
         </NavigationContainer>
 
         {showBlockingLoader && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: colors.text }}>Loading...</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Avoid flickering between navigators while the verified user's profile is still loading.
+  // Without this, onboarding routes can be unmounted mid-navigation causing "NAVIGATE not handled".
+  if (user && isEmailVerified && emailVerificationChecked && !isAdmin && profileHydrating) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ color: colors.text }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (needsAvatarOnboarding) {
+    return (
+      <View style={{ flex: 1 }}>
+        <NavigationContainer theme={navigationTheme}>
+          <Stack.Navigator
+            key="avatar-onboarding"
+            initialRouteName="AvatarWelcome"
+            screenOptions={{
+              headerShown: false,
+              gestureEnabled: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="AvatarWelcome" component={AvatarWelcomeScreen} />
+            <Stack.Screen name="AvatarPicker" component={AvatarPickerScreen} />
+            <Stack.Screen
+              name="AvatarFinalWelcome"
+              component={AvatarFinalWelcomeScreen}
+              options={{ animation: 'fade' }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+
+        {(showBlockingLoader || profileHydrating) && (
           <View
             style={{
               position: 'absolute',
@@ -440,6 +571,17 @@ export const AppNavigator = () => {
           component={TermsOfServiceScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
+        <Stack.Screen
+          name="AvatarPicker"
+          component={AvatarPickerScreen}
+          options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }}
+        />
+        {/* Safety net: allow navigating here even if onboarding stack is not active. */}
+        <Stack.Screen
+          name="AvatarFinalWelcome"
+          component={AvatarFinalWelcomeScreen}
+          options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'fade' }}
+        />
 
         {/* Auth screens (modal) */}
         <Stack.Screen
@@ -460,7 +602,7 @@ export const AppNavigator = () => {
       </Stack.Navigator>
     </NavigationContainer>
 
-      {showBlockingLoader && (
+      {showWelcomeBack && user && isEmailVerified && !needsAvatarOnboarding && (
         <View
           style={{
             position: 'absolute',
@@ -468,12 +610,29 @@ export const AppNavigator = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: colors.background,
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
-          <Text style={{ color: colors.text }}>Loading...</Text>
+          <WelcomeBackScreen
+            variant="back"
+            onDone={() => {
+              setShowWelcomeBack(false);
+              clearAuthTransition();
+            }}
+          />
+        </View>
+      )}
+
+      {(authTransitionActive || showBlockingLoader) && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        >
+          <AuthLoadingOverlay label="Signing you in…" />
         </View>
       )}
     </View>

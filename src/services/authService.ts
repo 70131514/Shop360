@@ -72,9 +72,24 @@ export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredenti
     }
     const signInResult = await GoogleSignin.signIn();
     // In newer versions, tokens are retrieved via getTokens() (signIn may not include idToken).
-    const tokens = await GoogleSignin.getTokens();
-    const idToken = tokens?.idToken;
-    const accessToken = tokens?.accessToken;
+    let idToken: string | undefined;
+    let accessToken: string | undefined;
+    try {
+      const tokens = await GoogleSignin.getTokens();
+      idToken = tokens?.idToken ?? undefined;
+      accessToken = tokens?.accessToken ?? undefined;
+    } catch (tokErr: any) {
+      // Treat this as a cancellation / incomplete sign-in (common when user backs out quickly)
+      const msg = String(tokErr?.message ?? '');
+      if (msg.includes('getTokens requires a user to be signed in')) {
+        const err: any = new Error('Sign-in was cancelled or incomplete. Please try again.');
+        err.code = statusCodes.SIGN_IN_CANCELLED;
+        throw err;
+      }
+      // Fall back to any tokens provided by signIn() on older versions
+      idToken = (signInResult as any)?.idToken ?? undefined;
+      accessToken = (signInResult as any)?.accessToken ?? undefined;
+    }
     if (!idToken && !accessToken) {
       // User likely cancelled the sign-in or sign-in didn't complete
       const err: any = new Error('Sign-in was cancelled or incomplete. Please try again.');
@@ -218,9 +233,20 @@ export async function linkGoogleToCurrentUser(): Promise<void> {
   }
   
   const googleEmail = (res?.user?.email ?? '').trim().toLowerCase();
-  const tokens = await GoogleSignin.getTokens();
-  const idToken = tokens?.idToken;
-  const accessToken = tokens?.accessToken;
+  let idToken: string | undefined;
+  let accessToken: string | undefined;
+  try {
+    const tokens = await GoogleSignin.getTokens();
+    idToken = tokens?.idToken ?? undefined;
+    accessToken = tokens?.accessToken ?? undefined;
+  } catch (tokErr: any) {
+    const msg = String(tokErr?.message ?? '');
+    if (msg.includes('getTokens requires a user to be signed in')) {
+      const err: any = new Error('Google sign-in was cancelled or incomplete.');
+      err.code = statusCodes.SIGN_IN_CANCELLED;
+      throw err;
+    }
+  }
   if (!idToken && !accessToken) {
     // User likely cancelled the sign-in or sign-in didn't complete
     const err: any = new Error('Google sign-in was cancelled or incomplete.');
@@ -273,18 +299,14 @@ export const signUp = async (
     let finalRole = role;
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      const roleAssignmentsQuery = query(
-        collection(firebaseDb, 'roleAssignments'),
-        where('email', '==', normalizedEmail),
-      );
-      const roleAssignmentsSnapshot = await getDocs(roleAssignmentsQuery);
-      if (!roleAssignmentsSnapshot.empty) {
-        const assignedRole = roleAssignmentsSnapshot.docs[0].data().role;
+      // Assignments are stored at roleAssignments/{email} where docId is normalized email.
+      const snap = await getDoc(doc(firebaseDb, 'roleAssignments', normalizedEmail));
+      if (snap.exists()) {
+        const assignedRole = (snap.data() as any)?.role;
         if (assignedRole) {
           finalRole = assignedRole;
-          // Delete the role assignment document since it's now applied
-          await deleteDoc(roleAssignmentsSnapshot.docs[0].ref);
         }
+        // Do not delete from client (admins manage cleanup); avoids permission issues.
       }
     } catch (error) {
       // If role assignment check fails, continue with default role
@@ -307,6 +329,7 @@ export const signUp = async (
         name,
         email: authEmail,
         role: finalRole,
+        ...(finalRole === 'admin' ? { avatarId: 'admin' } : {}),
         isEmailVerified: false,
         createdAt: serverTimestamp(),
       });

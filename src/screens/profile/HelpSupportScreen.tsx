@@ -233,9 +233,9 @@ const HelpSupportScreen = () => {
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-            Send us a Message
-          </Text>
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+          Send us a Message
+        </Text>
           {user && (
             <TouchableOpacity
               onPress={() => navigation.navigate('MyTickets')}
@@ -294,7 +294,7 @@ const HelpSupportScreen = () => {
             {isSubmitting ? (
               <ActivityIndicator size="small" color={colors.surface} />
             ) : (
-              <Ionicons name="send" size={20} color={colors.surface} />
+            <Ionicons name="send" size={20} color={colors.surface} />
             )}
           </TouchableOpacity>
         </Animated.View>
@@ -318,7 +318,7 @@ const HelpSupportScreen = () => {
                 We've received your inquiry. You will receive a reply via email at{' '}
                 {user?.email || 'your registered email'}.
               </Text>
-            </View>
+        </View>
           </Animated.View>
         )}
       </ScrollView>

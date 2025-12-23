@@ -21,7 +21,7 @@ import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getMyUserProfile } from '../../services/userService';
 
 const LoginScreen = () => {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, requestWelcomeBack } = useAuth();
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   useRoute<any>();
@@ -59,6 +59,7 @@ const LoginScreen = () => {
       }
 
       if (isAdmin) {
+        requestWelcomeBack();
         navigation.reset({
           index: 0,
           routes: [{ name: 'AdminTabs' }],
@@ -68,6 +69,7 @@ const LoginScreen = () => {
 
       // Always land on the main page (Home) after login, in one shot.
       // MainTabs has animation disabled in AppNavigator to avoid a second swipe/transition.
+      requestWelcomeBack();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -115,6 +117,7 @@ const LoginScreen = () => {
       }
 
       if (isAdmin) {
+        requestWelcomeBack();
         navigation.reset({
           index: 0,
           routes: [{ name: 'AdminTabs' }],
@@ -123,6 +126,7 @@ const LoginScreen = () => {
       }
 
       // Regular users go to MainTabs
+      requestWelcomeBack();
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -131,7 +135,11 @@ const LoginScreen = () => {
       );
     } catch (e: any) {
       // Don't show alert for user cancellation - it's expected behavior
-      if (e?.code === 'SIGN_IN_CANCELLED' || e?.message?.includes('cancelled') || e?.message?.includes('canceled')) {
+      if (
+        e?.code === 'SIGN_IN_CANCELLED' ||
+        e?.message?.includes('cancelled') ||
+        e?.message?.includes('canceled')
+      ) {
         // User cancelled - no need to show error
         return;
       }
