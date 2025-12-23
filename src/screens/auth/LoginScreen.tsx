@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -21,7 +22,7 @@ import { getMyUserProfile } from '../../services/userService';
 
 const LoginScreen = () => {
   const { login, loginWithGoogle } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   useRoute<any>();
   const { alert } = useAppAlert();
@@ -154,18 +155,18 @@ const LoginScreen = () => {
         />
 
         <View style={styles.logoContainer}>
-          <View
-            style={[
-              styles.logoCircle,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Text style={[styles.logoText, { color: colors.text }]}>S360</Text>
-          </View>
-          <Text style={[styles.appName, { color: colors.text }]}>Shop360°</Text>
+          <Image
+            source={
+              isDark
+                ? require('../../assets/images/Shop360White.png')
+                : require('../../assets/images/Shop360Black.png')
+            }
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
-        <Text style={[styles.welcomeText, { color: colors.text }]}>Welcome to Shop360°</Text>
+        <Text style={[styles.welcomeText, { color: colors.text }]}>Shop360°</Text>
         <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
           Sign in to your account
         </Text>
@@ -299,24 +300,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoCircle: {
-    width: 120,
+  logoImage: {
+    width: 200,
     height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  logoText: {
-    fontSize: 24,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: '600',
-    letterSpacing: 0.5,
   },
   welcomeText: {
     fontSize: 28,
@@ -324,12 +310,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 20,
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   subtitleText: {
     fontSize: 16,
     marginBottom: 32,
     fontWeight: '300',
     letterSpacing: 0.3,
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,
