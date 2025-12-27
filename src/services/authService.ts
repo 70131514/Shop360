@@ -132,6 +132,8 @@ export const signInWithGoogle = async (): Promise<FirebaseAuthTypes.UserCredenti
             name,
             email,
             role: 'user',
+            // Set default avatar ID for Google sign-in users
+            avatarId: 'user',
             isEmailVerified: true,
             createdAt: serverTimestamp(),
           });
@@ -329,7 +331,9 @@ export const signUp = async (
         name,
         email: authEmail,
         role: finalRole,
-        ...(finalRole === 'admin' ? { avatarId: 'admin' } : {}),
+        // Set default avatar ID: 'admin' for admins, 'user' for regular users
+        // This ensures avatar ID is always available in Firebase for optimized loading
+        avatarId: finalRole === 'admin' ? 'admin' : 'user',
         isEmailVerified: false,
         createdAt: serverTimestamp(),
       });

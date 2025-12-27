@@ -18,7 +18,7 @@ import { getWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { getAddresses } from '../../utils/storage';
-import { AVATAR_SOURCES, resolveAvatarId } from '../../constants/avatars';
+import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 type MenuItem = {
   icon: string;
@@ -44,7 +44,7 @@ const ProfileScreen = () => {
   const [addressCount, setAddressCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const isGuest = !user;
-  const avatarId = resolveAvatarId({
+  const avatarSource = getAvatarSourceForUser({
     avatarId: profile?.avatarId,
     isGuest,
     isAdmin,
@@ -264,7 +264,7 @@ const ProfileScreen = () => {
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={AVATAR_SOURCES[avatarId]}
+                source={avatarSource}
                 style={[styles.profileImage, { borderColor: colors.primary }]}
               />
               <TouchableOpacity

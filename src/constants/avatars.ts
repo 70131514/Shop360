@@ -20,6 +20,11 @@ export type AvatarId =
   | 'w8'
   | 'w9';
 
+/**
+ * Avatar image sources - all avatars are bundled with the app
+ * Using require() ensures images are included in the app bundle at build time
+ * This allows avatars to work offline and without ADB connection
+ */
 export const AVATAR_SOURCES: Record<AvatarId, any> = {
   admin: require('../assets/avatars/Admin.png'),
   user: require('../assets/avatars/User.png'),
@@ -41,7 +46,7 @@ export const AVATAR_SOURCES: Record<AvatarId, any> = {
   w7: require('../assets/avatars/w7.png'),
   w8: require('../assets/avatars/w8.png'),
   w9: require('../assets/avatars/w9.png'),
-};
+} as const;
 
 export const SELECTABLE_AVATARS: AvatarId[] = [
   'user',

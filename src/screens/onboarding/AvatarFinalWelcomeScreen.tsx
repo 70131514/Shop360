@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text } from '../../components/common/AppText';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { AVATAR_SOURCES, type AvatarId } from '../../constants/avatars';
+import { type AvatarId } from '../../constants/avatars';
+import { getAvatarSource } from '../../utils/avatarUtils';
 import { updateMyAvatarId } from '../../services/userService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 
@@ -233,7 +234,7 @@ const AvatarFinalWelcomeScreen = ({ navigation, route }: any) => {
         <View style={styles.center}>
           <Animated.View style={{ transform: [{ translateY: avatarY }, { scale: avatarScale }] }}>
             <View style={[styles.ring, { borderColor: colors.primary }]}>
-              <Image source={AVATAR_SOURCES[selectedAvatarId]} style={styles.avatar} />
+              <Image source={getAvatarSource(selectedAvatarId)} style={styles.avatar} />
             </View>
           </Animated.View>
 

@@ -19,6 +19,7 @@ import {
   type AvatarId,
   resolveAvatarId,
 } from '../../constants/avatars';
+import { getAvatarSource } from '../../utils/avatarUtils';
 import { updateMyAvatarId } from '../../services/userService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 
@@ -162,7 +163,7 @@ const AvatarPickerScreen = ({ navigation, route }: any) => {
           ]}
         >
           <View style={[styles.avatarRing, { borderColor: colors.primary }]}>
-            <Image source={AVATAR_SOURCES[selected]} style={styles.previewImage} />
+            <Image source={getAvatarSource(selected)} style={styles.previewImage} />
           </View>
           <View style={styles.previewText}>
             <Text style={[styles.previewTitle, { color: colors.text }]}>Preview</Text>
@@ -253,7 +254,7 @@ const AvatarPickerScreen = ({ navigation, route }: any) => {
                     },
                   ]}
                 >
-                  <Image source={AVATAR_SOURCES[item]} style={styles.tileImg} />
+                  <Image source={getAvatarSource(item)} style={styles.tileImg} />
                   {isSelected && (
                     <View style={[styles.check, { backgroundColor: colors.primary }]}>
                       <Ionicons name="checkmark" size={16} color={colors.background} />

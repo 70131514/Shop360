@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text } from '../../components/common/AppText';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { AVATAR_SOURCES, resolveAvatarId } from '../../constants/avatars';
+import { resolveAvatarId } from '../../constants/avatars';
+import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,9 +19,9 @@ const WelcomeBackScreen = ({ variant, onDone }: Props) => {
   const { user, profile, isAdmin } = useAuth();
 
   const name = profile?.name ?? user?.displayName ?? 'User';
-  const avatarId = useMemo(
+  const avatarSource = useMemo(
     () =>
-      resolveAvatarId({
+      getAvatarSourceForUser({
         avatarId: profile?.avatarId,
         isGuest: !user,
         isAdmin,
@@ -205,7 +206,7 @@ const WelcomeBackScreen = ({ variant, onDone }: Props) => {
           <View style={styles.center}>
             <Animated.View style={{ transform: [{ translateY: avatarY }, { scale: avatarScale }] }}>
               <View style={[styles.ring, { borderColor: colors.primary }]}>
-                <Image source={AVATAR_SOURCES[avatarId]} style={styles.avatar} />
+                <Image source={avatarSource} style={styles.avatar} />
               </View>
             </Animated.View>
 
