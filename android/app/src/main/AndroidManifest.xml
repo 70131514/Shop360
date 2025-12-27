@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Viro AR requirements / hints -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    <uses-feature android:glEsVersion="0x00030000" android:required="false" />
 
     <application
       android:name=".MainApplication"
@@ -19,6 +26,11 @@
       <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="YOUR_GOOGLE_MAPS_API_KEY" />
+
+      <!-- ARCore (Google Play Services for AR). Optional so the app can still install on non-AR devices. -->
+      <meta-data
+        android:name="com.google.ar.core"
+        android:value="optional" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

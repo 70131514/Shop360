@@ -26,6 +26,11 @@ target 'Shop360' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # ViroReact (manual link)
+  # NOTE: This is only needed if you build iOS. Safe to keep commented for Android-only development.
+  # pod 'ViroReact', :path => '../node_modules/@viro-community/react-viro/ios'
+  # pod 'ViroKit', :path => '../node_modules/@viro-community/react-viro/ios/dist/ViroRenderer/'
+
   target 'Shop360Tests' do
     inherit! :complete
     # Pods for testing

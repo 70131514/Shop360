@@ -1,7 +1,8 @@
 buildscript {
     ext {
         buildToolsVersion = "34.0.0"
-        minSdkVersion = 23
+        // ViroReact requires minSdkVersion 24 (ARCore dependencies)
+        minSdkVersion = 24
         compileSdkVersion = 34
         targetSdkVersion = 34
 
