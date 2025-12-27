@@ -6,6 +6,7 @@ declare module '@viro-community/react-viro' {
   export class ViroARPlaneSelector extends React.Component<any> {}
   export class ViroText extends React.Component<any> {}
   export class ViroAmbientLight extends React.Component<any> {}
+  export class Viro3DObject extends React.Component<any> {}
 }
 
 
