@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Linking,
   PermissionsAndroid,
   Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -14,6 +16,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AppText as Text } from '../../components/common/AppText';
 import { SPACING } from '../../theme';
 import { ModelPlacementARScene, type ARModelKey } from '../../ar/scenes/ModelPlacementARScene';
+import { ModelSelectionModal } from '../../components/ar/ModelSelectionModal';
+import { getModelInfo } from '../../ar/models/modelConfig';
 
 export const ARViewScreen = () => {
   const navigation = useNavigation<any>();
@@ -30,14 +34,21 @@ export const ARViewScreen = () => {
   );
   const [trackingState, setTrackingState] = useState<string>('unknown');
   const [trackingReason, setTrackingReason] = useState<string>('');
+  const [placementError, setPlacementError] = useState<string>('');
   const lastTrackingUpdateMsRef = useRef<number>(0);
   const lastTrackingStateRef = useRef<string>('unknown');
   const lastTrackingReasonRef = useRef<string>('');
   const [modelKey, setModelKey] = useState<ARModelKey>('shoes');
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
+  const [modelRotationY, setModelRotationY] = useState<number>(0);
+  const [modelScaleMultiplier, setModelScaleMultiplier] = useState<number>(1);
   const [resetPlaneSelectionKey, setResetPlaneSelectionKey] = useState<number>(0);
   const [planeLocked, setPlaneLocked] = useState<boolean>(false);
   const [placeRequestKey, setPlaceRequestKey] = useState<number>(0);
+  const [uiMinimized, setUiMinimized] = useState<boolean>(false);
+  const [modelSelectionVisible, setModelSelectionVisible] = useState<boolean>(false);
+  const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const controlsTranslateY = useRef(new Animated.Value(0)).current;
 
   const refreshCameraPermissionState = useCallback(async () => {
     if (Platform.OS !== 'android') {
@@ -96,6 +107,8 @@ export const ARViewScreen = () => {
     () => ({
       modelKey,
       modelPosition,
+      modelRotationY,
+      modelScaleMultiplier,
       resetPlaneSelectionKey,
       placeRequestKey,
       onTrackingUpdate: (state: any, reason: any) => {
@@ -125,8 +138,20 @@ export const ARViewScreen = () => {
       onModelPositionChange: (pos: [number, number, number]) => {
         setModelPosition(pos);
       },
+      onPlacementError: (message: string) => {
+        setPlacementError(message);
+        // auto-clear after a bit
+        setTimeout(() => setPlacementError(''), 2500);
+      },
     }),
-    [modelKey, modelPosition, resetPlaneSelectionKey, placeRequestKey],
+    [
+      modelKey,
+      modelPosition,
+      modelRotationY,
+      modelScaleMultiplier,
+      resetPlaneSelectionKey,
+      placeRequestKey,
+    ],
   );
 
   const MOVE_STEP = 0.05; // 5cm per step
@@ -154,16 +179,64 @@ export const ARViewScreen = () => {
     setModelPosition([0, 0, 0]);
   }, []);
 
+  const ROTATE_STEP = 10; // degrees
+  const rotateModel = useCallback((direction: 1 | -1) => {
+    setModelRotationY((prev) => {
+      const next = prev + direction * ROTATE_STEP;
+      if (next > 180) {
+        return next - 360;
+      }
+      if (next < -180) {
+        return next + 360;
+      }
+      return next;
+    });
+  }, []);
+
+  const resetRotation = useCallback(() => {
+    setModelRotationY(0);
+  }, []);
+
+  const ZOOM_STEP = 0.1; // 10% per step
+  const zoom = useCallback((direction: 1 | -1) => {
+    setModelScaleMultiplier((prev) => {
+      const next = Number((prev + direction * ZOOM_STEP).toFixed(2));
+      return Math.max(0.25, Math.min(4, next));
+    });
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    setModelScaleMultiplier(1);
+  }, []);
+
   const resetPlane = useCallback(() => {
     setPlaneLocked(false);
     resetPosition();
     setResetPlaneSelectionKey((k) => k + 1);
+    setPlacementError('');
   }, [resetPosition]);
 
   const placeAtCenter = useCallback(() => {
     // Triggers Figment-style hit test placement from within the AR scene.
     setPlaceRequestKey((k) => k + 1);
   }, []);
+
+  const toggleUIMinimize = useCallback(() => {
+    setUiMinimized(!uiMinimized);
+
+    Animated.parallel([
+      Animated.timing(controlsOpacity, {
+        toValue: uiMinimized ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(controlsTranslateY, {
+        toValue: uiMinimized ? 0 : 100,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [uiMinimized, controlsOpacity, controlsTranslateY]);
 
   return (
     <View style={styles.container}>
@@ -211,162 +284,252 @@ export const ARViewScreen = () => {
 
       {/* Overlay UI */}
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+        {/* Top Header - Always Visible */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.minimizeButton}
+            onPress={toggleUIMinimize}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={uiMinimized ? 'chevron-up' : 'chevron-down'} size={20} color="#fff" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Ionicons name="close" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.controls} pointerEvents="box-none">
-          <Text style={styles.instructionText}>
-            {planeLocked
-              ? 'Drag to adjust placement, or reset to pick a new surface.'
-              : 'Move your camera to scan. When the reticle appears, press Place (works even before a full plane locks).'}
-          </Text>
-          <Text style={styles.debugText}>
-            Tracking: {trackingState}
-            {trackingReason ? ` (${trackingReason})` : ''}
-          </Text>
-          {trackingReason.includes('INSUFFICIENT_FEATURES') && (
-            <Text style={styles.debugHint}>
-              Tip: White/reflective floors often lack visual features. Try brighter light, move
-              slower, and aim at edges (tile grout lines), furniture, or a textured object to help
-              plane detection.
-            </Text>
-          )}
-          <View style={styles.modelRow}>
-            <TouchableOpacity
-              style={[styles.modelChip, modelKey === 'shoes' && styles.modelChipActive]}
-              onPress={() => setModelKey('shoes')}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[styles.modelChipText, modelKey === 'shoes' && styles.modelChipTextActive]}
-              >
-                Shoes
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modelChip, modelKey === 'hat' && styles.modelChipActive]}
-              onPress={() => setModelKey('hat')}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[styles.modelChipText, modelKey === 'hat' && styles.modelChipTextActive]}
-              >
-                Hat
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modelChip, modelKey === 'sofa' && styles.modelChipActive]}
-              onPress={() => setModelKey('sofa')}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[styles.modelChipText, modelKey === 'sofa' && styles.modelChipTextActive]}
-              >
-                Sofa
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Position Controls */}
-          <View style={styles.positionControls}>
-            <Text style={styles.positionLabel}>Position Controls</Text>
-            <TouchableOpacity
-              style={styles.placeButton}
-              onPress={placeAtCenter}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="locate" size={16} color="#fff" />
-              <Text style={styles.resetButtonText}>Place</Text>
-            </TouchableOpacity>
-            <View style={styles.positionGrid}>
-              {/* Up/Down (Y axis) */}
-              <View style={styles.positionColumn}>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('y', 1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-up" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Up</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('y', -1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-down" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Down</Text>
-                </TouchableOpacity>
+        {/* Collapsible Controls Panel */}
+        <Animated.View
+          style={[
+            styles.controlsContainer,
+            {
+              opacity: controlsOpacity,
+              transform: [{ translateY: controlsTranslateY }],
+            },
+          ]}
+          pointerEvents={uiMinimized ? 'none' : 'auto'}
+        >
+          <ScrollView
+            style={styles.controlsScroll}
+            contentContainerStyle={styles.controlsContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Status Info - Compact */}
+            <View style={styles.statusBar}>
+              <View style={styles.statusItem}>
+                <Ionicons name="radio" size={12} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.statusText}>
+                  {trackingState === 'READY' ? 'Ready' : trackingState}
+                </Text>
               </View>
-
-              {/* Left/Right (X axis) */}
-              <View style={styles.positionColumn}>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('x', -1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-back" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Left</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('x', 1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Right</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Forward/Backward (Z axis) */}
-              <View style={styles.positionColumn}>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('z', -1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="remove" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Forward</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.positionButton}
-                  onPress={() => moveModel('z', 1)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="add" size={20} color="#fff" />
-                  <Text style={styles.positionButtonText}>Backward</Text>
-                </TouchableOpacity>
-              </View>
+              {!!placementError && (
+                <View style={[styles.statusItem, styles.statusError]}>
+                  <Ionicons name="alert-circle" size={12} color="#ff6b6b" />
+                  <Text style={[styles.statusText, styles.statusErrorText]}>{placementError}</Text>
+                </View>
+              )}
             </View>
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={resetPosition}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="refresh" size={16} color="#fff" />
-              <Text style={styles.resetButtonText}>Reset Position</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.resetPlaneButton}
-              onPress={resetPlane}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="scan" size={16} color="#fff" />
-              <Text style={styles.resetButtonText}>Reset Plane</Text>
-            </TouchableOpacity>
-          </View>
 
-          {trackingState.includes('UNAVAILABLE') && (
-            <Text style={styles.debugHint}>
-              Tip: Install/update “Google Play Services for AR (ARCore)” and try again.
+            {/* Quick Instruction */}
+            <Text style={styles.instructionText}>
+              {planeLocked ? 'Drag to adjust placement' : 'Move camera to scan, then tap Place'}
             </Text>
-          )}
-        </View>
+
+            {/* Model Selection Button */}
+            <TouchableOpacity
+              style={styles.modelSelectButton}
+              onPress={() => setModelSelectionVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="cube" size={18} color="#fff" />
+              <Text style={styles.modelSelectButtonText}>
+                {getModelInfo(modelKey)?.name || 'Select Model'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+
+            {/* Main Controls Panel */}
+            <View style={styles.controlsPanel}>
+              {/* Place Button - Prominent */}
+              <TouchableOpacity
+                style={styles.placeButton}
+                onPress={placeAtCenter}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="locate" size={18} color="#fff" />
+                <Text style={styles.placeButtonText}>Place Model</Text>
+              </TouchableOpacity>
+
+              {/* Movement Controls */}
+              <View style={styles.controlSection}>
+                <Text style={styles.sectionTitle}>Position</Text>
+                <View style={styles.controlRow}>
+                  {/* D-pad (X/Y) */}
+                  <View style={styles.dpad}>
+                    <TouchableOpacity
+                      style={[styles.dpadBtn, styles.dpadUp]}
+                      onPress={() => moveModel('y', 1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="chevron-up" size={20} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dpadBtn, styles.dpadLeft]}
+                      onPress={() => moveModel('x', -1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="chevron-back" size={20} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.dpadCenter}>
+                      <Ionicons name="move" size={14} color="rgba(255,255,255,0.6)" />
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.dpadBtn, styles.dpadRight]}
+                      onPress={() => moveModel('x', 1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="chevron-forward" size={20} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dpadBtn, styles.dpadDown]}
+                      onPress={() => moveModel('y', -1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="chevron-down" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Near/Far (Z) */}
+                  <View style={styles.stackControls}>
+                    <Text style={styles.controlMiniLabel}>Depth</Text>
+                    <TouchableOpacity
+                      style={styles.pillBtn}
+                      onPress={() => moveModel('z', -1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="arrow-up" size={16} color="#fff" />
+                      <Text style={styles.pillBtnText}>Near</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.pillBtn}
+                      onPress={() => moveModel('z', 1)}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="arrow-down" size={16} color="#fff" />
+                      <Text style={styles.pillBtnText}>Far</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Rotation Controls */}
+              <View style={styles.controlSection}>
+                <View style={styles.rotateHeader}>
+                  <Text style={styles.sectionTitle}>Rotation</Text>
+                  <Text style={styles.rotateValue}>{Math.round(modelRotationY)}°</Text>
+                </View>
+                <View style={styles.rotateBtns}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => rotateModel(-1)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="return-up-back" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>Left</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={resetRotation}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="refresh" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>Reset</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => rotateModel(1)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="return-up-forward" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>Right</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Zoom Controls */}
+              <View style={styles.controlSection}>
+                <View style={styles.rotateHeader}>
+                  <Text style={styles.sectionTitle}>Scale</Text>
+                  <Text style={styles.rotateValue}>{Math.round(modelScaleMultiplier * 100)}%</Text>
+                </View>
+                <View style={styles.rotateBtns}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => zoom(1)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="add" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>In</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.iconBtn} onPress={resetZoom} activeOpacity={0.75}>
+                    <Ionicons name="refresh" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>Reset</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => zoom(-1)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="remove" size={16} color="#fff" />
+                    <Text style={styles.iconBtnText}>Out</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Reset Actions */}
+              <View style={styles.footerActions}>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={resetPosition}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="navigate" size={14} color="#fff" />
+                  <Text style={styles.secondaryBtnText}>Reset Pos</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={resetPlane}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="scan" size={14} color="#fff" />
+                  <Text style={styles.secondaryBtnText}>Reset Plane</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Debug Hints */}
+              {trackingReason.includes('INSUFFICIENT_FEATURES') && (
+                <Text style={styles.debugHint}>
+                  Tip: Try brighter light and aim at textured surfaces
+                </Text>
+              )}
+              {trackingState.includes('UNAVAILABLE') && (
+                <Text style={styles.debugHint}>
+                  Install "Google Play Services for AR" and try again
+                </Text>
+              )}
+            </View>
+          </ScrollView>
+        </Animated.View>
       </SafeAreaView>
+
+      {/* Model Selection Modal */}
+      <ModelSelectionModal
+        visible={modelSelectionVisible}
+        selectedModel={modelKey}
+        onSelectModel={setModelKey}
+        onClose={() => setModelSelectionVisible(false)}
+      />
     </View>
   );
 };
@@ -388,157 +551,274 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   header: {
-    padding: SPACING.m,
+    paddingHorizontal: SPACING.m,
+    paddingTop: SPACING.s,
+    paddingBottom: SPACING.xs,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  minimizeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  closeButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  controls: {
-    padding: SPACING.l,
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
-    paddingBottom: SPACING.xxl,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  controlsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '75%',
+  },
+  controlsScroll: {
+    flex: 1,
+  },
+  controlsContent: {
+    padding: SPACING.m,
+    paddingBottom: SPACING.xl,
+  },
+  statusBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: SPACING.s,
+    justifyContent: 'center',
+  },
+  statusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  statusError: {
+    backgroundColor: 'rgba(255,107,107,0.2)',
+  },
+  statusText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statusErrorText: {
+    color: '#ff6b6b',
   },
   instructionText: {
     color: '#fff',
-    fontSize: 16,
-    marginBottom: SPACING.l,
+    fontSize: 13,
+    marginBottom: SPACING.m,
+    textAlign: 'center',
+    fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  debugText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    marginTop: 6,
-  },
   debugHint: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 11,
-    marginTop: 6,
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 10,
+    marginTop: SPACING.s,
     textAlign: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: SPACING.m,
+    fontStyle: 'italic',
   },
-  modelRow: {
+  modelSelectButton: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  modelChip: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  modelChipActive: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  modelChipText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  modelChipTextActive: {
-    color: '#000',
-  },
-  positionControls: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: SPACING.m,
+    paddingVertical: SPACING.s,
     borderRadius: 12,
-    width: '100%',
-    maxWidth: 320,
+    marginBottom: SPACING.m,
+    gap: 8,
   },
-  positionLabel: {
+  modelSelectButtonText: {
+    flex: 1,
     color: '#fff',
     fontSize: 13,
     fontWeight: '700',
-    marginBottom: 10,
-    textAlign: 'center',
   },
-  positionGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 8,
-  },
-  positionColumn: {
-    flex: 1,
-    gap: 8,
-  },
-  positionButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  controlsPanel: {
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 16,
+    padding: SPACING.m,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(10px)',
+  },
+  controlSection: {
+    marginTop: SPACING.m,
+  },
+  sectionTitle: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  controlRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  dpad: {
+    width: 120,
+    height: 120,
+    position: 'relative',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  dpadBtn: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 60,
   },
-  positionButtonText: {
+  dpadUp: { top: 6, left: 38 },
+  dpadDown: { bottom: 6, left: 38 },
+  dpadLeft: { left: 6, top: 38 },
+  dpadRight: { right: 6, top: 38 },
+  dpadCenter: {
+    position: 'absolute',
+    left: 38,
+    top: 38,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stackControls: {
+    flex: 1,
+    gap: 6,
+    minWidth: 100,
+  },
+  controlMiniLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  pillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  pillBtnText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rotateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  rotateValue: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  rotateBtns: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  iconBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  iconBtnText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: '700',
+  },
+  footerActions: {
+    marginTop: SPACING.m,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  secondaryBtnText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
   },
   placeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(59,130,246,0.8)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 10,
+    borderColor: 'rgba(59,130,246,0.9)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: SPACING.m,
     gap: 8,
   },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 10,
-    gap: 6,
-  },
-  resetPlaneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 8,
-    gap: 6,
-  },
-  resetButtonText: {
+  placeButtonText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   permissionContainer: {
     flex: 1,

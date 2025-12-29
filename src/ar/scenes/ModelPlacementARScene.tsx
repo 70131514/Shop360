@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Viro3DObject,
-  ViroARPlaneSelector,
   ViroARScene,
   ViroAmbientLight,
   ViroMaterials,
@@ -9,7 +8,61 @@ import {
   ViroQuad,
 } from '@viro-community/react-viro';
 
-export type ARModelKey = 'shoes' | 'hat' | 'sofa';
+export type ARModelKey =
+  | 'shoes'
+  | 'hat'
+  | 'sofa'
+  | 'a_table'
+  | 'arm_chair_furniture'
+  | 'armchair'
+  | 'bath_with_sink'
+  | 'bathroom_sink_cabinet'
+  | 'bathroom_sink'
+  | 'bed'
+  | 'bed1'
+  | 'bed2'
+  | 'camera_canon_eos_400d'
+  | 'canon_at_1_retro_camera'
+  | 'chair'
+  | 'chair1'
+  | 'chair2'
+  | 'chesterfield_sofa'
+  | 'console_table'
+  | 'cover_chair'
+  | 'dae_bilora_bella_46_camera_game_ready_asset'
+  | 'desk_lamp'
+  | 'gameboy'
+  | 'industrial_table'
+  | 'kitchen_sink'
+  | 'laptop'
+  | 'laptop1'
+  | 'laptop2'
+  | 'laptop3'
+  | 'laptop4'
+  | 'lowpoly_old_table'
+  | 'mahogany_table'
+  | 'mid_century_lounge_chair'
+  | 'modern_sofa'
+  | 'office_chair_gaming_chair'
+  | 'ps5'
+  | 'rustic_chair'
+  | 'sink'
+  | 'sink1'
+  | 'sofa_chair'
+  | 'sofa_pink'
+  | 'sofa_single'
+  | 'sofa1'
+  | 'soviet_furniture'
+  | 'steam_deck_console'
+  | 'table_furniture'
+  | 'table_lamp_01'
+  | 'table_lamp'
+  | 'table'
+  | 'table1'
+  | 'wii_console'
+  | 'wooden_sofa'
+  | 'xbox_controller'
+  | 'xbox_series_x_console';
 
 const DEFAULT_POS: [number, number, number] = [0, 0, 0];
 
@@ -21,7 +74,10 @@ type ModelMetrics = {
 };
 
 const DEFAULT_METRICS: ModelMetrics = {
-  scale: [0.15, 0.15, 0.15],
+  // "Real size" mode: assume the model file's units are already meters.
+  // (If a model was authored in cm/mm and exported without unit conversion, it will look too large;
+  // that should be fixed in the asset pipeline, not in AR code.)
+  scale: [1, 1, 1],
   localOffset: [0, 0, 0],
   footprint: 0.4,
 };
@@ -42,7 +98,10 @@ type Props = {
     viroAppProps?: {
       modelKey?: ARModelKey;
       modelPosition?: [number, number, number];
+      modelRotationY?: number;
+      modelScaleMultiplier?: number;
       onModelPositionChange?: (pos: [number, number, number]) => void;
+      onPlacementError?: (message: string) => void;
       onTrackingUpdate?: (state: unknown, reason: unknown) => void;
       onPlaneSelected?: (planeUpdateMap: unknown) => void;
       resetPlaneSelectionKey?: number;
@@ -57,6 +116,108 @@ function getModelSource(modelKey: ARModelKey) {
       return require('../models/hat.glb');
     case 'sofa':
       return require('../models/sofa.glb');
+    case 'a_table':
+      return require('../models/a_table.glb');
+    case 'arm_chair_furniture':
+      return require('../models/arm_chair__furniture.glb');
+    case 'armchair':
+      return require('../models/armchair.glb');
+    case 'bath_with_sink':
+      return require('../models/bath_with_sink.glb');
+    case 'bathroom_sink_cabinet':
+      return require('../models/bathroom_sink_cabinet.glb');
+    case 'bathroom_sink':
+      return require('../models/bathroom_sink.glb');
+    case 'bed':
+      return require('../models/bed.glb');
+    case 'bed1':
+      return require('../models/bed(1).glb');
+    case 'bed2':
+      return require('../models/bed2.glb');
+    case 'camera_canon_eos_400d':
+      return require('../models/camera_canon_eos_400d.glb');
+    case 'canon_at_1_retro_camera':
+      return require('../models/canon_at-1_retro_camera.glb');
+    case 'chair':
+      return require('../models/chair.glb');
+    case 'chair1':
+      return require('../models/chair(1).glb');
+    case 'chair2':
+      return require('../models/chair(2).glb');
+    case 'chesterfield_sofa':
+      return require('../models/chesterfield-sofa.glb');
+    case 'console_table':
+      return require('../models/console_table.glb');
+    case 'cover_chair':
+      return require('../models/cover_chair.glb');
+    case 'dae_bilora_bella_46_camera_game_ready_asset':
+      return require('../models/dae_-_bilora_bella_46_camera_-_game_ready_asset.glb');
+    case 'desk_lamp':
+      return require('../models/desk_lamp.glb');
+    case 'gameboy':
+      return require('../models/gameboy.glb');
+    case 'industrial_table':
+      return require('../models/industrial_table.glb');
+    case 'kitchen_sink':
+      return require('../models/kitchen_sink.glb');
+    case 'laptop':
+      return require('../models/laptop.glb');
+    case 'laptop1':
+      return require('../models/laptop(1).glb');
+    case 'laptop2':
+      return require('../models/laptop(2).glb');
+    case 'laptop3':
+      return require('../models/laptop(3).glb');
+    case 'laptop4':
+      return require('../models/laptop(4).glb');
+    case 'lowpoly_old_table':
+      return require('../models/lowpoly_old_table.glb');
+    case 'mahogany_table':
+      return require('../models/mahogany_table.glb');
+    case 'mid_century_lounge_chair':
+      return require('../models/mid_century_lounge_chair.glb');
+    case 'modern_sofa':
+      return require('../models/modern__sofa.glb');
+    case 'office_chair_gaming_chair':
+      return require('../models/office chair gaming chair.glb');
+    case 'ps5':
+      return require('../models/ps5.glb');
+    case 'rustic_chair':
+      return require('../models/rustic_chair.glb');
+    case 'sink':
+      return require('../models/sink.glb');
+    case 'sink1':
+      return require('../models/sink(1).glb');
+    case 'sofa_chair':
+      return require('../models/sofa_chair.glb');
+    case 'sofa_pink':
+      return require('../models/sofa_pink.glb');
+    case 'sofa_single':
+      return require('../models/sofa_single.glb');
+    case 'sofa1':
+      return require('../models/sofa(1).glb');
+    case 'soviet_furniture':
+      return require('../models/soviet_furniture.glb');
+    case 'steam_deck_console':
+      return require('../models/steam_deck_console.glb');
+    case 'table_furniture':
+      return require('../models/table_furniture.glb');
+    case 'table_lamp_01':
+      return require('../models/table_lamp_01.glb');
+    case 'table_lamp':
+      return require('../models/table_lamp.glb');
+    case 'table':
+      return require('../models/table.glb');
+    case 'table1':
+      return require('../models/table(1).glb');
+    case 'wii_console':
+      return require('../models/wii_console.glb');
+    case 'wooden_sofa':
+      return require('../models/wooden_sofa.glb');
+    case 'xbox_controller':
+      return require('../models/xbox_controller.glb');
+    case 'xbox_series_x_console':
+      return require('../models/xbox_series_x_console.glb');
     case 'shoes':
     default:
       return require('../models/shoes.glb');
@@ -67,6 +228,12 @@ export const ModelPlacementARScene = (props: Props) => {
   const modelKey: ARModelKey = props?.arSceneNavigator?.viroAppProps?.modelKey ?? 'shoes';
   const modelPosition: [number, number, number] =
     props?.arSceneNavigator?.viroAppProps?.modelPosition ?? DEFAULT_POS;
+  const modelRotationY: number =
+    Number(props?.arSceneNavigator?.viroAppProps?.modelRotationY ?? 0) || 0;
+  const modelScaleMultiplier: number = Math.max(
+    0.25,
+    Math.min(4, Number(props?.arSceneNavigator?.viroAppProps?.modelScaleMultiplier ?? 1) || 1),
+  );
 
   const resetPlaneSelectionKey = props?.arSceneNavigator?.viroAppProps?.resetPlaneSelectionKey ?? 0;
   const placeRequestKey = props?.arSceneNavigator?.viroAppProps?.placeRequestKey ?? 0;
@@ -74,7 +241,6 @@ export const ModelPlacementARScene = (props: Props) => {
   // Lock plane detection after a plane is selected to reduce jitter from plane refinement.
   const [planeLocked, setPlaneLocked] = useState<boolean>(false);
   const lastResetKeyRef = useRef<number>(resetPlaneSelectionKey);
-  const planeSelectorRef = useRef<any>(null);
   const arSceneRef = useRef<any>(null);
   const modelRef = useRef<any>(null);
   const placedNodeRef = useRef<any>(null);
@@ -114,8 +280,6 @@ export const ModelPlacementARScene = (props: Props) => {
     setPreviewPos(null);
     setPreviewStable(false);
     previewHistoryRef.current = [];
-    // Allow user to select a new plane.
-    planeSelectorRef.current?.reset?.();
   }, [resetPlaneSelectionKey]);
 
   const lastPlaceKeyRef = useRef<number>(placeRequestKey);
@@ -132,78 +296,24 @@ export const ModelPlacementARScene = (props: Props) => {
           return;
         }
 
-        // Prefer the continuously computed preview position if we have one.
-        if (previewPos) {
-          lastPosRef.current = previewPos;
-          props?.arSceneNavigator?.viroAppProps?.onModelPositionChange?.(previewPos);
-          setPlaneLocked(true);
+        // Place button is the single source of truth: require a surface from the reticle.
+        if (!previewPos) {
+          props?.arSceneNavigator?.viroAppProps?.onPlacementError?.(
+            'No surface found yet. Move your camera to scan until the reticle appears.',
+          );
           return;
         }
 
-        // Fallback: Figment-style placement: ray cast from camera forward; pick best hit result.
-        const orientation = await scene.getCameraOrientationAsync();
-        const results = await scene.performARHitTestWithRay(orientation.forward);
-
-        const origin: [number, number, number] = Array.isArray(orientation?.position)
-          ? [orientation.position[0], orientation.position[1], orientation.position[2]]
-          : DEFAULT_POS;
-        const forward: [number, number, number] = Array.isArray(orientation?.forward)
-          ? [orientation.forward[0], orientation.forward[1], orientation.forward[2]]
-          : [0, 0, -1];
-
-        // Default: a bit in front of the camera.
-        let newPosition: [number, number, number] = [
-          origin[0] + forward[0] * 1.2,
-          origin[1] + forward[1] * 1.2,
-          origin[2] + forward[2] * 1.2,
-        ];
-
-        if (Array.isArray(results) && results.length > 0) {
-          const isGoodType = (t: any) =>
-            t === 'ExistingPlaneUsingExtent' || t === 'ExistingPlane' || t === 'FeaturePoint';
-
-          const distance = (a: [number, number, number], b: [number, number, number]) =>
-            Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
-
-          // Prefer plane hits; fallback to feature points only if needed.
-          const preferred = ['ExistingPlaneUsingExtent', 'ExistingPlane', 'FeaturePoint'];
-          let found: [number, number, number] | null = null;
-          for (const pref of preferred) {
-            for (const r of results) {
-              if (!isGoodType(r?.type) || r?.type !== pref) {
-                continue;
-              }
-              const p = r?.transform?.position;
-              if (!Array.isArray(p) || p.length < 3) {
-                continue;
-              }
-              const hitPos: [number, number, number] = [Number(p[0]), Number(p[1]), Number(p[2])];
-              if (hitPos.some((n) => !Number.isFinite(n))) {
-                continue;
-              }
-              const d = distance(hitPos, origin);
-              // Dynamic max distance: large models shouldn't be placed too far away (error becomes very visible).
-              const maxDist = Math.max(
-                3,
-                Math.min(10, 10 * (0.8 / Math.max(modelMetricsRef.current.footprint, 0.1))),
-              );
-              if (d > 0.2 && d < maxDist) {
-                found = hitPos;
-                break;
-              }
-            }
-            if (found) {
-              break;
-            }
-          }
-          if (found) {
-            newPosition = found;
-          }
+        // Optional: require stability for large models (prevents “placed but wrong” far away).
+        if (!previewStable && modelMetricsRef.current.footprint > 0.6) {
+          props?.arSceneNavigator?.viroAppProps?.onPlacementError?.(
+            'Surface not stable yet. Keep scanning until the reticle stabilizes, then press Place.',
+          );
+          return;
         }
 
-        lastPosRef.current = newPosition;
-        props?.arSceneNavigator?.viroAppProps?.onModelPositionChange?.(newPosition);
-        // Consider placement "locked" (we can pause plane anchor updates to reduce jitter).
+        lastPosRef.current = previewPos;
+        props?.arSceneNavigator?.viroAppProps?.onModelPositionChange?.(previewPos);
         setPlaneLocked(true);
       } catch {
         // ignore placement failures; user can try again
@@ -211,13 +321,17 @@ export const ModelPlacementARScene = (props: Props) => {
     };
 
     run();
-  }, [placeRequestKey, previewPos, props]);
+  }, [placeRequestKey, previewPos, previewStable, props]);
 
   const pickBestHit = useCallback((results: any, cameraPos?: [number, number, number]) => {
     if (!Array.isArray(results) || results.length === 0) {
       return null;
     }
-    const preferred = ['ExistingPlaneUsingExtent', 'ExistingPlane', 'FeaturePoint'];
+    // If the model is "large", don't allow FeaturePoint fallback; it causes visible scale/pose errors.
+    const allowFeaturePoints = modelMetricsRef.current.footprint <= 0.6;
+    const preferred = allowFeaturePoints
+      ? ['ExistingPlaneUsingExtent', 'ExistingPlane', 'FeaturePoint']
+      : ['ExistingPlaneUsingExtent', 'ExistingPlane'];
     for (const pref of preferred) {
       for (const r of results) {
         if (r?.type !== pref) {
@@ -298,43 +412,6 @@ export const ModelPlacementARScene = (props: Props) => {
     [pickBestHit, planeLocked],
   );
 
-  const extractCenter = useCallback((planeUpdateMap: any): [number, number, number] | null => {
-    const c = planeUpdateMap?.center ?? planeUpdateMap?.position ?? planeUpdateMap?.anchorCenter;
-    if (Array.isArray(c) && c.length >= 3 && c.every((n) => typeof n === 'number')) {
-      return [c[0], c[1], c[2]];
-    }
-    return null;
-  }, []);
-
-  const isValidPlane = useCallback((planeUpdateMap: any) => {
-    const width = planeUpdateMap?.width;
-    const height = planeUpdateMap?.height;
-    if (typeof width !== 'number' || typeof height !== 'number') {
-      return false;
-    }
-    // Dynamic min plane: large models need larger plane extents to look "correct" and reduce drift.
-    const minPlane = Math.max(0.05, modelMetricsRef.current.footprint * 0.6);
-    return width >= minPlane && height >= minPlane;
-  }, []);
-
-  const onPlaneSelected = useCallback(
-    (planeUpdateMap: unknown) => {
-      const map = planeUpdateMap as any;
-      // Prefer the hit-test reticle (world space). Plane selector center is plane-local and can drift.
-      const chosen = previewPos ?? extractCenter(map);
-      if (!chosen || !isValidPlane(map)) {
-        // Ignore accidental taps on "empty" quads before a real plane is ready.
-        return;
-      }
-
-      lastPosRef.current = chosen;
-      props?.arSceneNavigator?.viroAppProps?.onModelPositionChange?.(chosen);
-      setPlaneLocked(true);
-      props?.arSceneNavigator?.viroAppProps?.onPlaneSelected?.(planeUpdateMap);
-    },
-    [extractCenter, isValidPlane, previewPos, props],
-  );
-
   const onDrag = useCallback(
     (dragToPos: any) => {
       if (!planeLocked) {
@@ -409,17 +486,15 @@ export const ModelPlacementARScene = (props: Props) => {
       const centerX = (minX + maxX) / 2;
       const centerZ = (minZ + maxZ) / 2;
 
-      // Scale any model to a reasonable footprint so far-plane placement is less error-prone.
+      // Real-size mode: keep original model scale, just compute its physical footprint for gating placement.
       const sizeX = Math.max(0.0001, maxX - minX);
       const sizeZ = Math.max(0.0001, maxZ - minZ);
       const footprint = Math.max(sizeX, sizeZ);
-      const targetMeters = 0.8;
-      const s = targetMeters / footprint;
 
       const next: ModelMetrics = {
-        scale: [s, s, s],
+        scale: [1, 1, 1],
         localOffset: [-centerX, -minY, -centerZ],
-        footprint: footprint * s,
+        footprint,
       };
       modelMetricsRef.current = next;
       setModelMetrics(next);
@@ -456,35 +531,31 @@ export const ModelPlacementARScene = (props: Props) => {
         </ViroNode>
       )}
 
-      {!planeLocked ? (
-        // Scanning mode: show tappable plane candidates to help the user "confirm" a surface.
-        // Note: we don't render the model inside the plane anchor anymore; placed models render in world space
-        // to reduce drifting as plane anchors refine.
-        <ViroARPlaneSelector
-          ref={planeSelectorRef}
-          alignment="Horizontal"
-          maxPlanes={15}
-          minHeight={0.05}
-          minWidth={0.05}
-          onPlaneSelected={onPlaneSelected}
-        />
-      ) : (
+      {planeLocked && (
         // Placed mode: render in world space (not parented to a plane anchor) to reduce drift.
-        <ViroNode ref={placedNodeRef} position={modelPosition}>
+        <ViroNode
+          ref={placedNodeRef}
+          position={modelPosition}
+          dragType="FixedToPlane"
+          dragPlane={{
+            // Keep the drag plane horizontal at the model's current Y.
+            planePoint: [0, modelPosition[1], 0],
+            planeNormal: [0, 1, 0],
+            maxDistance: 20,
+          }}
+          onDrag={onDrag}
+        >
           <Viro3DObject
             ref={modelRef}
             source={source}
             type="GLB"
             position={modelMetrics.localOffset}
-            scale={modelMetrics.scale}
-            rotation={[0, 0, 0]}
-            dragType="FixedToPlane"
-            dragPlane={{
-              planePoint: modelPosition,
-              planeNormal: [0, 1, 0],
-              maxDistance: 20,
-            }}
-            onDrag={onDrag}
+            scale={[
+              modelMetrics.scale[0] * modelScaleMultiplier,
+              modelMetrics.scale[1] * modelScaleMultiplier,
+              modelMetrics.scale[2] * modelScaleMultiplier,
+            ]}
+            rotation={[0, modelRotationY, 0]}
             onLoadEnd={applyBoundingBoxCorrections}
           />
         </ViroNode>
