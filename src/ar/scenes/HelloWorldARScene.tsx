@@ -21,12 +21,12 @@ export const HelloWorldARScene = (props: Props) => {
       onTrackingUpdated={(state, reason) => {
         props?.arSceneNavigator?.viroAppProps?.onTrackingUpdate?.(state, reason);
       }}
-      displayPointCloud={{ maxPoints: 1000 }}
+      anchorDetectionTypes={['PlanesHorizontal']}
     >
       <ViroAmbientLight color="#ffffff" intensity={600} />
 
       {/* Detect a plane and place the text on it */}
-      <ViroARPlaneSelector minHeight={0.1} minWidth={0.1}>
+      <ViroARPlaneSelector alignment="Horizontal" maxPlanes={3} minHeight={0.2} minWidth={0.2}>
         <ViroText
           text="HELLO WORLD"
           position={[0, 0, 0]}

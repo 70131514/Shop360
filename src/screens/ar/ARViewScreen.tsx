@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   PermissionsAndroid,
@@ -20,7 +20,7 @@ export const ARViewScreen = () => {
   const route = useRoute<any>();
 
   // Keep params optional (ProductDetails passes productId, older code expected product).
-  // This screen currently only renders a demo AR scene ("HELLO WORLD").
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _params = route?.params ?? {};
 
   const [cameraGranted, setCameraGranted] = useState<boolean>(Platform.OS === 'ios');
@@ -30,8 +30,14 @@ export const ARViewScreen = () => {
   );
   const [trackingState, setTrackingState] = useState<string>('unknown');
   const [trackingReason, setTrackingReason] = useState<string>('');
+  const lastTrackingUpdateMsRef = useRef<number>(0);
+  const lastTrackingStateRef = useRef<string>('unknown');
+  const lastTrackingReasonRef = useRef<string>('');
   const [modelKey, setModelKey] = useState<ARModelKey>('shoes');
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
+  const [resetPlaneSelectionKey, setResetPlaneSelectionKey] = useState<number>(0);
+  const [planeLocked, setPlaneLocked] = useState<boolean>(false);
+  const [placeRequestKey, setPlaceRequestKey] = useState<number>(0);
 
   const refreshCameraPermissionState = useCallback(async () => {
     if (Platform.OS !== 'android') {
@@ -90,12 +96,37 @@ export const ARViewScreen = () => {
     () => ({
       modelKey,
       modelPosition,
+      resetPlaneSelectionKey,
+      placeRequestKey,
       onTrackingUpdate: (state: any, reason: any) => {
-        setTrackingState(String(state));
-        setTrackingReason(String(reason ?? ''));
+        const nextState = String(state);
+        const nextReason = String(reason ?? '');
+        const now = Date.now();
+
+        // Throttle tracking state updates to avoid excessive rerenders that can cause
+        // large objects to appear to "drift" (position prop gets re-applied frequently).
+        if (
+          now - lastTrackingUpdateMsRef.current < 250 &&
+          nextState === lastTrackingStateRef.current &&
+          nextReason === lastTrackingReasonRef.current
+        ) {
+          return;
+        }
+
+        lastTrackingUpdateMsRef.current = now;
+        lastTrackingStateRef.current = nextState;
+        lastTrackingReasonRef.current = nextReason;
+        setTrackingState(nextState);
+        setTrackingReason(nextReason);
+      },
+      onPlaneSelected: () => {
+        setPlaneLocked(true);
+      },
+      onModelPositionChange: (pos: [number, number, number]) => {
+        setModelPosition(pos);
       },
     }),
-    [modelKey, modelPosition],
+    [modelKey, modelPosition, resetPlaneSelectionKey, placeRequestKey],
   );
 
   const MOVE_STEP = 0.05; // 5cm per step
@@ -104,9 +135,15 @@ export const ARViewScreen = () => {
     (axis: 'x' | 'y' | 'z', direction: 1 | -1) => {
       setModelPosition((prev) => {
         const [x, y, z] = prev;
-        if (axis === 'x') return [x + direction * MOVE_STEP, y, z];
-        if (axis === 'y') return [x, y + direction * MOVE_STEP, z];
-        if (axis === 'z') return [x, y, z + direction * MOVE_STEP];
+        if (axis === 'x') {
+          return [x + direction * MOVE_STEP, y, z];
+        }
+        if (axis === 'y') {
+          return [x, y + direction * MOVE_STEP, z];
+        }
+        if (axis === 'z') {
+          return [x, y, z + direction * MOVE_STEP];
+        }
         return prev;
       });
     },
@@ -115,6 +152,17 @@ export const ARViewScreen = () => {
 
   const resetPosition = useCallback(() => {
     setModelPosition([0, 0, 0]);
+  }, []);
+
+  const resetPlane = useCallback(() => {
+    setPlaneLocked(false);
+    resetPosition();
+    setResetPlaneSelectionKey((k) => k + 1);
+  }, [resetPosition]);
+
+  const placeAtCenter = useCallback(() => {
+    // Triggers Figment-style hit test placement from within the AR scene.
+    setPlaceRequestKey((k) => k + 1);
   }, []);
 
   return (
@@ -129,12 +177,10 @@ export const ARViewScreen = () => {
       ) : (
         <View style={styles.permissionContainer}>
           <Text style={styles.permissionTitle}>Camera access required</Text>
-          <Text style={styles.permissionSubtitle}>
-            Please allow camera permission to use AR.
-          </Text>
+          <Text style={styles.permissionSubtitle}>Please allow camera permission to use AR.</Text>
           <Text style={styles.permissionDebug}>Status: {permissionStatus}</Text>
           <TouchableOpacity
-            style={[styles.permissionButton, { opacity: requesting ? 0.6 : 1 }]}
+            style={[styles.permissionButton, requesting && styles.permissionButtonDisabled]}
             onPress={requestCameraPermission}
             disabled={requesting}
             activeOpacity={0.9}
@@ -172,18 +218,31 @@ export const ARViewScreen = () => {
         </View>
 
         <View style={styles.controls} pointerEvents="box-none">
-          <Text style={styles.instructionText}>Move your camera to find a flat surface.</Text>
+          <Text style={styles.instructionText}>
+            {planeLocked
+              ? 'Drag to adjust placement, or reset to pick a new surface.'
+              : 'Move your camera to scan. When the reticle appears, press Place (works even before a full plane locks).'}
+          </Text>
           <Text style={styles.debugText}>
             Tracking: {trackingState}
             {trackingReason ? ` (${trackingReason})` : ''}
           </Text>
+          {trackingReason.includes('INSUFFICIENT_FEATURES') && (
+            <Text style={styles.debugHint}>
+              Tip: White/reflective floors often lack visual features. Try brighter light, move
+              slower, and aim at edges (tile grout lines), furniture, or a textured object to help
+              plane detection.
+            </Text>
+          )}
           <View style={styles.modelRow}>
             <TouchableOpacity
               style={[styles.modelChip, modelKey === 'shoes' && styles.modelChipActive]}
               onPress={() => setModelKey('shoes')}
               activeOpacity={0.85}
             >
-              <Text style={[styles.modelChipText, modelKey === 'shoes' && styles.modelChipTextActive]}>
+              <Text
+                style={[styles.modelChipText, modelKey === 'shoes' && styles.modelChipTextActive]}
+              >
                 Shoes
               </Text>
             </TouchableOpacity>
@@ -192,8 +251,21 @@ export const ARViewScreen = () => {
               onPress={() => setModelKey('hat')}
               activeOpacity={0.85}
             >
-              <Text style={[styles.modelChipText, modelKey === 'hat' && styles.modelChipTextActive]}>
+              <Text
+                style={[styles.modelChipText, modelKey === 'hat' && styles.modelChipTextActive]}
+              >
                 Hat
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modelChip, modelKey === 'sofa' && styles.modelChipActive]}
+              onPress={() => setModelKey('sofa')}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[styles.modelChipText, modelKey === 'sofa' && styles.modelChipTextActive]}
+              >
+                Sofa
               </Text>
             </TouchableOpacity>
           </View>
@@ -201,6 +273,14 @@ export const ARViewScreen = () => {
           {/* Position Controls */}
           <View style={styles.positionControls}>
             <Text style={styles.positionLabel}>Position Controls</Text>
+            <TouchableOpacity
+              style={styles.placeButton}
+              onPress={placeAtCenter}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="locate" size={16} color="#fff" />
+              <Text style={styles.resetButtonText}>Place</Text>
+            </TouchableOpacity>
             <View style={styles.positionGrid}>
               {/* Up/Down (Y axis) */}
               <View style={styles.positionColumn}>
@@ -262,9 +342,21 @@ export const ARViewScreen = () => {
                 </TouchableOpacity>
               </View>
             </View>
-            <TouchableOpacity style={styles.resetButton} onPress={resetPosition} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={resetPosition}
+              activeOpacity={0.7}
+            >
               <Ionicons name="refresh" size={16} color="#fff" />
               <Text style={styles.resetButtonText}>Reset Position</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.resetPlaneButton}
+              onPress={resetPlane}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="scan" size={16} color="#fff" />
+              <Text style={styles.resetButtonText}>Reset Plane</Text>
             </TouchableOpacity>
           </View>
 
@@ -404,6 +496,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
+  placeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    gap: 8,
+  },
   resetButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -415,6 +520,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginTop: 10,
+    gap: 6,
+  },
+  resetPlaneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
     gap: 6,
   },
   resetButtonText: {
@@ -454,6 +572,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     minWidth: 180,
     alignItems: 'center',
+  },
+  permissionButtonDisabled: {
+    opacity: 0.6,
   },
   permissionButtonSecondary: {
     marginTop: 10,
