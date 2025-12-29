@@ -17,7 +17,6 @@ export type ARModelKey =
   | 'armchair'
   | 'bath_with_sink'
   | 'bathroom_sink_cabinet'
-  | 'bathroom_sink'
   | 'bed'
   | 'bed1'
   | 'bed2'
@@ -126,8 +125,6 @@ function getModelSource(modelKey: ARModelKey) {
       return require('../models/bath_with_sink.glb');
     case 'bathroom_sink_cabinet':
       return require('../models/bathroom_sink_cabinet.glb');
-    case 'bathroom_sink':
-      return require('../models/bathroom_sink.glb');
     case 'bed':
       return require('../models/bed.glb');
     case 'bed1':

@@ -201,12 +201,6 @@ export const AR_MODELS: ARModelInfo[] = [
     description: 'Bathroom fixture',
   },
   {
-    key: 'bathroom_sink',
-    name: 'Bathroom Sink',
-    icon: 'water',
-    description: 'Bathroom sink',
-  },
-  {
     key: 'bathroom_sink_cabinet',
     name: 'Sink Cabinet',
     icon: 'water',
