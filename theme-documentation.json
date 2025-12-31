@@ -1,0 +1,202 @@
+{
+  "appName": "Shop360",
+  "description": "Complete theme documentation for Shop360 mobile app - use this to recreate the same theme for web",
+  "lastUpdated": "2024",
+  
+  "colors": {
+    "light": {
+      "background": "#FFFFFF",
+      "surface": "#F5F5F5",
+      "primary": "#000000",
+      "secondary": "#666666",
+      "accent": "#333333",
+      "border": "#E0E0E0",
+      "text": "#000000",
+      "textSecondary": "#666666",
+      "tabBar": "#FFFFFF",
+      "tabBarBorder": "#E0E0E0",
+      "card": "#FFFFFF",
+      "cardBorder": "#E0E0E0",
+      "icon": "#000000",
+      "iconInactive": "#666666",
+      "tint": "#0a7ea4",
+      "tabIconDefault": "#687076",
+      "tabIconSelected": "#0a7ea4",
+      "error": "#FF3B30",
+      "success": "#34C759",
+      "overlay": "rgba(0,0,0,0.5)"
+    },
+    "dark": {
+      "background": "#000000",
+      "surface": "#1A1A1A",
+      "primary": "#FFFFFF",
+      "secondary": "#999999",
+      "accent": "#CCCCCC",
+      "border": "#333333",
+      "text": "#FFFFFF",
+      "textSecondary": "#999999",
+      "tabBar": "#000000",
+      "tabBarBorder": "#333333",
+      "card": "#1A1A1A",
+      "cardBorder": "#333333",
+      "icon": "#FFFFFF",
+      "iconInactive": "#666666",
+      "tint": "#FFFFFF",
+      "tabIconDefault": "#9BA1A6",
+      "tabIconSelected": "#FFFFFF",
+      "error": "#FF3B30",
+      "success": "#34C759",
+      "overlay": "rgba(0,0,0,0.5)"
+    }
+  },
+  
+  "typography": {
+    "fontFamily": {
+      "regular": "System (San Francisco on iOS, Roboto on Android)",
+      "medium": "System (San Francisco on iOS, Roboto on Android)",
+      "bold": "System (San Francisco on iOS, Roboto on Android)",
+      "webRecommendation": {
+        "regular": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
+        "medium": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
+        "bold": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif"
+      }
+    },
+    "fontSizes": {
+      "default": {
+        "fontSize": 16,
+        "lineHeight": 24,
+        "fontWeight": "400"
+      },
+      "defaultSemiBold": {
+        "fontSize": 16,
+        "lineHeight": 24,
+        "fontWeight": "600"
+      },
+      "title": {
+        "fontSize": 32,
+        "lineHeight": 32,
+        "fontWeight": "bold"
+      },
+      "subtitle": {
+        "fontSize": 20,
+        "lineHeight": "auto",
+        "fontWeight": "bold"
+      },
+      "link": {
+        "fontSize": 16,
+        "lineHeight": 30,
+        "color": "#0a7ea4"
+      }
+    },
+    "fontSizePresets": {
+      "xs": {
+        "multiplier": 0.85,
+        "description": "Extra Small"
+      },
+      "s": {
+        "multiplier": 0.93,
+        "description": "Small"
+      },
+      "m": {
+        "multiplier": 1.0,
+        "description": "Medium (default)"
+      },
+      "l": {
+        "multiplier": 1.1,
+        "description": "Large"
+      },
+      "xl": {
+        "multiplier": 1.22,
+        "description": "Extra Large"
+      }
+    }
+  },
+  
+  "spacing": {
+    "xs": 4,
+    "s": 8,
+    "m": 16,
+    "l": 24,
+    "xl": 32,
+    "xxl": 48,
+    "unit": "px"
+  },
+  
+  "shadows": {
+    "small": {
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "width": 0,
+        "height": 2
+      },
+      "shadowOpacity": 0.05,
+      "shadowRadius": 3.84,
+      "elevation": 2,
+      "webCSS": "box-shadow: 0px 2px 3.84px rgba(0, 0, 0, 0.05);"
+    },
+    "medium": {
+      "shadowColor": "#000",
+      "shadowOffset": {
+        "width": 0,
+        "height": 4
+      },
+      "shadowOpacity": 0.1,
+      "shadowRadius": 5.46,
+      "elevation": 4,
+      "webCSS": "box-shadow: 0px 4px 5.46px rgba(0, 0,0, 0.1);"
+    }
+  },
+  
+  "borderRadius": {
+    "note": "Check individual components for specific border radius values"
+  },
+  
+  "webImplementation": {
+    "cssVariables": {
+      "light": {
+        "--bg-primary": "#FFFFFF",
+        "--bg-surface": "#F5F5F5",
+        "--color-primary": "#000000",
+        "--color-secondary": "#666666",
+        "--color-accent": "#333333",
+        "--color-border": "#E0E0E0",
+        "--color-text": "#000000",
+        "--color-text-secondary": "#666666",
+        "--color-icon": "#000000",
+        "--color-icon-inactive": "#666666",
+        "--color-tint": "#0a7ea4",
+        "--color-error": "#FF3B30",
+        "--color-success": "#34C759",
+        "--spacing-xs": "4px",
+        "--spacing-s": "8px",
+        "--spacing-m": "16px",
+        "--spacing-l": "24px",
+        "--spacing-xl": "32px",
+        "--spacing-xxl": "48px"
+      },
+      "dark": {
+        "--bg-primary": "#000000",
+        "--bg-surface": "#1A1A1A",
+        "--color-primary": "#FFFFFF",
+        "--color-secondary": "#999999",
+        "--color-accent": "#CCCCCC",
+        "--color-border": "#333333",
+        "--color-text": "#FFFFFF",
+        "--color-text-secondary": "#999999",
+        "--color-icon": "#FFFFFF",
+        "--color-icon-inactive": "#666666",
+        "--color-tint": "#FFFFFF",
+        "--color-error": "#FF3B30",
+        "--color-success": "#34C759",
+        "--spacing-xs": "4px",
+        "--spacing-s": "8px",
+        "--spacing-m": "16px",
+        "--spacing-l": "24px",
+        "--spacing-xl": "32px",
+        "--spacing-xxl": "48px"
+      }
+    },
+    "exampleCSS": ":root[data-theme='light'] { /* Use light theme CSS variables */ } :root[data-theme='dark'] { /* Use dark theme CSS variables */ }"
+  }
+}
+
