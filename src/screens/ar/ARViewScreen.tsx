@@ -15,9 +15,7 @@ import { ViroARSceneNavigator } from '@viro-community/react-viro';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AppText as Text } from '../../components/common/AppText';
 import { SPACING } from '../../theme';
-import { ModelPlacementARScene, type ARModelKey } from '../../ar/scenes/ModelPlacementARScene';
-import { ModelSelectionModal } from '../../components/ar/ModelSelectionModal';
-import { getModelInfo } from '../../ar/models/modelConfig';
+import { ModelPlacementARScene } from '../../ar/scenes/ModelPlacementARScene';
 import { getProductById as getStoreProductById } from '../../services/productCatalogService';
 
 export const ARViewScreen = () => {
@@ -39,8 +37,9 @@ export const ARViewScreen = () => {
   const lastTrackingUpdateMsRef = useRef<number>(0);
   const lastTrackingStateRef = useRef<string>('unknown');
   const lastTrackingReasonRef = useRef<string>('');
-  const [modelKey, setModelKey] = useState<ARModelKey>('shoes');
   const [remoteModelUrl, setRemoteModelUrl] = useState<string>('');
+  const [productName, setProductName] = useState<string>('');
+  const [productLoaded, setProductLoaded] = useState<boolean>(false);
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
   const [modelRotationY, setModelRotationY] = useState<number>(0);
   const [modelScaleMultiplier, setModelScaleMultiplier] = useState<number>(1);
@@ -48,7 +47,6 @@ export const ARViewScreen = () => {
   const [planeLocked, setPlaneLocked] = useState<boolean>(false);
   const [placeRequestKey, setPlaceRequestKey] = useState<number>(0);
   const [uiMinimized, setUiMinimized] = useState<boolean>(false);
-  const [modelSelectionVisible, setModelSelectionVisible] = useState<boolean>(false);
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const controlsTranslateY = useRef(new Animated.Value(0)).current;
 
@@ -64,11 +62,15 @@ export const ARViewScreen = () => {
       .then((p) => {
         if (alive) {
           setRemoteModelUrl(String(p?.modelUrl ?? ''));
+          setProductName(String(p?.title ?? ''));
+          setProductLoaded(true);
         }
       })
       .catch(() => {
         if (alive) {
           setRemoteModelUrl('');
+          setProductName('');
+          setProductLoaded(true);
         }
       });
     return () => {
@@ -131,7 +133,6 @@ export const ARViewScreen = () => {
   const initialScene = useMemo(() => ({ scene: ModelPlacementARScene }), []);
   const viroAppProps = useMemo(
     () => ({
-      modelKey,
       modelUrl: remoteModelUrl || undefined,
       modelPosition,
       modelRotationY,
@@ -172,7 +173,6 @@ export const ARViewScreen = () => {
       },
     }),
     [
-      modelKey,
       remoteModelUrl,
       modelPosition,
       modelRotationY,
@@ -265,6 +265,35 @@ export const ARViewScreen = () => {
       }),
     ]).start();
   }, [uiMinimized, controlsOpacity, controlsTranslateY]);
+
+  // Show message if no model URL is available (only after product has loaded)
+  if (productLoaded && !remoteModelUrl && productId) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="close" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.noModelContainer}>
+            <Ionicons name="cube-outline" size={64} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.noModelTitle}>No AR Model Available</Text>
+            <Text style={styles.noModelText}>
+              This product doesn't have an AR model yet. Check back later!
+            </Text>
+            <TouchableOpacity
+              style={styles.noModelButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.noModelButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -359,23 +388,20 @@ export const ARViewScreen = () => {
               )}
             </View>
 
+            {/* Product Info */}
+            {productName && (
+              <View style={styles.productInfoCard}>
+                <Ionicons name="cube" size={16} color="rgba(255,255,255,0.9)" />
+                <Text style={styles.productInfoText} numberOfLines={1}>
+                  {productName}
+                </Text>
+              </View>
+            )}
+
             {/* Quick Instruction */}
             <Text style={styles.instructionText}>
               {planeLocked ? 'Drag to adjust placement' : 'Move camera to scan, then tap Place'}
             </Text>
-
-            {/* Model Selection Button */}
-            <TouchableOpacity
-              style={styles.modelSelectButton}
-              onPress={() => setModelSelectionVisible(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="cube" size={18} color="#fff" />
-              <Text style={styles.modelSelectButtonText}>
-                {getModelInfo(modelKey)?.name || 'Select Model'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
-            </TouchableOpacity>
 
             {/* Main Controls Panel */}
             <View style={styles.controlsPanel}>
@@ -550,14 +576,6 @@ export const ARViewScreen = () => {
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
-
-      {/* Model Selection Modal */}
-      <ModelSelectionModal
-        visible={modelSelectionVisible}
-        selectedModel={modelKey}
-        onSelectModel={setModelKey}
-        onClose={() => setModelSelectionVisible(false)}
-      />
     </View>
   );
 };
@@ -611,7 +629,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: '75%',
+    maxHeight: '70%',
   },
   controlsScroll: {
     flex: 1,
@@ -619,12 +637,13 @@ const styles = StyleSheet.create({
   controlsContent: {
     padding: SPACING.m,
     paddingBottom: SPACING.xl,
+    gap: 4,
   },
   statusBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: SPACING.s,
+    marginBottom: SPACING.xs,
     justifyContent: 'center',
   },
   statusItem: {
@@ -648,9 +667,9 @@ const styles = StyleSheet.create({
     color: '#ff6b6b',
   },
   instructionText: {
-    color: '#fff',
-    fontSize: 13,
-    marginBottom: SPACING.m,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    marginBottom: SPACING.s,
     textAlign: 'center',
     fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.5)',
@@ -665,42 +684,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.m,
     fontStyle: 'italic',
   },
-  modelSelectButton: {
+  productInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: SPACING.m,
-    paddingVertical: SPACING.s,
-    borderRadius: 12,
-    marginBottom: SPACING.m,
     gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: SPACING.s,
   },
-  modelSelectButtonText: {
+  productInfoText: {
     flex: 1,
-    color: '#fff',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     fontWeight: '700',
   },
   controlsPanel: {
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    borderRadius: 16,
-    padding: SPACING.m,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.2)',
     backdropFilter: 'blur(10px)',
+    gap: 16,
   },
   controlSection: {
-    marginTop: SPACING.m,
+    marginTop: 0,
   },
   sectionTitle: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 8,
-    letterSpacing: 0.3,
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 10,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   controlRow: {
     flexDirection: 'row',
@@ -709,39 +729,39 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   dpad: {
-    width: 120,
-    height: 120,
+    width: 110,
+    height: 110,
     position: 'relative',
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   dpadBtn: {
     position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dpadUp: { top: 6, left: 38 },
-  dpadDown: { bottom: 6, left: 38 },
-  dpadLeft: { left: 6, top: 38 },
-  dpadRight: { right: 6, top: 38 },
+  dpadUp: { top: 5, left: 35 },
+  dpadDown: { bottom: 5, left: 35 },
+  dpadLeft: { left: 5, top: 35 },
+  dpadRight: { right: 5, top: 35 },
   dpadCenter: {
     position: 'absolute',
-    left: 38,
-    top: 38,
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    left: 35,
+    top: 35,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -795,22 +815,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   iconBtnText: {
-    color: '#fff',
-    fontSize: 10,
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 11,
     fontWeight: '700',
   },
   footerActions: {
-    marginTop: SPACING.m,
+    marginTop: 8,
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   secondaryBtn: {
     flex: 1,
@@ -818,11 +838,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   secondaryBtnText: {
     color: 'rgba(255,255,255,0.9)',
@@ -833,14 +853,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(59,130,246,0.8)',
+    backgroundColor: 'rgba(59,130,246,0.85)',
     borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.9)',
+    borderColor: 'rgba(59,130,246,0.95)',
     borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: SPACING.m,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginBottom: SPACING.s,
     gap: 8,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   placeButtonText: {
     color: '#fff',
@@ -900,6 +925,40 @@ const styles = StyleSheet.create({
   },
   permissionSecondaryText: {
     color: 'rgba(255,255,255,0.8)',
+    fontWeight: '700',
+  },
+  noModelContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  noModelTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  noModelText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 15,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  noModelButton: {
+    marginTop: 32,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  noModelButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '700',
   },
 });

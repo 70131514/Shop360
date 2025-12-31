@@ -95,7 +95,6 @@ ViroMaterials.createMaterials({
 type Props = {
   arSceneNavigator?: {
     viroAppProps?: {
-      modelKey?: ARModelKey;
       modelUrl?: string;
       modelPosition?: [number, number, number];
       modelRotationY?: number;
@@ -110,7 +109,16 @@ type Props = {
   };
 };
 
-function getModelSource(modelKey: ARModelKey, modelUrl?: string) {
+function getModelSource(modelUrl?: string) {
+  if (modelUrl) {
+    return { uri: modelUrl };
+  }
+  // Fallback to default model if no URL provided
+  return require('../models/shoes.glb');
+}
+
+// Legacy function kept for reference but not used
+function getModelSourceLegacy(modelKey: ARModelKey, modelUrl?: string) {
   if (modelUrl) {
     return { uri: modelUrl };
   }
@@ -226,7 +234,6 @@ function getModelSource(modelKey: ARModelKey, modelUrl?: string) {
 }
 
 export const ModelPlacementARScene = (props: Props) => {
-  const modelKey: ARModelKey = props?.arSceneNavigator?.viroAppProps?.modelKey ?? 'shoes';
   const modelUrl: string | undefined = props?.arSceneNavigator?.viroAppProps?.modelUrl;
   const modelPosition: [number, number, number] =
     props?.arSceneNavigator?.viroAppProps?.modelPosition ?? DEFAULT_POS;
@@ -247,7 +254,7 @@ export const ModelPlacementARScene = (props: Props) => {
   const modelRef = useRef<any>(null);
   const placedNodeRef = useRef<any>(null);
 
-  const source = useMemo(() => getModelSource(modelKey, modelUrl), [modelKey, modelUrl]);
+  const source = useMemo(() => getModelSource(modelUrl), [modelUrl]);
 
   // Keep a stable "last known" position for smoothing drag updates.
   const lastPosRef = useRef<[number, number, number]>(modelPosition);
@@ -270,7 +277,7 @@ export const ModelPlacementARScene = (props: Props) => {
     // Reset metrics when switching models; will be refined onLoadEnd via bounding box.
     setModelMetrics(DEFAULT_METRICS);
     modelMetricsRef.current = DEFAULT_METRICS;
-  }, [modelKey]);
+  }, [modelUrl]);
 
   useEffect(() => {
     if (lastResetKeyRef.current === resetPlaneSelectionKey) {
