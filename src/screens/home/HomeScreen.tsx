@@ -155,8 +155,11 @@ export default function HomeScreen() {
         setLoadingFeatured(false);
       },
       (err) => {
-        console.error('Error loading featured products:', err);
+        // Error is already handled in the service - just log for debugging
+        console.warn('Featured products subscription error (handled):', err);
         setLoadingFeatured(false);
+        // Set empty array on error to show empty state instead of error
+        setFeaturedProducts([]);
       },
     );
     return unsub;

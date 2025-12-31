@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import DocumentPicker from 'react-native-document-picker';
 import {
+  deleteProduct,
   generateNewProductId,
   getProductById,
   upsertProduct,
@@ -60,6 +61,7 @@ export default function AdminProductEditScreen() {
 
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -140,34 +142,54 @@ export default function AdminProductEditScreen() {
     return 'Select category';
   }, [categories.length, category, selectedCategoryName]);
 
-  const modelMetaText = useMemo(() => {
-    if (pendingModel?.name) {
-      return `Selected: ${pendingModel.name}`;
-    }
-    if (modelUrl) {
-      return 'Model uploaded';
-    }
-    return 'No model selected (AR will use default demos)';
-  }, [pendingModel?.name, modelUrl]);
-
   const pickImages = async () => {
     try {
+      const currentTotal = images.length + pendingImages.length;
+      const maxAllowed = 5;
+      const remainingSlots = maxAllowed - currentTotal;
+
+      if (remainingSlots <= 0) {
+        alert('Maximum images reached', `You can upload up to ${maxAllowed} images per product.`);
+        return;
+      }
+
       const res = await DocumentPicker.pick({
         type: [DocumentPicker.types.images],
         allowMultiSelection: true,
         copyTo: 'cachesDirectory',
       });
+
       const files: PickedLocalFile[] = res.map((r: any) => ({
         uri: r.fileCopyUri ?? r.uri,
         name: r.name,
       }));
-      setPendingImages(files);
+
+      // Limit to remaining slots
+      const filesToAdd = files.slice(0, remainingSlots);
+      if (files.length > remainingSlots) {
+        alert(
+          'Some images not added',
+          `Only ${remainingSlots} image(s) added. Maximum ${maxAllowed} images allowed.`,
+        );
+      }
+
+      setPendingImages([...pendingImages, ...filesToAdd]);
     } catch (e: any) {
       if (DocumentPicker.isCancel(e)) {
         return;
       }
       alert('Pick failed', e?.message ?? 'Could not pick images.');
     }
+  };
+
+  const removeExistingImage = (index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    setImages(newImages);
+  };
+
+  const removePendingImage = (index: number) => {
+    const newPending = pendingImages.filter((_, i) => i !== index);
+    setPendingImages(newPending);
   };
 
   const pickModel = async () => {
@@ -228,9 +250,13 @@ export default function AdminProductEditScreen() {
       return;
     }
 
-    const hasAnyImages = pendingImages.length > 0 || images.length > 0;
-    if (!hasAnyImages) {
-      alert('Missing images', 'Please pick at least one product image.');
+    const totalImages = images.length + pendingImages.length;
+    if (totalImages === 0) {
+      alert('Missing images', 'Please pick at least one product image (1-5 images required).');
+      return;
+    }
+    if (totalImages > 5) {
+      alert('Too many images', 'Maximum 5 images allowed per product.');
       return;
     }
 
@@ -238,17 +264,22 @@ export default function AdminProductEditScreen() {
       setSaving(true);
 
       // Use a stable id for Storage paths when creating a new product.
+      // This ensures all images/models are stored under the same product ID folder
       const productId = id ?? generateNewProductId();
 
-      let nextImages = images;
+      // Combine existing images with newly uploaded ones
+      let nextImages = [...images]; // Keep existing images
       if (pendingImages.length > 0) {
+        // Upload new images to Firebase Storage under images/{productId}/
         const uploaded: string[] = [];
         for (const f of pendingImages) {
           const { downloadUrl } = await uploadProductImage({ productId, file: f });
           uploaded.push(downloadUrl);
         }
-        nextImages = uploaded;
+        // Add new images to existing ones
+        nextImages = [...nextImages, ...uploaded];
       }
+      // First image becomes thumbnail
       const thumbnail = nextImages[0] ?? '';
 
       let nextModelUrl = modelUrl;
@@ -282,15 +313,62 @@ export default function AdminProductEditScreen() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!isAdmin || !id) {
+      return;
+    }
+
+    alert(
+      'Delete Product?',
+      `Are you sure you want to delete "${title || 'this product'}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await deleteProduct(id);
+              alert('Deleted', 'Product has been deleted.');
+              navigation.goBack();
+            } catch (e: any) {
+              alert('Delete failed', e?.message ?? 'Please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView
       edges={['top']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {isEdit ? 'Edit Product' : 'New Product'}
-        </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {isEdit ? 'Edit Product' : 'New Product'}
+          </Text>
+        </View>
+        {isEdit && id && (
+          <TouchableOpacity
+            style={[styles.deleteButton, { backgroundColor: '#FF3B30' }]}
+            onPress={handleDelete}
+            disabled={deleting}
+          >
+            <Ionicons name="trash-outline" size={20} color="#FFF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {!isAdmin ? (
@@ -382,55 +460,161 @@ export default function AdminProductEditScreen() {
 
           <View style={styles.assetsCard}>
             <View style={styles.assetsHeader}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Images</Text>
+              <View style={styles.flex1}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Product Images (1-5 required)
+                </Text>
+                <Text style={[styles.assetMeta, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {images.length + pendingImages.length} / 5 images
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={pickImages}
+                disabled={images.length + pendingImages.length >= 5}
                 style={[
                   styles.assetBtn,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: images.length + pendingImages.length >= 5 ? 0.5 : 1,
+                  },
                 ]}
               >
-                <Text style={[styles.assetBtnText, { color: colors.text }]}>Pick images</Text>
+                <Text style={[styles.assetBtnText, { color: colors.text }]}>Add images</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.assetPreviewRow}>
-              {(pendingImages.length > 0 ? pendingImages.map((p) => p.uri) : images)
-                .slice(0, 6)
-                .map((u) => (
-                  <Image key={u} source={{ uri: u }} style={styles.assetThumb} />
-                ))}
-              {(pendingImages.length > 0 ? pendingImages.length : images.length) > 6 && (
-                <View
-                  style={[
-                    styles.assetMore,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
-                  ]}
-                >
-                  <Text style={[styles.assetMoreText, { color: colors.textSecondary }]}>
-                    +{(pendingImages.length > 0 ? pendingImages.length : images.length) - 6}
-                  </Text>
+            {/* Existing Images (from Firestore) */}
+            {images.length > 0 && (
+              <View style={styles.imageSection}>
+                <Text style={[styles.imageSectionLabel, { color: colors.textSecondary }]}>
+                  Existing Images
+                </Text>
+                <View style={styles.assetPreviewRow}>
+                  {images.map((url, index) => (
+                    <View key={`existing-${index}`} style={styles.imageItemContainer}>
+                      <Image source={{ uri: url }} style={styles.assetThumb} />
+                      <TouchableOpacity
+                        style={[styles.removeImageBtn, { backgroundColor: '#FF3B30' }]}
+                        onPress={() => removeExistingImage(index)}
+                      >
+                        <Ionicons name="close" size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-              )}
-            </View>
+              </View>
+            )}
+
+            {/* Pending Images (newly picked, not yet uploaded) */}
+            {pendingImages.length > 0 && (
+              <View style={styles.imageSection}>
+                <Text style={[styles.imageSectionLabel, { color: colors.textSecondary }]}>
+                  New Images (will be uploaded)
+                </Text>
+                <View style={styles.assetPreviewRow}>
+                  {pendingImages.map((file, index) => (
+                    <View key={`pending-${index}`} style={styles.imageItemContainer}>
+                      <Image source={{ uri: file.uri }} style={styles.assetThumb} />
+                      <TouchableOpacity
+                        style={[styles.removeImageBtn, { backgroundColor: '#FF3B30' }]}
+                        onPress={() => removePendingImage(index)}
+                      >
+                        <Ionicons name="close" size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Empty state */}
+            {images.length === 0 && pendingImages.length === 0 && (
+              <View style={styles.emptyImageState}>
+                <Ionicons name="images-outline" size={32} color={colors.textSecondary} />
+                <Text style={[styles.emptyImageText, { color: colors.textSecondary }]}>
+                  No images selected
+                </Text>
+                <Text style={[styles.emptyImageSubtext, { color: colors.textSecondary }]}>
+                  Add 1-5 product images
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.assetsCard}>
             <View style={styles.assetsHeader}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>AR Model (.glb)</Text>
+              <View style={styles.flex1}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  AR Model (.glb) - Optional
+                </Text>
+                <Text style={[styles.assetMeta, { color: colors.textSecondary, marginTop: 2 }]}>
+                  {modelUrl || pendingModel ? '1 model' : 'No model (AR will use defaults)'}
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={pickModel}
+                disabled={!!pendingModel}
                 style={[
                   styles.assetBtn,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: pendingModel ? 0.5 : 1,
+                  },
                 ]}
               >
-                <Text style={[styles.assetBtnText, { color: colors.text }]}>Pick model</Text>
+                <Text style={[styles.assetBtnText, { color: colors.text }]}>
+                  {modelUrl ? 'Replace' : pendingModel ? 'Selected' : 'Pick model'}
+                </Text>
               </TouchableOpacity>
             </View>
-            <Text style={[styles.assetMeta, { color: colors.textSecondary }]} numberOfLines={1}>
-              {modelMetaText}
-            </Text>
+
+            {/* Show existing model */}
+            {modelUrl && !pendingModel && (
+              <View style={styles.modelPreviewContainer}>
+                <View
+                  style={[
+                    styles.modelPreview,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Ionicons name="cube" size={24} color={colors.primary} />
+                  <Text style={[styles.modelPreviewText, { color: colors.text }]} numberOfLines={1}>
+                    Model uploaded
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.removeModelBtn, { backgroundColor: '#FF3B30' }]}
+                  onPress={() => setModelUrl('')}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Show pending model */}
+            {pendingModel && (
+              <View style={styles.modelPreviewContainer}>
+                <View
+                  style={[
+                    styles.modelPreview,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Ionicons name="cube-outline" size={24} color={colors.primary} />
+                  <Text style={[styles.modelPreviewText, { color: colors.text }]} numberOfLines={1}>
+                    {pendingModel.name}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.removeModelBtn, { backgroundColor: '#FF3B30' }]}
+                  onPress={() => setPendingModel(null)}
+                >
+                  <Ionicons name="close" size={16} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <Text style={[styles.label, { color: colors.textSecondary }]}>Brand</Text>
@@ -628,8 +812,34 @@ export default function AdminProductEditScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: 16, paddingBottom: 8 },
-  title: { fontSize: 22, fontWeight: '800' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingBottom: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: { fontSize: 22, fontWeight: '800', flex: 1 },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   help: { fontSize: 13 },
   form: { padding: 16, gap: 10, paddingBottom: 40 },
@@ -666,6 +876,71 @@ const styles = StyleSheet.create({
   },
   assetMoreText: { fontSize: 12, fontWeight: '800' },
   assetMeta: { fontSize: 12, fontWeight: '600' },
+  imageSection: {
+    marginTop: 12,
+    gap: 8,
+  },
+  imageSectionLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  imageItemContainer: {
+    position: 'relative',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  emptyImageState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyImageText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyImageSubtext: {
+    fontSize: 12,
+  },
+  modelPreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  modelPreview: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  modelPreviewText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  removeModelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   picker: {
     borderWidth: 1,
     borderRadius: 12,

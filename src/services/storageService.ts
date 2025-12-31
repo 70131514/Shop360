@@ -1,4 +1,11 @@
 import storage from '@react-native-firebase/storage';
+import { getApp } from '@react-native-firebase/app';
+
+// Get the storage instance using the app instance to avoid deprecation warning
+const getStorageInstance = () => {
+  const app = getApp();
+  return storage(app);
+};
 
 function safeSegment(input: string): string {
   return String(input || '')
@@ -49,9 +56,10 @@ export async function uploadProductImage(params: {
   const objectName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${baseName}`;
   const storagePath = `images/${safeSegment(productId)}/${objectName}`;
 
-  const ref = storage().ref(storagePath);
-  await ref.putFile(normalizeLocalPath(file.uri));
-  const downloadUrl = await ref.getDownloadURL();
+  const storageInstance = getStorageInstance();
+  const storageRef = storageInstance.ref(storagePath);
+  await storageRef.putFile(normalizeLocalPath(file.uri));
+  const downloadUrl = await storageRef.getDownloadURL();
   return { downloadUrl, storagePath };
 }
 
@@ -65,8 +73,9 @@ export async function uploadProductModel(params: {
   const objectName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${baseName}`;
   const storagePath = `models/${safeSegment(productId)}/${objectName}`;
 
-  const ref = storage().ref(storagePath);
-  await ref.putFile(normalizeLocalPath(file.uri));
-  const downloadUrl = await ref.getDownloadURL();
+  const storageInstance = getStorageInstance();
+  const storageRef = storageInstance.ref(storagePath);
+  await storageRef.putFile(normalizeLocalPath(file.uri));
+  const downloadUrl = await storageRef.getDownloadURL();
   return { downloadUrl, storagePath };
 }

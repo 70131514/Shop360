@@ -44,6 +44,7 @@ interface Product {
   discountPercentage: number;
   stock: number;
   brand: string;
+  modelUrl?: string;
 }
 
 const { width } = Dimensions.get('window');
@@ -59,7 +60,7 @@ export default function ProductDetailsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user, refreshEmailVerification } = useAuth();
+  const { user, refreshEmailVerification, isAdmin } = useAuth();
   const { alert } = useAppAlert();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ export default function ProductDetailsScreen() {
         discountPercentage: p.discountPercentage,
         stock: p.stock,
         brand: p.brand,
+        modelUrl: p.modelUrl,
       };
       setProduct(mapped);
       setLoading(false);
@@ -291,7 +293,8 @@ export default function ProductDetailsScreen() {
       }),
     ]).start();
 
-    if (direction === 'next' && activeImage < product.images.length - 1) {
+    const imageCount = product.images && product.images.length > 0 ? product.images.length : 1;
+    if (direction === 'next' && activeImage < imageCount - 1) {
       setActiveImage(activeImage + 1);
     } else if (direction === 'prev' && activeImage > 0) {
       setActiveImage(activeImage - 1);
@@ -352,16 +355,26 @@ export default function ProductDetailsScreen() {
           {product.title}
         </Text>
 
-        <TouchableOpacity
-          style={[styles.headerButton, { backgroundColor: colors.surface }]}
-          onPress={toggleWishlist}
-        >
-          <Ionicons
-            name={isWishlisted ? 'heart' : 'heart-outline'}
-            size={24}
-            color={isWishlisted ? colors.primary : colors.text}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerRightButtons}>
+          {isAdmin && (
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: colors.primary, marginRight: 8 }]}
+              onPress={() => navigation.navigate('AdminProductEdit', { id: product.id })}
+            >
+              <Ionicons name="create-outline" size={22} color={colors.background} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.headerButton, { backgroundColor: colors.surface }]}
+            onPress={toggleWishlist}
+          >
+            <Ionicons
+              name={isWishlisted ? 'heart' : 'heart-outline'}
+              size={24}
+              color={isWishlisted ? colors.primary : colors.text}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -411,7 +424,7 @@ export default function ProductDetailsScreen() {
           style={styles.thumbnailScroll}
           contentContainerStyle={styles.thumbnailContainer}
         >
-          {product.images.map((image, index) => (
+          {(product.images && product.images.length > 0 ? product.images : [product.thumbnail]).map((image, index) => (
             <TouchableOpacity
               key={index}
               onPress={() => setActiveImage(index)}
@@ -574,17 +587,19 @@ export default function ProductDetailsScreen() {
           { backgroundColor: colors.background, borderTopColor: colors.border },
         ]}
       >
-        <TouchableOpacity
-          style={[styles.arButton, { backgroundColor: colors.surface }]}
-          onPress={() =>
-            navigation.navigate('ARView', {
-              productId: product.id,
-            })
-          }
-        >
-          <Ionicons name="cube-outline" size={20} color={colors.text} />
-          <Text style={[styles.arButtonText, { color: colors.text }]}>View in AR</Text>
-        </TouchableOpacity>
+        {product.modelUrl && (
+          <TouchableOpacity
+            style={[styles.arButton, { backgroundColor: colors.surface }]}
+            onPress={() =>
+              navigation.navigate('ARView', {
+                productId: product.id,
+              })
+            }
+          >
+            <Ionicons name="cube-outline" size={20} color={colors.text} />
+            <Text style={[styles.arButtonText, { color: colors.text }]}>View in AR</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={[styles.addToCartButton, { backgroundColor: colors.primary }]}
@@ -710,6 +725,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginHorizontal: 12,
+  },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   imageGallery: {
     width: '100%',

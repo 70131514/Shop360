@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   serverTimestamp,
@@ -104,4 +105,13 @@ export async function upsertProduct(input: {
     { merge: true },
   );
   return ref.id;
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const ref = doc(firebaseDb, 'products', id);
+  const existing = await getDoc(ref);
+  if (!existing.exists()) {
+    throw new Error('Product not found');
+  }
+  await deleteDoc(ref);
 }

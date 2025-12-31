@@ -474,7 +474,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="AdminProductEdit"
           component={AdminProductEditScreen}
-          options={{ headerShown: true, title: 'Product' }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AdminCategories"

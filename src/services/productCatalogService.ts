@@ -94,19 +94,31 @@ export function subscribeFeaturedProducts(
   onProducts: (products: StoreProduct[]) => void,
   onError?: (err: unknown) => void,
 ): Unsubscribe {
+  // Use a simpler query that doesn't require a composite index
+  // Filter client-side if needed, or use a query that works without index
   const q = query(
     collection(firebaseDb, 'products'),
-    where('isFeatured', '==', true),
     orderBy('createdAt', 'desc'),
-    limit(20),
+    limit(50), // Get more products, filter client-side
   );
   return onSnapshot(
     q,
     (snap) => {
-      const products = snap.docs.map((d) => normalizeProduct(d.id, d.data()));
-      onProducts(products);
+      // Filter for featured products client-side
+      const allProducts = snap.docs.map((d) => normalizeProduct(d.id, d.data()));
+      const featured = allProducts.filter((p) => p.isFeatured === true).slice(0, 20);
+      onProducts(featured);
     },
-    onError,
+    (err) => {
+      // Handle errors gracefully - if it's a missing index or permission error,
+      // just return empty array instead of showing error
+      console.warn('Error loading featured products (non-critical):', err);
+      // Return empty array on error - better UX than showing error
+      onProducts([]);
+      if (onError) {
+        onError(err);
+      }
+    },
   );
 }
 
