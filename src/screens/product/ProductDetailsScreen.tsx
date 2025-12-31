@@ -25,10 +25,15 @@ import {
   WishlistItem,
 } from '../../services/wishlistService';
 import { addToCart } from '../../services/cartService';
+import {
+  getProductById as getStoreProductById,
+  getProductsByCategory,
+  type StoreProduct,
+} from '../../services/productCatalogService';
 
 // Define the Product type
 interface Product {
-  id: number;
+  id: string;
   title: string;
   price: number;
   category: string;
@@ -70,15 +75,26 @@ export default function ProductDetailsScreen() {
 
   const fetchProduct = useCallback(async () => {
     try {
-      const response = await fetch(`https://dummyjson.com/products/${id}`);
-      const data = await response.json();
-
-      if (data) {
-        setProduct(data);
-      } else {
+      const p = await getStoreProductById(String(id));
+      if (!p) {
         setError('Product not found');
+        setLoading(false);
+        return;
       }
-
+      const mapped: Product = {
+        id: p.id,
+        title: p.title,
+        price: p.price,
+        category: p.category,
+        description: p.description,
+        thumbnail: p.thumbnail,
+        images: p.images,
+        rating: p.rating,
+        discountPercentage: p.discountPercentage,
+        stock: p.stock,
+        brand: p.brand,
+      };
+      setProduct(mapped);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching product:', err);
@@ -121,12 +137,26 @@ export default function ProductDetailsScreen() {
       }
       try {
         setLoadingRelated(true);
-        const res = await fetch(
-          `https://dummyjson.com/products/category/${encodeURIComponent(product.category)}?limit=12`,
+        const list = await getProductsByCategory({
+          category: product.category,
+          excludeId: product.id,
+          max: 12,
+        });
+        const filtered = list.slice(0, 10).map(
+          (p: StoreProduct): Product => ({
+            id: p.id,
+            title: p.title,
+            price: p.price,
+            category: p.category,
+            description: p.description,
+            thumbnail: p.thumbnail,
+            images: p.images,
+            rating: p.rating,
+            discountPercentage: p.discountPercentage,
+            stock: p.stock,
+            brand: p.brand,
+          }),
         );
-        const data = await res.json();
-        const list = Array.isArray(data?.products) ? (data.products as Product[]) : [];
-        const filtered = list.filter((p) => String(p.id) !== String(product.id)).slice(0, 10);
         if (alive) {
           setRelated(filtered);
         }
@@ -179,12 +209,12 @@ export default function ProductDetailsScreen() {
       }
 
       if (isWishlisted) {
-        await removeFromWishlist(id);
+        await removeFromWishlist(String(id));
         setIsWishlisted(false);
       } else if (product) {
         // Add to wishlist
         const newItem: WishlistItem = {
-          id: product.id.toString(),
+          id: product.id,
           name: product.title,
           brand: product.brand,
           price: product.price,
@@ -217,7 +247,7 @@ export default function ProductDetailsScreen() {
 
       setAddingToCart(true);
       await addToCart({
-        id: product.id.toString(),
+        id: product.id,
         name: product.title,
         price: Number(discountedPrice),
         originalPrice: product.discountPercentage > 0 ? product.price : undefined,
@@ -522,7 +552,7 @@ export default function ProductDetailsScreen() {
                   key={p.id}
                   activeOpacity={0.9}
                   style={[styles.similarCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  onPress={() => navigation.navigate('ProductDetails', { id: p.id.toString() })}
+                  onPress={() => navigation.navigate('ProductDetails', { id: p.id })}
                 >
                   <Image source={{ uri: p.thumbnail }} style={styles.similarImage} />
                   <Text style={[styles.similarName, { color: colors.text }]} numberOfLines={1}>
@@ -546,7 +576,11 @@ export default function ProductDetailsScreen() {
       >
         <TouchableOpacity
           style={[styles.arButton, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.navigate('ARView', { productId: product.id })}
+          onPress={() =>
+            navigation.navigate('ARView', {
+              productId: product.id,
+            })
+          }
         >
           <Ionicons name="cube-outline" size={20} color={colors.text} />
           <Text style={[styles.arButtonText, { color: colors.text }]}>View in AR</Text>

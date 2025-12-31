@@ -101,6 +101,12 @@ export default function AdminDashboardScreen() {
         onPress: () => navigation.navigate('AdminProductEdit'),
       },
       {
+        title: 'Manage categories',
+        subtitle: 'Create & organize categories',
+        icon: 'albums-outline',
+        onPress: () => navigation.navigate('AdminCategories'),
+      },
+      {
         title: 'Manage users',
         subtitle: 'Roles and accounts',
         icon: 'people-outline',

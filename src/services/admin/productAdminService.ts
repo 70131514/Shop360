@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -16,8 +15,13 @@ export type AdminProduct = {
   price: number;
   stock: number;
   thumbnail: string;
+  images: string[];
+  rating: number;
+  discountPercentage: number;
   brand?: string;
   description?: string;
+  modelUrl?: string;
+  isFeatured?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -30,6 +34,12 @@ export async function getProductById(id: string): Promise<AdminProduct | null> {
   return { id: snap.id, ...(snap.data() as any) } as AdminProduct;
 }
 
+export function generateNewProductId(): string {
+  // Create a doc ref locally to get an id without writing yet.
+  const ref = doc(collection(firebaseDb, 'products'));
+  return ref.id;
+}
+
 export async function upsertProduct(input: {
   id?: string;
   title: string;
@@ -37,8 +47,13 @@ export async function upsertProduct(input: {
   price: number;
   stock: number;
   thumbnail: string;
+  images: string[];
+  rating: number;
+  discountPercentage: number;
   brand?: string;
   description?: string;
+  modelUrl?: string;
+  isFeatured?: boolean;
 }): Promise<string> {
   const payload = {
     title: input.title,
@@ -46,29 +61,47 @@ export async function upsertProduct(input: {
     price: Number(input.price ?? 0),
     stock: Number(input.stock ?? 0),
     thumbnail: input.thumbnail ?? '',
+    images: Array.isArray(input.images) ? input.images : [],
+    rating: Number(input.rating ?? 0),
+    discountPercentage: Number(input.discountPercentage ?? 0),
     brand: input.brand ?? '',
     description: input.description ?? '',
+    modelUrl: input.modelUrl ?? '',
+    isFeatured: Boolean(input.isFeatured ?? false),
     updatedAt: serverTimestamp(),
   };
 
   if (input.id) {
-    await updateDoc(doc(firebaseDb, 'products', input.id), payload as any);
+    const ref = doc(firebaseDb, 'products', input.id);
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      await updateDoc(ref, payload as any);
+      return input.id;
+    }
+
+    await setDoc(
+      ref,
+      {
+        ...payload,
+        id: input.id,
+        createdAt: serverTimestamp(),
+      } as any,
+      { merge: true },
+    );
     return input.id;
   }
 
-  const ref = await addDoc(collection(firebaseDb, 'products'), {
-    ...payload,
-    createdAt: serverTimestamp(),
-  } as any);
-
-  // Ensure document has stable id field if you later want it
-  try {
-    await setDoc(doc(firebaseDb, 'products', ref.id), { id: ref.id } as any, { merge: true });
-  } catch {
-    // ignore
-  }
-
+  // Prefer setting a doc with a known id (lets us upload assets to a stable path if needed).
+  const ref = doc(collection(firebaseDb, 'products'));
+  await setDoc(
+    ref,
+    {
+      ...payload,
+      id: ref.id,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    } as any,
+    { merge: true },
+  );
   return ref.id;
 }
-
-

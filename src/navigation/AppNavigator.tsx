@@ -22,6 +22,7 @@ import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
 import AdminProductEditScreen from '../screens/admin/AdminProductEditScreen';
 import AdminInquiriesScreen from '../screens/admin/AdminInquiriesScreen';
 import AdminUserDetailScreen from '../screens/admin/AdminUserDetailScreen';
+import AdminCategoriesScreen from '../screens/admin/AdminCategoriesScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -474,6 +475,11 @@ export const AppNavigator = () => {
           name="AdminProductEdit"
           component={AdminProductEditScreen}
           options={{ headerShown: true, title: 'Product' }}
+        />
+        <Stack.Screen
+          name="AdminCategories"
+          component={AdminCategoriesScreen}
+          options={{ headerShown: true, title: 'Categories' }}
         />
         <Stack.Screen
           name="AdminInquiries"

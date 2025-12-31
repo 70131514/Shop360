@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   View,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useTheme } from '../../contexts/ThemeContext';
+import { subscribeFeaturedProducts, type StoreProduct } from '../../services/productCatalogService';
 
 // Define types for props
 interface FeatureSectionProps {
@@ -89,25 +91,51 @@ const FeatureSection = ({
 };
 
 // Featured product component
-const FeaturedProduct = ({ title, image, price }: FeaturedProductProps) => {
+const FeaturedProduct = ({
+  product,
+}: {
+  product: StoreProduct;
+}) => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const discountedPrice =
+    product.discountPercentage > 0
+      ? product.price * (1 - product.discountPercentage / 100)
+      : product.price;
+
   return (
     <TouchableOpacity
       style={[styles.featuredProductCard, { backgroundColor: colors.surface }]}
-      onPress={() => navigation.navigate('Products')}
+      onPress={() => navigation.navigate('ProductDetails', { id: product.id })}
+      activeOpacity={0.9}
     >
-      <Image source={{ uri: image }} style={styles.featuredProductImage} />
+      <Image
+        source={{ uri: product.thumbnail || '' }}
+        style={styles.featuredProductImage}
+      />
       <View style={styles.featuredProductInfo}>
         <ThemedText
           type="defaultSemiBold"
           style={[styles.featuredProductTitle, { color: colors.text }]}
+          numberOfLines={2}
         >
-          {title}
+          {product.title}
         </ThemedText>
-        <ThemedText style={[styles.featuredProductPrice, { color: colors.primary }]}>
-          {price}
-        </ThemedText>
+        <View style={styles.featuredProductPriceRow}>
+          <ThemedText style={[styles.featuredProductPrice, { color: colors.primary }]}>
+            ${discountedPrice.toFixed(2)}
+          </ThemedText>
+          {product.discountPercentage > 0 && (
+            <ThemedText
+              style={[
+                styles.featuredProductOriginalPrice,
+                { color: colors.textSecondary },
+              ]}
+            >
+              ${product.price.toFixed(2)}
+            </ThemedText>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -117,6 +145,22 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
+  useEffect(() => {
+    const unsub = subscribeFeaturedProducts(
+      (products) => {
+        setFeaturedProducts(products);
+        setLoadingFeatured(false);
+      },
+      (err) => {
+        console.error('Error loading featured products:', err);
+        setLoadingFeatured(false);
+      },
+    );
+    return unsub;
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -230,28 +274,35 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.featuredProductsContainer}
-          contentContainerStyle={styles.featuredProductsContent}
-        >
-          <FeaturedProduct
-            title="Wireless Headphones"
-            image="https://pcstore.pk/wp-content/uploads/2024/01/Sony-WH-CH520-Wireless-Headphones-with-Microphone-_price-in-pakistan-Black-img1-min.png"
-            price="$129.99"
-          />
-          <FeaturedProduct
-            title="Smart Watch"
-            image="https://images.samsung.com/is/image/samsung/p6pim/pk/sm-l310nzg8eua/gallery/pk-galaxy-watch7-l310-sm-l310nzg8eua-thumb-544769007?$UX_EXT2_PNG$"
-            price="$249.99"
-          />
-          <FeaturedProduct
-            title="Bluetooth Speaker"
-            image="https://cdn.thewirecutter.com/wp-content/media/2024/11/portablebluetoothspeakers-2048px-9481.jpg?auto=webp&quality=75&width=1024"
-            price="$79.99"
-          />
-        </ScrollView>
+        {loadingFeatured ? (
+          <View style={styles.featuredLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <ThemedText style={[styles.featuredLoadingText, { color: colors.textSecondary }]}>
+              Loading featured products...
+            </ThemedText>
+          </View>
+        ) : featuredProducts.length === 0 ? (
+          <View style={styles.featuredEmptyContainer}>
+            <Ionicons name="cube-outline" size={48} color={colors.textSecondary} />
+            <ThemedText style={[styles.featuredEmptyText, { color: colors.textSecondary }]}>
+              No featured products yet
+            </ThemedText>
+            <ThemedText style={[styles.featuredEmptySubtext, { color: colors.textSecondary }]}>
+              Mark products as featured in admin to see them here
+            </ThemedText>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.featuredProductsContainer}
+            contentContainerStyle={styles.featuredProductsContent}
+          >
+            {featuredProducts.map((product) => (
+              <FeaturedProduct key={product.id} product={product} />
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
     </View>
   );
@@ -406,8 +457,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+  featuredProductPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   featuredProductPrice: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  featuredProductOriginalPrice: {
+    fontSize: 14,
+    textDecorationLine: 'line-through',
+  },
+  featuredLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featuredLoadingText: {
+    marginTop: 12,
+    fontSize: 13,
+  },
+  featuredEmptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featuredEmptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  featuredEmptySubtext: {
+    marginTop: 8,
+    fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });

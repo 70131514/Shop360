@@ -18,14 +18,15 @@ import { SPACING } from '../../theme';
 import { ModelPlacementARScene, type ARModelKey } from '../../ar/scenes/ModelPlacementARScene';
 import { ModelSelectionModal } from '../../components/ar/ModelSelectionModal';
 import { getModelInfo } from '../../ar/models/modelConfig';
+import { getProductById as getStoreProductById } from '../../services/productCatalogService';
 
 export const ARViewScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
   // Keep params optional (ProductDetails passes productId, older code expected product).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _params = route?.params ?? {};
+  const params = route?.params ?? {};
+  const productId: string | undefined = params?.productId ? String(params.productId) : undefined;
 
   const [cameraGranted, setCameraGranted] = useState<boolean>(Platform.OS === 'ios');
   const [requesting, setRequesting] = useState(false);
@@ -39,6 +40,7 @@ export const ARViewScreen = () => {
   const lastTrackingStateRef = useRef<string>('unknown');
   const lastTrackingReasonRef = useRef<string>('');
   const [modelKey, setModelKey] = useState<ARModelKey>('shoes');
+  const [remoteModelUrl, setRemoteModelUrl] = useState<string>('');
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
   const [modelRotationY, setModelRotationY] = useState<number>(0);
   const [modelScaleMultiplier, setModelScaleMultiplier] = useState<number>(1);
@@ -49,6 +51,30 @@ export const ARViewScreen = () => {
   const [modelSelectionVisible, setModelSelectionVisible] = useState<boolean>(false);
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const controlsTranslateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let alive = true;
+    if (!productId) {
+      setRemoteModelUrl('');
+      return () => {
+        alive = false;
+      };
+    }
+    getStoreProductById(productId)
+      .then((p) => {
+        if (alive) {
+          setRemoteModelUrl(String(p?.modelUrl ?? ''));
+        }
+      })
+      .catch(() => {
+        if (alive) {
+          setRemoteModelUrl('');
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [productId]);
 
   const refreshCameraPermissionState = useCallback(async () => {
     if (Platform.OS !== 'android') {
@@ -106,6 +132,7 @@ export const ARViewScreen = () => {
   const viroAppProps = useMemo(
     () => ({
       modelKey,
+      modelUrl: remoteModelUrl || undefined,
       modelPosition,
       modelRotationY,
       modelScaleMultiplier,
@@ -146,6 +173,7 @@ export const ARViewScreen = () => {
     }),
     [
       modelKey,
+      remoteModelUrl,
       modelPosition,
       modelRotationY,
       modelScaleMultiplier,

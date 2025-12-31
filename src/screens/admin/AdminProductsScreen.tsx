@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, StyleSheet, TouchableOpacity, View } from 
 import { AppText as Text } from '../../components/common/AppText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeAllProducts, type AdminProductRow } from '../../services/admin/adminService';
@@ -12,6 +12,9 @@ export default function AdminProductsScreen() {
   const { colors } = useTheme();
   const { isAdmin } = useAuth();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const categoryFilter: string | null =
+    route?.params?.category != null ? String(route.params.category) : null;
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<AdminProductRow[]>([]);
 
@@ -30,13 +33,19 @@ export default function AdminProductsScreen() {
     return unsub;
   }, [isAdmin]);
 
+  const filtered = categoryFilter ? products.filter((p) => p.category === categoryFilter) : products;
+
   return (
     <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.text }]}>Products</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {isAdmin ? `${products.length} products` : 'Admin only'}
+            {!isAdmin
+              ? 'Admin only'
+              : categoryFilter
+                ? `${filtered.length} in “${categoryFilter}”`
+                : `${products.length} products`}
           </Text>
         </View>
         <TouchableOpacity
@@ -75,7 +84,7 @@ export default function AdminProductsScreen() {
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={filtered}
           keyExtractor={(p) => p.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (

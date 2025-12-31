@@ -96,6 +96,7 @@ type Props = {
   arSceneNavigator?: {
     viroAppProps?: {
       modelKey?: ARModelKey;
+      modelUrl?: string;
       modelPosition?: [number, number, number];
       modelRotationY?: number;
       modelScaleMultiplier?: number;
@@ -109,7 +110,10 @@ type Props = {
   };
 };
 
-function getModelSource(modelKey: ARModelKey) {
+function getModelSource(modelKey: ARModelKey, modelUrl?: string) {
+  if (modelUrl) {
+    return { uri: modelUrl };
+  }
   switch (modelKey) {
     case 'hat':
       return require('../models/hat.glb');
@@ -223,6 +227,7 @@ function getModelSource(modelKey: ARModelKey) {
 
 export const ModelPlacementARScene = (props: Props) => {
   const modelKey: ARModelKey = props?.arSceneNavigator?.viroAppProps?.modelKey ?? 'shoes';
+  const modelUrl: string | undefined = props?.arSceneNavigator?.viroAppProps?.modelUrl;
   const modelPosition: [number, number, number] =
     props?.arSceneNavigator?.viroAppProps?.modelPosition ?? DEFAULT_POS;
   const modelRotationY: number =
@@ -242,7 +247,7 @@ export const ModelPlacementARScene = (props: Props) => {
   const modelRef = useRef<any>(null);
   const placedNodeRef = useRef<any>(null);
 
-  const source = useMemo(() => getModelSource(modelKey), [modelKey]);
+  const source = useMemo(() => getModelSource(modelKey, modelUrl), [modelKey, modelUrl]);
 
   // Keep a stable "last known" position for smoothing drag updates.
   const lastPosRef = useRef<[number, number, number]>(modelPosition);
