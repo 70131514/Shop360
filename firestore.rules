@@ -188,9 +188,10 @@ service cloud.firestore {
 
         // Users can create orders only for themselves (written by the app after checkout)
         allow create: if isOwner(uid) && isEmailVerified()
-          && request.resource.data.keys().hasOnly([
+          && request.resource.data.keys().hasAll([
             'userId',
             'status',
+            'paymentMethod',
             'createdAt',
             'updatedAt',
             'items',
@@ -200,12 +201,70 @@ service cloud.firestore {
             'total',
             'address'
           ])
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'status',
+            'paymentMethod',
+            'paymentCardId',
+            'createdAt',
+            'updatedAt',
+            'timeline',
+            'items',
+            'itemCount',
+            'subtotal',
+            'shipping',
+            'total',
+            'address'
+          ])
           && request.resource.data.userId == uid
           && request.resource.data.items is list
-          && request.resource.data.address is map;
+          && request.resource.data.address is map
+          && request.resource.data.paymentMethod in ['cash_on_delivery', 'card_payment']
+          && (request.resource.data.paymentMethod == 'cash_on_delivery' || 
+              (request.resource.data.paymentMethod == 'card_payment' && 
+               request.resource.data.paymentCardId is string))
+          && request.resource.data.timeline is list;
 
-        // Typically orders shouldn't be editable by the client after creation
-        allow update, delete: if false;
+        // Users can request cancellation (update cancellation fields only)
+        allow update: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'cancellationRequested',
+            'cancellationRequestedAt',
+            'cancellationReason',
+            'cancellationRejected',
+            'cancellationRejectedAt',
+            'cancellationRejectionReason',
+            'updatedAt'
+          ])
+          && request.resource.data.cancellationRequested is bool
+          && request.resource.data.userId == resource.data.userId;
+
+        // Admins can update order status, timeline, handle cancellations, and mark as viewed
+        allow update: if isAdmin() && isEmailVerified()
+          && (
+            // Status update
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'timeline'])
+             && request.resource.data.status in ['processing', 'shipped', 'delivered', 'cancelled']
+             && request.resource.data.timeline is list)
+            ||
+            // Cancellation approval/rejection
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'cancellationRequested',
+              'cancellationRejected',
+              'cancellationRejectedAt',
+              'cancellationRejectionReason',
+              'status',
+              'timeline',
+              'updatedAt'
+            ]))
+            ||
+            // Mark as viewed
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedByAdmin', 'viewedAt', 'updatedAt'])
+             && request.resource.data.viewedByAdmin is bool)
+          );
+
+        // Users cannot update or delete their orders
+        allow delete: if false;
       }
     }
 
@@ -213,8 +272,18 @@ service cloud.firestore {
     match /products/{productId} {
       // Anyone can read products (for public product listings and details)
       allow read: if true;
-      // Only verified admins can create, update, or delete products
-      allow create, update, delete: if isAdmin() && isEmailVerified();
+      
+      // Only verified admins can create or delete products
+      allow create, delete: if isAdmin() && isEmailVerified();
+      
+      // Admins can update any field
+      // Authenticated users can only update stock field (for order placement - stock decrements)
+      allow update: if (isAdmin() && isEmailVerified()) ||
+        (isSignedIn() && isEmailVerified() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'updatedAt']) &&
+         request.resource.data.stock is number &&
+         resource.data.stock is number &&
+         request.resource.data.stock < resource.data.stock); // Only allow stock decreases
     }
 
     // ✅ Categories collection (admin-managed)

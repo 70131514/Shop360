@@ -11,6 +11,7 @@ import {
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { subscribeOrders } from '../../services/orderService';
 
@@ -18,6 +19,7 @@ type OrderStatus = 'delivered' | 'processing' | 'shipped' | 'cancelled';
 
 const OrderHistoryScreen = () => {
   const { colors } = useTheme();
+  const navigation = useNavigation<any>();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,8 +79,7 @@ const OrderHistoryScreen = () => {
   };
 
   const handleViewOrder = (orderId: string) => {
-    // navigation.navigate('OrderDetails', { orderId });
-    console.log('View Order', orderId);
+    navigation.navigate('OrderDetail', { orderId });
   };
 
   return (

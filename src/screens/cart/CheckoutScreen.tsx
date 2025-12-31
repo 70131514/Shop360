@@ -14,7 +14,12 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { subscribeMyAddresses, type Address } from '../../services/addressService';
-import { placeOrderFromCart } from '../../services/orderService';
+import { placeOrderFromCart, type PaymentMethod } from '../../services/orderService';
+import {
+  subscribePaymentMethods,
+  getDefaultPaymentMethod,
+  type SavedCard,
+} from '../../services/paymentMethodService';
 import type { CartItem } from '../../services/cartService';
 
 const CheckoutScreen = () => {
@@ -27,7 +32,11 @@ const CheckoutScreen = () => {
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingCards, setLoadingCards] = useState(true);
   const [placingOrder, setPlacingOrder] = useState(false);
 
   useFocusEffect(
@@ -69,10 +78,22 @@ const CheckoutScreen = () => {
       return;
     }
 
+    if (!selectedPaymentMethod) {
+      alert('Payment Method Required', 'Please select a payment method.');
+      return;
+    }
+
+    if (selectedPaymentMethod === 'card_payment' && !selectedCardId) {
+      alert('Card Required', 'Please select a payment card.');
+      return;
+    }
+
     try {
       setPlacingOrder(true);
       const { orderId } = await placeOrderFromCart(cartItems, {
         shipping,
+        paymentMethod: selectedPaymentMethod,
+        paymentCardId: selectedPaymentMethod === 'card_payment' ? selectedCardId || undefined : undefined,
         address: {
           name: selectedAddress.name,
           street: selectedAddress.street,
@@ -84,11 +105,10 @@ const CheckoutScreen = () => {
           longitude: selectedAddress.longitude,
         },
       });
-      alert('Order placed', `Your order #${orderId.slice(-6).toUpperCase()} was created.`);
-      navigation.navigate('Profile');
+      // Navigate to success screen
+      navigation.replace('OrderPlaced', { orderId });
     } catch (e: any) {
       alert('Checkout failed', e?.message ?? 'Please try again.');
-    } finally {
       setPlacingOrder(false);
     }
   };
@@ -191,6 +211,213 @@ const CheckoutScreen = () => {
           </>
         )}
 
+        {/* Payment Method Selection */}
+        <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>
+          Payment Method
+        </Text>
+        <View style={styles.paymentContainer}>
+          <TouchableOpacity
+            style={[
+              styles.paymentCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor:
+                  selectedPaymentMethod === 'cash_on_delivery' ? colors.primary : colors.border,
+                borderWidth: selectedPaymentMethod === 'cash_on_delivery' ? 2 : 1,
+              },
+            ]}
+            onPress={() => setSelectedPaymentMethod('cash_on_delivery')}
+          >
+            <View style={styles.paymentHeader}>
+              <Ionicons
+                name="cash-outline"
+                size={24}
+                color={selectedPaymentMethod === 'cash_on_delivery' ? colors.primary : colors.text}
+              />
+              <View style={styles.paymentInfo}>
+                <Text style={[styles.paymentTitle, { color: colors.text }]}>Cash on Delivery</Text>
+                <Text style={[styles.paymentDescription, { color: colors.textSecondary }]}>
+                  Pay with cash when your order arrives
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.radioButton,
+                  {
+                    borderColor:
+                      selectedPaymentMethod === 'cash_on_delivery' ? colors.primary : colors.border,
+                    backgroundColor:
+                      selectedPaymentMethod === 'cash_on_delivery' ? colors.primary : 'transparent',
+                  },
+                ]}
+              >
+                {selectedPaymentMethod === 'cash_on_delivery' && (
+                  <View style={[styles.radioInner, { backgroundColor: colors.background }]} />
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.paymentCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor:
+                  selectedPaymentMethod === 'card_payment' ? colors.primary : colors.border,
+                borderWidth: selectedPaymentMethod === 'card_payment' ? 2 : 1,
+              },
+            ]}
+            onPress={() => {
+              setSelectedPaymentMethod('card_payment');
+              // Auto-select default card if available
+              if (savedCards.length > 0 && !selectedCardId) {
+                const defaultCard = savedCards.find((c) => c.isDefault) || savedCards[0];
+                setSelectedCardId(defaultCard.id);
+              }
+            }}
+          >
+            <View style={styles.paymentHeader}>
+              <Ionicons
+                name="card-outline"
+                size={24}
+                color={selectedPaymentMethod === 'card_payment' ? colors.primary : colors.text}
+              />
+              <View style={styles.paymentInfo}>
+                <Text style={[styles.paymentTitle, { color: colors.text }]}>Card Payment</Text>
+                <Text style={[styles.paymentDescription, { color: colors.textSecondary }]}>
+                  Pay with your saved card
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.radioButton,
+                  {
+                    borderColor:
+                      selectedPaymentMethod === 'card_payment' ? colors.primary : colors.border,
+                    backgroundColor:
+                      selectedPaymentMethod === 'card_payment' ? colors.primary : 'transparent',
+                  },
+                ]}
+              >
+                {selectedPaymentMethod === 'card_payment' && (
+                  <View style={[styles.radioInner, { backgroundColor: colors.background }]} />
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Card Selection (shown when card payment is selected) */}
+          {selectedPaymentMethod === 'card_payment' && (
+            <View style={styles.cardSelectionContainer}>
+              {loadingCards ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                    Loading cards...
+                  </Text>
+                </View>
+              ) : savedCards.length === 0 ? (
+                <View style={[styles.emptyCardState, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Ionicons name="card-outline" size={48} color={colors.textSecondary} />
+                  <Text style={[styles.emptyCardText, { color: colors.textSecondary }]}>
+                    No saved cards
+                  </Text>
+                  <Text style={[styles.emptyCardSubtext, { color: colors.textSecondary }]}>
+                    Please add a card in Payment Methods
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.addCardButton, { backgroundColor: colors.primary }]}
+                    onPress={() => navigation.navigate('PaymentMethods')}
+                  >
+                    <Ionicons name="add" size={20} color={colors.background} />
+                    <Text style={[styles.addCardButtonText, { color: colors.background }]}>
+                      Add Card
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <Text style={[styles.cardSelectionTitle, { color: colors.text }]}>
+                    Select Card
+                  </Text>
+                  {savedCards.map((card) => (
+                    <TouchableOpacity
+                      key={card.id}
+                      style={[
+                        styles.cardOption,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor:
+                            selectedCardId === card.id ? colors.primary : colors.border,
+                          borderWidth: selectedCardId === card.id ? 2 : 1,
+                        },
+                      ]}
+                      onPress={() => setSelectedCardId(card.id)}
+                    >
+                      <View style={styles.cardOptionHeader}>
+                        <View style={styles.cardOptionInfo}>
+                          <View
+                            style={[
+                              styles.cardIconContainer,
+                              {
+                                backgroundColor:
+                                  card.cardType === 'visa'
+                                    ? '#1A1F71'
+                                    : card.cardType === 'mastercard'
+                                      ? '#EB001B'
+                                      : card.cardType === 'amex'
+                                        ? '#006FCF'
+                                        : colors.primary,
+                              },
+                            ]}
+                          >
+                            <Ionicons name="card" size={20} color="#FFF" />
+                          </View>
+                          <View style={styles.cardOptionDetails}>
+                            <View style={styles.cardOptionTitleRow}>
+                              <Text style={[styles.cardOptionType, { color: colors.text }]}>
+                                {card.cardType.charAt(0).toUpperCase() + card.cardType.slice(1)}
+                              </Text>
+                              {card.isDefault && (
+                                <View style={[styles.defaultBadge, { backgroundColor: colors.primary }]}>
+                                  <Text style={[styles.defaultBadgeText, { color: colors.background }]}>
+                                    Default
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={[styles.cardOptionNumber, { color: colors.textSecondary }]}>
+                              •••• {card.last4}
+                            </Text>
+                            <Text style={[styles.cardOptionExpiry, { color: colors.textSecondary }]}>
+                              Expires {card.expiryMonth}/{card.expiryYear}
+                            </Text>
+                          </View>
+                        </View>
+                        <View
+                          style={[
+                            styles.radioButton,
+                            {
+                              borderColor: selectedCardId === card.id ? colors.primary : colors.border,
+                              backgroundColor:
+                                selectedCardId === card.id ? colors.primary : 'transparent',
+                            },
+                          ]}
+                        >
+                          {selectedCardId === card.id && (
+                            <View style={[styles.radioInner, { backgroundColor: colors.background }]} />
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+            </View>
+          )}
+        </View>
+
         <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Order Summary</Text>
           <View style={styles.summaryRow}>
@@ -210,10 +437,22 @@ const CheckoutScreen = () => {
         <TouchableOpacity
           style={[
             styles.placeOrderButton,
-            { backgroundColor: selectedAddress ? colors.primary : colors.border },
+            {
+              backgroundColor:
+                selectedAddress &&
+                selectedPaymentMethod &&
+                (selectedPaymentMethod === 'cash_on_delivery' || selectedCardId)
+                  ? colors.primary
+                  : colors.border,
+            },
           ]}
           onPress={handlePlaceOrder}
-          disabled={!selectedAddress || placingOrder}
+          disabled={
+            !selectedAddress ||
+            !selectedPaymentMethod ||
+            (selectedPaymentMethod === 'card_payment' && !selectedCardId) ||
+            placingOrder
+          }
         >
           {placingOrder ? (
             <ActivityIndicator size="small" color={colors.background} />
@@ -385,6 +624,122 @@ const styles = StyleSheet.create({
   },
   placeOrderButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+  },
+  paymentContainer: {
+    marginBottom: 24,
+    gap: 12,
+  },
+  paymentCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  paymentInfo: {
+    flex: 1,
+  },
+  paymentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  paymentDescription: {
+    fontSize: 13,
+  },
+  cardSelectionContainer: {
+    marginTop: 12,
+    gap: 12,
+  },
+  cardSelectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  cardOption: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  cardOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardOptionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  cardIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cardOptionDetails: {
+    flex: 1,
+  },
+  cardOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  cardOptionType: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  defaultBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  cardOptionNumber: {
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  cardOptionExpiry: {
+    fontSize: 12,
+  },
+  emptyCardState: {
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  emptyCardText: {
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  emptyCardSubtext: {
+    marginTop: 6,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  addCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 16,
+    gap: 6,
+  },
+  addCardButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });

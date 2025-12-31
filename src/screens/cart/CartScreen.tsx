@@ -89,6 +89,58 @@ export default function CartScreen() {
   const [loading, setLoading] = useState(true);
   const [clearing, setClearing] = useState(false);
 
+  // If user is not logged in, show login prompt
+  if (!user) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.background}
+          translucent={false}
+        />
+        <View
+          style={[styles.header, { paddingTop: insets.top + 16, backgroundColor: colors.background }]}
+        >
+          <View style={styles.headerRow}>
+            <View>
+              <ThemedText style={[styles.headerTitle, { color: colors.text }]}>
+                Shopping Cart
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.loginPromptContainer}>
+          <MaterialIcons name="shopping-cart" size={80} color={colors.textSecondary} />
+          <ThemedText style={[styles.loginPromptTitle, { color: colors.text }]}>
+            Sign In Required
+          </ThemedText>
+          <ThemedText style={[styles.loginPromptText, { color: colors.textSecondary }]}>
+            Please sign in to access your shopping cart and manage your items.
+          </ThemedText>
+
+          <TouchableOpacity
+            style={[styles.loginButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('Login', { redirectToTab: 'Cart' })}
+          >
+            <ThemedText style={[styles.loginButtonText, { color: colors.background }]}>
+              Sign In
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.signupButton, { borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Signup', { redirectToTab: 'Cart' })}
+          >
+            <ThemedText style={[styles.signupButtonText, { color: colors.text }]}>
+              Create Account
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   useEffect(() => {
     let unsub: undefined | (() => void);
     try {
@@ -475,6 +527,52 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   checkoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loginPromptContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  loginPromptTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: 24,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  loginPromptText: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  loginButton: {
+    width: '100%',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  signupButton: {
+    width: '100%',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  signupButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

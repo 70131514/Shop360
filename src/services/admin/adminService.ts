@@ -8,6 +8,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -15,6 +16,7 @@ import {
 } from '@react-native-firebase/firestore';
 import type { Unsubscribe } from '@react-native-firebase/firestore';
 import { firebaseDb } from '../firebase';
+import type { OrderStatus } from '../orderService';
 
 export type AdminUserRow = {
   uid: string;
@@ -29,6 +31,8 @@ export type AdminOrderRow = {
   userId: string;
   status: string;
   total: number;
+  viewedByAdmin?: boolean;
+  createdAt?: any;
 };
 
 export type AdminProductRow = {
@@ -126,12 +130,47 @@ export function subscribeAllOrders(
           userId: data?.userId ?? '—',
           status: data?.status ?? 'processing',
           total: Number(data?.total ?? 0),
+          viewedByAdmin: Boolean(data?.viewedByAdmin ?? false),
+          createdAt: data?.createdAt,
         } as AdminOrderRow;
       });
       onOrders(rows);
     },
     onError,
   );
+}
+
+/**
+ * Subscribe to count of new/unread orders (not viewed by admin)
+ */
+export function subscribeNewOrderCount(
+  onCount: (count: number) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const q = query(collectionGroup(firebaseDb, 'orders'));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const unreadCount = snap.docs.filter((d) => {
+        const data = d.data() as any;
+        return !data?.viewedByAdmin;
+      }).length;
+      onCount(unreadCount);
+    },
+    onError,
+  );
+}
+
+/**
+ * Mark an order as viewed by admin
+ */
+export async function markOrderAsViewed(orderId: string, userId: string): Promise<void> {
+  const orderRef = doc(firebaseDb, 'users', userId, 'orders', orderId);
+  await updateDoc(orderRef, {
+    viewedByAdmin: true,
+    viewedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export function subscribeAllProducts(
@@ -326,6 +365,150 @@ export async function getUserTickets(userId: string): Promise<any[]> {
     const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
     const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
     return bTime - aTime; // Descending order
+  });
+}
+
+/**
+ * Get a single order by ID and userId (for admin use)
+ */
+export async function getOrderByIdForAdmin(orderId: string, userId: string): Promise<any | null> {
+  const orderRef = doc(firebaseDb, 'users', userId, 'orders', orderId);
+  const orderSnap = await getDoc(orderRef);
+  
+  if (!orderSnap.exists()) {
+    return null;
+  }
+  
+  return {
+    id: orderSnap.id,
+    ...(orderSnap.data() as any),
+  };
+}
+
+/**
+ * Update order status (admin only) with timeline tracking
+ */
+export async function updateOrderStatus(
+  orderId: string,
+  userId: string,
+  status: OrderStatus,
+  note?: string,
+): Promise<void> {
+  const orderRef = doc(firebaseDb, 'users', userId, 'orders', orderId);
+  
+  // Get current order to append to timeline
+  const orderSnap = await getDoc(orderRef);
+  const currentData = orderSnap.data();
+  const currentTimeline = (currentData?.timeline as any[]) || [];
+  
+  // Add new timeline entry
+  const newTimelineEntry = {
+    status,
+    timestamp: serverTimestamp(),
+    note: note || `Status changed to ${status}`,
+  };
+  
+  const updatedTimeline = [...currentTimeline, newTimelineEntry];
+  
+  await updateDoc(orderRef, {
+    status,
+    timeline: updatedTimeline,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Approve order cancellation (admin only) - restores stock and updates order status
+ */
+export async function approveOrderCancellation(
+  orderId: string,
+  userId: string,
+  note?: string,
+): Promise<void> {
+  await runTransaction(firebaseDb, async (transaction) => {
+    const orderRef = doc(firebaseDb, 'users', userId, 'orders', orderId);
+    const orderSnap = await transaction.get(orderRef);
+    
+    if (!orderSnap.exists()) {
+      throw new Error('Order not found');
+    }
+    
+    const orderData = orderSnap.data() as any;
+    
+    if (orderData.status === 'cancelled') {
+      throw new Error('Order is already cancelled');
+    }
+    
+    if (!orderData.cancellationRequested) {
+      throw new Error('No cancellation request found for this order');
+    }
+    
+    const items = orderData.items || [];
+    const currentTimeline = (orderData.timeline as any[]) || [];
+    
+    // Restore stock for all items
+    for (const item of items) {
+      const productRef = doc(firebaseDb, 'products', item.productId);
+      const productSnap = await transaction.get(productRef);
+      
+      if (productSnap.exists()) {
+        const productData = productSnap.data();
+        const currentStock = Number(productData?.stock ?? 0);
+        const quantityToRestore = Number(item.quantity ?? 0);
+        const newStock = currentStock + quantityToRestore;
+        
+        transaction.update(productRef, {
+          stock: newStock,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+    
+    // Update order status and timeline
+    const newTimelineEntry = {
+      status: 'cancelled' as OrderStatus,
+      timestamp: serverTimestamp(),
+      note: note || 'Order cancelled - stock restored',
+    };
+    
+    const updatedTimeline = [...currentTimeline, newTimelineEntry];
+    
+    transaction.update(orderRef, {
+      status: 'cancelled',
+      timeline: updatedTimeline,
+      cancellationRequested: false, // Clear request flag
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
+ * Reject order cancellation (admin only)
+ */
+export async function rejectOrderCancellation(
+  orderId: string,
+  userId: string,
+  rejectionReason?: string,
+): Promise<void> {
+  const orderRef = doc(firebaseDb, 'users', userId, 'orders', orderId);
+  
+  const orderSnap = await getDoc(orderRef);
+  if (!orderSnap.exists()) {
+    throw new Error('Order not found');
+  }
+  
+  const orderData = orderSnap.data() as any;
+  
+  if (!orderData.cancellationRequested) {
+    throw new Error('No cancellation request found for this order');
+  }
+  
+  await updateDoc(orderRef, {
+    cancellationRequested: false,
+    cancellationRejected: true,
+    cancellationRejectedAt: serverTimestamp(),
+    cancellationRejectionReason: rejectionReason || 'Cancellation request rejected',
+    updatedAt: serverTimestamp(),
   });
 }
 

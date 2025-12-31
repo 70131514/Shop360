@@ -10,6 +10,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import ProductListScreen from '../screens/product/ProductListScreen';
 import CartScreen from '../screens/cart/CartScreen';
 import CheckoutScreen from '../screens/cart/CheckoutScreen';
+import OrderPlacedScreen from '../screens/cart/OrderPlacedScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import ProductDetailsScreen from '../screens/product/ProductDetailsScreen';
 import { ARViewScreen } from '../screens/ar/ARViewScreen';
@@ -19,6 +20,7 @@ import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import AdminProductsScreen from '../screens/admin/AdminProductsScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
+import AdminOrderDetailScreen from '../screens/admin/AdminOrderDetailScreen';
 import AdminProductEditScreen from '../screens/admin/AdminProductEditScreen';
 import AdminInquiriesScreen from '../screens/admin/AdminInquiriesScreen';
 import AdminUserDetailScreen from '../screens/admin/AdminUserDetailScreen';
@@ -37,6 +39,7 @@ import AddressFormScreen from '../screens/profile/AddressFormScreen';
 import PaymentMethodsScreen from '../screens/profile/PaymentMethodsScreen';
 import WishlistScreen from '../screens/profile/WishlistScreen';
 import OrderHistoryScreen from '../screens/profile/OrderHistoryScreen';
+import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
@@ -291,7 +294,7 @@ export const AppNavigator = () => {
   };
 
   const showBlockingLoader = loading || checkingEmailVerification;
-  const profileHydrating = user && isEmailVerified && profile === null;
+  const profileHydrating = user && user.uid && isEmailVerified && profile === null;
   const [showWelcomeBack, setShowWelcomeBack] = React.useState(false);
   const lastHandledWelcomeReqRef = React.useRef(0);
 
@@ -313,7 +316,7 @@ export const AppNavigator = () => {
   }, [user?.uid, isEmailVerified, isAdmin, profile?.avatarId]);
 
   const needsAvatarOnboarding =
-    user && isEmailVerified && !isAdmin && emailVerificationChecked && profile && !profile.avatarId;
+    user && user.uid && isEmailVerified && !isAdmin && emailVerificationChecked && profile && !profile.avatarId;
 
   // Only show welcome-back when explicitly requested (e.g., after pressing "Sign in"),
   // to avoid glitching during hydration / profile updates.
@@ -348,7 +351,7 @@ export const AppNavigator = () => {
 
   // If the user is signed in but not verified, hard-gate them into the verification flow.
   // They can log out from that screen to continue as guest.
-  if (user && emailVerificationChecked && !isEmailVerified) {
+  if (user && user.uid && emailVerificationChecked && !isEmailVerified) {
     return (
       <View style={{ flex: 1 }}>
         <NavigationContainer theme={navigationTheme}>
@@ -491,11 +494,21 @@ export const AppNavigator = () => {
           component={AdminUserDetailScreen}
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="AdminOrderDetail"
+          component={AdminOrderDetailScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
         <Stack.Screen
           name="Checkout"
           component={CheckoutScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="OrderPlaced"
+          component={OrderPlacedScreen}
+          options={{ headerShown: false, gestureEnabled: false }}
         />
         <Stack.Screen
           name="ARView"
@@ -536,6 +549,11 @@ export const AppNavigator = () => {
           name="Orders"
           component={OrderHistoryScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+        />
+        <Stack.Screen
+          name="OrderDetail"
+          component={OrderDetailScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Notifications"
@@ -608,7 +626,7 @@ export const AppNavigator = () => {
       </Stack.Navigator>
     </NavigationContainer>
 
-      {showWelcomeBack && user && isEmailVerified && !needsAvatarOnboarding && (
+      {showWelcomeBack && user && user.uid && isEmailVerified && !needsAvatarOnboarding && (
         <View
           style={{
             position: 'absolute',

@@ -358,6 +358,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await signOut();
       setUser(null);
       setIsEmailVerified(false);
+      setEmailVerificationChecked(false);
+      setCheckingEmailVerification(false);
       setProfile(null);
       setRole(null);
       setAuthTransitionActive(false);
@@ -365,6 +367,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error?.code === 'auth/no-current-user') {
         setUser(null);
         setIsEmailVerified(false);
+        setEmailVerificationChecked(false);
+        setCheckingEmailVerification(false);
         setProfile(null);
         setRole(null);
         setAuthTransitionActive(false);

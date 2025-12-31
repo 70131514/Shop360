@@ -10,6 +10,7 @@ import {
   subscribeAdminStats,
   subscribeRecentOrders,
   subscribeRecentUsers,
+  subscribeNewOrderCount,
   type AdminOrderRow,
   type AdminUserRow,
 } from '../../services/admin/adminService';
@@ -22,6 +23,7 @@ export default function AdminDashboardScreen() {
   const [stats, setStats] = useState({ users: 0, products: 0, orders: 0 });
   const [recentOrders, setRecentOrders] = useState<AdminOrderRow[]>([]);
   const [recentUsers, setRecentUsers] = useState<AdminUserRow[]>([]);
+  const [newOrderCount, setNewOrderCount] = useState(0);
   const [loadingLists, setLoadingLists] = useState(true);
 
   useEffect(() => {
@@ -77,9 +79,19 @@ export default function AdminDashboardScreen() {
       },
     );
 
+    const unsubNewOrderCount = subscribeNewOrderCount(
+      (count) => {
+        setNewOrderCount(count);
+      },
+      () => {
+        // Ignore errors for notification count
+      },
+    );
+
     return () => {
       unsubUsers();
       unsubOrders();
+      unsubNewOrderCount();
     };
   }, [isAdmin]);
 
@@ -114,9 +126,10 @@ export default function AdminDashboardScreen() {
       },
       {
         title: 'View orders',
-        subtitle: 'Latest purchases',
+        subtitle: newOrderCount > 0 ? `${newOrderCount} new order${newOrderCount > 1 ? 's' : ''}` : 'Latest purchases',
         icon: 'receipt-outline',
         onPress: () => navigation.navigate('AdminTabs', { screen: 'OrdersAdmin' }),
+        badge: newOrderCount > 0 ? newOrderCount : undefined,
       },
       {
         title: 'Manage products',
@@ -125,7 +138,7 @@ export default function AdminDashboardScreen() {
         onPress: () => navigation.navigate('AdminTabs', { screen: 'ProductsAdmin' }),
       },
     ],
-    [navigation],
+    [navigation, newOrderCount],
   );
 
   const statusColor = (status: string) => {
@@ -216,6 +229,11 @@ export default function AdminDashboardScreen() {
                 >
                   <View style={[styles.actionIconWrap, { backgroundColor: colors.background }]}>
                     <Ionicons name={a.icon as any} size={20} color={colors.primary} />
+                    {a.badge && a.badge > 0 && (
+                      <View style={[styles.actionBadge, { backgroundColor: '#FF3B30' }]}>
+                        <Text style={styles.actionBadgeText}>{a.badge > 99 ? '99+' : a.badge}</Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={[styles.actionTitle, { color: colors.text }]} numberOfLines={1}>
                     {a.title}
@@ -377,6 +395,25 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  actionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  actionBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   actionTitle: { fontSize: 14, fontWeight: '800' },
   actionSubtitle: { fontSize: 12 },

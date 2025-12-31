@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { AppText as Text } from '../../components/common/AppText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +11,7 @@ import { subscribeAllOrders, type AdminOrderRow } from '../../services/admin/adm
 export default function AdminOrdersScreen() {
   const { colors } = useTheme();
   const { isAdmin } = useAuth();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
 
@@ -58,22 +60,43 @@ export default function AdminOrdersScreen() {
           data={orders}
           keyExtractor={(o) => o.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-                  Order #{item.shortId}
-                </Text>
-                <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1}>
-                  User: {item.userId}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.amount, { color: colors.text }]}>${item.total.toFixed(2)}</Text>
-                <Text style={[styles.meta, { color: colors.textSecondary }]}>{item.status}</Text>
-              </View>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const isUnread = !item.viewedByAdmin;
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.row,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderLeftWidth: isUnread ? 4 : 1,
+                    borderLeftColor: isUnread ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => navigation.navigate('AdminOrderDetail', { orderId: item.id, userId: item.userId })}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+                      Order #{item.shortId}
+                    </Text>
+                    {isUnread && (
+                      <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.unreadBadgeText}>NEW</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.meta, { color: colors.textSecondary }]} numberOfLines={1}>
+                    User: {item.userId}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={[styles.amount, { color: colors.text }]}>${item.total.toFixed(2)}</Text>
+                  <Text style={[styles.meta, { color: colors.textSecondary }]}>{item.status}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -114,6 +137,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  unreadBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  unreadBadgeText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
 
