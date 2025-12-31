@@ -53,20 +53,27 @@ export const ARViewScreen = () => {
   useEffect(() => {
     let alive = true;
     if (!productId) {
+      // No productId provided - mark as loaded with no model
       setRemoteModelUrl('');
+      setProductName('');
+      setProductLoaded(true);
       return () => {
         alive = false;
       };
     }
+    // Reset loading state when productId changes
+    setProductLoaded(false);
     getStoreProductById(productId)
       .then((p) => {
         if (alive) {
-          setRemoteModelUrl(String(p?.modelUrl ?? ''));
+          const modelUrl = p?.modelUrl ? String(p.modelUrl).trim() : '';
+          setRemoteModelUrl(modelUrl);
           setProductName(String(p?.title ?? ''));
           setProductLoaded(true);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn('Error loading product for AR view:', err);
         if (alive) {
           setRemoteModelUrl('');
           setProductName('');
@@ -133,7 +140,7 @@ export const ARViewScreen = () => {
   const initialScene = useMemo(() => ({ scene: ModelPlacementARScene }), []);
   const viroAppProps = useMemo(
     () => ({
-      modelUrl: remoteModelUrl || undefined,
+      modelUrl: remoteModelUrl && remoteModelUrl.trim() ? remoteModelUrl.trim() : undefined,
       modelPosition,
       modelRotationY,
       modelScaleMultiplier,
@@ -266,8 +273,31 @@ export const ARViewScreen = () => {
     ]).start();
   }, [uiMinimized, controlsOpacity, controlsTranslateY]);
 
+  // Check if we have a valid model URL
+  const hasModelUrl = remoteModelUrl && remoteModelUrl.trim().length > 0;
+
+  // Show loading state while product is being fetched
+  if (!productLoaded) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="close" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.noModelContainer}>
+            <Ionicons name="cube-outline" size={64} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.noModelTitle}>Loading AR Model...</Text>
+            <Text style={styles.noModelText}>Please wait while we load the product details.</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   // Show message if no model URL is available (only after product has loaded)
-  if (productLoaded && !remoteModelUrl && productId) {
+  if (productLoaded && !hasModelUrl) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.overlay} pointerEvents="box-none">
@@ -280,7 +310,9 @@ export const ARViewScreen = () => {
             <Ionicons name="cube-outline" size={64} color="rgba(255,255,255,0.6)" />
             <Text style={styles.noModelTitle}>No AR Model Available</Text>
             <Text style={styles.noModelText}>
-              This product doesn't have an AR model yet. Check back later!
+              {productId
+                ? "This product doesn't have an AR model yet. Check back later!"
+                : 'No product selected for AR view.'}
             </Text>
             <TouchableOpacity
               style={styles.noModelButton}
@@ -293,6 +325,11 @@ export const ARViewScreen = () => {
         </SafeAreaView>
       </View>
     );
+  }
+
+  // Safety check: Only render AR if we have a valid model URL
+  if (!hasModelUrl || !productLoaded) {
+    return null;
   }
 
   return (

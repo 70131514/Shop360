@@ -110,8 +110,8 @@ type Props = {
 };
 
 function getModelSource(modelUrl?: string) {
-  if (modelUrl) {
-    return { uri: modelUrl };
+  if (modelUrl && typeof modelUrl === 'string' && modelUrl.trim().length > 0) {
+    return { uri: modelUrl.trim() };
   }
   // Fallback to default model if no URL provided
   return require('../models/shoes.glb');
