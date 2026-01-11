@@ -4,11 +4,13 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
 } from '@react-native-firebase/firestore';
+import type { Unsubscribe } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 
 export type WishlistItem = {
@@ -84,4 +86,33 @@ export async function toggleWishlist(item: WishlistItem): Promise<boolean> {
   }
   await addToWishlist(item);
   return true;
+}
+
+/**
+ * Subscribe to wishlist for the current user
+ */
+export function subscribeWishlist(
+  onWishlist: (items: WishlistItem[]) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const uid = requireUid();
+  const q = query(wishlistCollectionRef(uid), orderBy('addedAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items = snap.docs.map((d) => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          ...data,
+        } as WishlistItem;
+      });
+      onWishlist(items);
+    },
+    (err) => {
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
 }

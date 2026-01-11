@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getWishlist } from '../../services/wishlistService';
+import { subscribeWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { subscribeMyAddresses } from '../../services/addressService';
@@ -51,33 +51,30 @@ const ProfileScreen = () => {
   });
 
   useEffect(() => {
-    // Only load wishlist count when user is logged in
+    // Reset wishlist count when logged out
     if (!user) {
       setWishlistCount(0);
       return;
     }
 
-    const loadWishlistCount = async () => {
-      try {
-        const wishlist = await getWishlist();
-        setWishlistCount(wishlist.length);
-      } catch {
-        setWishlistCount(0);
+    // Live wishlist count for the signed-in user
+    let unsub: undefined | (() => void);
+    try {
+      unsub = subscribeWishlist(
+        (items) => setWishlistCount(Array.isArray(items) ? items.length : 0),
+        () => setWishlistCount(0),
+      );
+    } catch {
+      // Likely signed out / no uid yet
+      setWishlistCount(0);
+    }
+
+    return () => {
+      if (unsub) {
+        unsub();
       }
     };
-    loadWishlistCount();
-
-    // Add focus listener to refresh data
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (user) {
-        loadWishlistCount();
-      } else {
-        setWishlistCount(0);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, user]);
+  }, [user]);
 
   useEffect(() => {
     // Reset order count when logged out
