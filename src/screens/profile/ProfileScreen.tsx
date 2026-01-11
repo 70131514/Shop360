@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getWishlist } from '../../services/wishlistService';
 import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
-import { getAddresses } from '../../utils/storage';
+import { subscribeMyAddresses } from '../../services/addressService';
 import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 type MenuItem = {
@@ -106,33 +106,30 @@ const ProfileScreen = () => {
   }, [user]);
 
   useEffect(() => {
-    // Only load address count when user is logged in
+    // Reset address count when logged out
     if (!user) {
       setAddressCount(0);
       return;
     }
 
-    const loadAddressCount = async () => {
-      try {
-        const addresses = await getAddresses();
-        setAddressCount(Array.isArray(addresses) ? addresses.length : 0);
-      } catch {
-        setAddressCount(0);
+    // Live address count for the signed-in user
+    let unsub: undefined | (() => void);
+    try {
+      unsub = subscribeMyAddresses(
+        (addresses) => setAddressCount(Array.isArray(addresses) ? addresses.length : 0),
+        () => setAddressCount(0),
+      );
+    } catch {
+      // Likely signed out / no uid yet
+      setAddressCount(0);
+    }
+
+    return () => {
+      if (unsub) {
+        unsub();
       }
     };
-    loadAddressCount();
-
-    // Add focus listener to refresh data
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (user) {
-        loadAddressCount();
-      } else {
-        setAddressCount(0);
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, user]);
+  }, [user]);
 
   const allMenuItems: MenuItem[] = [
     {
