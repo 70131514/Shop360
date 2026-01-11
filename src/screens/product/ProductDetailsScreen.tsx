@@ -259,6 +259,13 @@ export default function ProductDetailsScreen() {
       return;
     }
     if (product.stock <= 0) {
+      alert('Out of Stock', 'This product is currently out of stock.', [{ text: 'OK' }]);
+      return;
+    }
+    if (quantity > product.stock) {
+      alert('Insufficient Stock', `Only ${product.stock} item(s) available in stock.`, [
+        { text: 'OK' },
+      ]);
       return;
     }
 
@@ -278,6 +285,7 @@ export default function ProductDetailsScreen() {
         brand: product.brand,
         quantity,
         inStock: product.stock > 0,
+        stock: product.stock,
       });
       alert('Added to cart', `${product.title} (x${quantity}) has been added to your cart.`);
     } catch (e: any) {
@@ -471,14 +479,22 @@ export default function ProductDetailsScreen() {
 
           <Text style={[styles.title, { color: colors.text }]}>{product.title}</Text>
 
-          <Text style={[styles.price, { color: colors.text }]}>
-            ${product.price}{' '}
-            {product.discountPercentage > 0 && (
-              <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>
-                ${Math.round(product.price / (1 - product.discountPercentage / 100))}
+          <View style={styles.priceContainer}>
+            {product.discountPercentage > 0 ? (
+              <>
+                <Text style={[styles.price, { color: colors.text }]}>
+                  ${(product.price * (1 - product.discountPercentage / 100)).toFixed(2)}
+                </Text>
+                <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+              </>
+            ) : (
+              <Text style={[styles.price, { color: colors.text }]}>
+                ${product.price.toFixed(2)}
               </Text>
             )}
-          </Text>
+          </View>
 
           <Text style={[styles.stockInfo, { color: colors.textSecondary }]}>
             {product.stock > 0 ? `In Stock (${product.stock})` : 'Out of Stock'}
@@ -821,10 +837,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 26,
   },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    flexWrap: 'wrap',
+  },
   price: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 6,
+    marginRight: 8,
   },
   originalPrice: {
     fontSize: 14,

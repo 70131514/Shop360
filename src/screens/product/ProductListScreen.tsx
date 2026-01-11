@@ -241,6 +241,12 @@ const ProductListScreen = () => {
   }, []);
 
   const handleAddToCart = async (product: Product) => {
+    const stock = product.stock ?? 0;
+    if (stock <= 0) {
+      alert('Out of Stock', 'This product is currently out of stock.', [{ text: 'OK' }]);
+      return;
+    }
+
     try {
       const discountedPrice =
         product.discountPercentage > 0
@@ -255,7 +261,8 @@ const ProductListScreen = () => {
         originalPrice: product.discountPercentage > 0 ? product.price : undefined,
         image: product.thumbnail,
         brand: product.brand,
-        inStock: (product.stock ?? 0) > 0,
+        inStock: stock > 0,
+        stock: stock,
       });
       alert('Added to cart', `${product.title} has been added to your cart.`);
     } catch (e: any) {

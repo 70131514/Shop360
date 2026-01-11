@@ -55,17 +55,36 @@ const WishlistScreen = () => {
     if (!item) {
       return;
     }
-    await addToCart({
-      id: item.id,
-      name: item.name,
-      price: Number(item.price ?? 0),
-      originalPrice: item.originalPrice,
-      image: item.image,
-      brand: item.brand,
-      inStock: item.inStock,
-    });
-    alert('Added to cart', `${item.name} has been added to your cart.`);
-    await handleRemoveItem(id);
+    try {
+      // Fetch current product to get stock
+      const { getProductById } = await import('../../services/productCatalogService');
+      const product = await getProductById(item.id);
+      
+      if (!product) {
+        alert('Product Not Found', 'This product is no longer available.', [{ text: 'OK' }]);
+        return;
+      }
+      
+      if (product.stock <= 0) {
+        alert('Out of Stock', 'This product is currently out of stock.', [{ text: 'OK' }]);
+        return;
+      }
+
+      await addToCart({
+        id: item.id,
+        name: item.name,
+        price: Number(item.price ?? 0),
+        originalPrice: item.originalPrice,
+        image: item.image,
+        brand: item.brand,
+        inStock: product.stock > 0,
+        stock: product.stock,
+      });
+      alert('Added to cart', `${item.name} has been added to your cart.`);
+      await handleRemoveItem(id);
+    } catch (e: any) {
+      alert('Could not add to cart', e?.message ?? 'Please try again.');
+    }
   };
 
   return (

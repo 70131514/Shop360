@@ -32,6 +32,9 @@ interface CartItemProps {
   price: number;
   image: string;
   quantity: number;
+  stock?: number;
+  inStock?: boolean;
+  originalPrice?: number;
   onQuantityChange: (id: string, newQuantity: number) => void;
   onRemove: (id: string) => void;
 }
@@ -42,36 +45,140 @@ const CartItem = ({
   price,
   image,
   quantity,
+  stock,
+  inStock,
+  originalPrice,
   onQuantityChange,
   onRemove,
 }: CartItemProps) => {
   const { colors } = useTheme();
+  const { alert } = useAppAlert();
+
+  const currentStock = stock ?? 0;
+  const isOutOfStock = currentStock <= 0;
+  const isLowStock = currentStock > 0 && quantity > currentStock;
+  const maxQuantity = Math.max(0, currentStock);
+  const hasDiscount = originalPrice && originalPrice > price;
+  const discountPercentage = hasDiscount
+    ? Math.round(((originalPrice! - price) / originalPrice!) * 100)
+    : 0;
+
+  const handleQuantityIncrease = () => {
+    if (isOutOfStock) {
+      alert('Out of Stock', 'This product is currently out of stock.', [
+        { text: 'OK', style: 'default' },
+      ]);
+      return;
+    }
+    if (quantity >= maxQuantity) {
+      alert(
+        'Limited Stock',
+        `Only ${maxQuantity} item(s) available in stock.`,
+        [{ text: 'OK', style: 'default' }],
+      );
+      return;
+    }
+    onQuantityChange(id, quantity + 1);
+  };
+
+  const handleQuantityDecrease = () => {
+    onQuantityChange(id, Math.max(1, quantity - 1));
+  };
 
   return (
     <View
-      style={[styles.cartItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      style={[
+        styles.cartItem,
+        {
+          backgroundColor: colors.surface,
+          borderColor: isOutOfStock || isLowStock ? colors.error : colors.border,
+          borderWidth: isOutOfStock || isLowStock ? 2 : 1,
+        },
+      ]}
     >
       <Image source={{ uri: image }} style={styles.cartItemImage} />
       <View style={styles.cartItemInfo}>
         <Text style={[styles.cartItemName, { color: colors.text }]} numberOfLines={2}>
           {name}
         </Text>
-        <Text style={[styles.cartItemPrice, { color: colors.text }]}>${price.toFixed(2)}</Text>
+        <View style={styles.priceContainer}>
+          {hasDiscount && (
+            <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>
+              ${originalPrice!.toFixed(2)}
+            </Text>
+          )}
+          <Text style={[styles.cartItemPrice, { color: colors.text }]}>${price.toFixed(2)}</Text>
+          {hasDiscount && (
+            <View style={[styles.discountBadge, { backgroundColor: colors.primary + '20' }]}>
+              <Text style={[styles.discountText, { color: colors.primary }]}>
+                -{discountPercentage}%
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {(isOutOfStock || isLowStock) && (
+          <View
+            style={[
+              styles.stockWarning,
+              {
+                backgroundColor: isOutOfStock
+                  ? (colors.error || '#FF3B30') + '15'
+                  : '#FF9500' + '15',
+              },
+            ]}
+          >
+            <Ionicons
+              name={isOutOfStock ? 'alert-circle-outline' : 'warning-outline'}
+              size={14}
+              color={isOutOfStock ? colors.error || '#FF3B30' : '#FF9500'}
+            />
+            <Text
+              style={[
+                styles.stockWarningText,
+                {
+                  color: isOutOfStock ? colors.error || '#FF3B30' : '#FF9500',
+                },
+              ]}
+            >
+              {isOutOfStock
+                ? 'Out of stock'
+                : `Only ${maxQuantity} available (${quantity} in cart)`}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.quantityContainer}>
           <TouchableOpacity
             style={[styles.quantityButton, { borderColor: colors.border }]}
-            onPress={() => onQuantityChange(id, Math.max(1, quantity - 1))}
+            onPress={handleQuantityDecrease}
             activeOpacity={0.7}
+            disabled={quantity <= 1}
           >
-            <Ionicons name="remove-outline" size={18} color={colors.text} />
+            <Ionicons
+              name="remove-outline"
+              size={18}
+              color={quantity <= 1 ? colors.textSecondary : colors.text}
+            />
           </TouchableOpacity>
           <Text style={[styles.quantityText, { color: colors.text }]}>{quantity}</Text>
           <TouchableOpacity
-            style={[styles.quantityButton, { borderColor: colors.border }]}
-            onPress={() => onQuantityChange(id, quantity + 1)}
+            style={[
+              styles.quantityButton,
+              {
+                borderColor: colors.border,
+                opacity: isOutOfStock || quantity >= maxQuantity ? 0.5 : 1,
+              },
+            ]}
+            onPress={handleQuantityIncrease}
             activeOpacity={0.7}
+            disabled={isOutOfStock || quantity >= maxQuantity}
           >
-            <Ionicons name="add-outline" size={18} color={colors.text} />
+            <Ionicons
+              name="add-outline"
+              size={18}
+              color={isOutOfStock || quantity >= maxQuantity ? colors.textSecondary : colors.text}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -137,6 +244,17 @@ export default function CartScreen() {
       ),
     [cartItems],
   );
+  const totalSavings = useMemo(
+    () =>
+      cartItems.reduce((sum, item) => {
+        if (item.originalPrice && item.originalPrice > item.price) {
+          const savingsPerUnit = item.originalPrice - item.price;
+          return sum + savingsPerUnit * item.quantity;
+        }
+        return sum;
+      }, 0),
+    [cartItems],
+  );
   const shipping = cartItems.length > 0 ? 10 : 0;
   const total = subtotal + shipping;
 
@@ -185,14 +303,22 @@ export default function CartScreen() {
     );
   }
 
-  const handleQuantityChange = (id: string, newQuantity: number) => {
-    // Optimistic UI update; Firestore snapshot will confirm shortly
+  const handleQuantityChange = async (id: string, newQuantity: number) => {
+    // Optimistic UI update
     setCartItems((items) =>
       items.map((item) => (item.id === id ? { ...item, quantity: newQuantity } : item)),
     );
-    setCartItemQuantity(id, newQuantity).catch(() => {
-      // If it fails, the snapshot will re-sync; no-op here
-    });
+    try {
+      await setCartItemQuantity(id, newQuantity);
+    } catch (e: any) {
+      // Revert on error and show alert
+      setCartItems((items) =>
+        items.map((item) => (item.id === id ? { ...item, quantity: item.quantity } : item)),
+      );
+      alert('Quantity Update Failed', e?.message ?? 'Unable to update quantity. Please try again.', [
+        { text: 'OK', style: 'default' },
+      ]);
+    }
   };
 
   const handleRemoveItem = (id: string) => {
@@ -216,6 +342,26 @@ export default function CartScreen() {
       return;
     }
 
+    // Check for out-of-stock items
+    const outOfStockItems = cartItems.filter((item) => !item.inStock || (item.stock ?? 0) <= 0);
+    const lowStockItems = cartItems.filter(
+      (item) => item.inStock && (item.stock ?? 0) > 0 && item.quantity > (item.stock ?? 0),
+    );
+
+    if (outOfStockItems.length > 0 || lowStockItems.length > 0) {
+      let message = '';
+      if (outOfStockItems.length > 0) {
+        message += `${outOfStockItems.length} item(s) are out of stock. `;
+      }
+      if (lowStockItems.length > 0) {
+        message += `${lowStockItems.length} item(s) have insufficient stock. `;
+      }
+      message += 'Please update your cart before checkout.';
+
+      alert('Cart Issues', message, [{ text: 'OK', style: 'default' }]);
+      return;
+    }
+
     if (!user) {
       alert('Sign in required', 'Please sign in to checkout.', [
         { text: 'Cancel', style: 'cancel' },
@@ -231,7 +377,7 @@ export default function CartScreen() {
     if (!user.emailVerified) {
       alert(
         'Verify your email',
-        'Please verify your email to checkout. Check your inbox, then tap “I verified”.',
+        'Please verify your email to checkout. Check your inbox, then tap "I verified".',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -337,6 +483,14 @@ export default function CartScreen() {
               ${subtotal.toFixed(2)}
             </Text>
           </View>
+          {totalSavings > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.primary }]}>You Save</Text>
+              <Text style={[styles.summaryValue, { color: colors.primary }]}>
+                -${totalSavings.toFixed(2)}
+              </Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Shipping</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>
@@ -349,9 +503,24 @@ export default function CartScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.checkoutButton, { backgroundColor: colors.primary }]}
+            style={[
+              styles.checkoutButton,
+              {
+                backgroundColor: colors.primary,
+                opacity:
+                  cartItems.length === 0 ||
+                  cartItems.some((item) => !item.inStock || (item.stock ?? 0) <= 0) ||
+                  cartItems.some((item) => item.quantity > (item.stock ?? 0))
+                    ? 0.5
+                    : 1,
+              },
+            ]}
             onPress={handleCheckout}
-            disabled={cartItems.length === 0}
+            disabled={
+              cartItems.length === 0 ||
+              cartItems.some((item) => !item.inStock || (item.stock ?? 0) <= 0) ||
+              cartItems.some((item) => item.quantity > (item.stock ?? 0))
+            }
             activeOpacity={0.8}
           >
             <Text style={[styles.checkoutButtonText, { color: colors.background }]}>
@@ -459,10 +628,30 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     lineHeight: 22,
   } as TextStyle,
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  } as ViewStyle,
+  originalPrice: {
+    fontSize: 14,
+    textDecorationLine: 'line-through',
+    marginRight: 8,
+  } as TextStyle,
   cartItemPrice: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
+    marginRight: 8,
+  } as TextStyle,
+  discountBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  } as ViewStyle,
+  discountText: {
+    fontSize: 12,
+    fontWeight: '700',
   } as TextStyle,
   quantityContainer: {
     flexDirection: 'row',
@@ -580,5 +769,19 @@ const styles = StyleSheet.create({
   signupButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  } as TextStyle,
+  stockWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  } as ViewStyle,
+  stockWarningText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
   } as TextStyle,
 });

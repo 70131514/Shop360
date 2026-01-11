@@ -108,7 +108,7 @@ service cloud.firestore {
 
         allow create, update: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
-            'id','name','price','image','quantity','brand','originalPrice','inStock','addedAt','updatedAt'
+            'id','name','price','image','quantity','brand','originalPrice','inStock','stock','addedAt','updatedAt'
           ])
           && request.resource.data.id == productId;
 
