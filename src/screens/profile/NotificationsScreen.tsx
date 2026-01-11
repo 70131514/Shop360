@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  Switch,
-} from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, StatusBar, Switch } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
 
 type NotificationPreference = {
   id: string;
@@ -21,6 +15,7 @@ type NotificationPreference = {
 
 const NotificationsScreen = () => {
   const { colors } = useTheme();
+  const navigation = useNavigation<any>();
   const [preferences, setPreferences] = useState<NotificationPreference[]>([
     {
       id: '1',
@@ -68,7 +63,7 @@ const NotificationsScreen = () => {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar
@@ -77,8 +72,15 @@ const NotificationsScreen = () => {
         translucent={false}
       />
 
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Notifications</Text>
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="notifications-outline" size={24} color={colors.text} />
@@ -139,18 +141,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 36,
+  },
   scrollContent: {
     padding: 20,
-  },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 14,
+    paddingBottom: 100,
   },
   section: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 20,
+    borderWidth: 1,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -173,8 +196,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 16,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 12,
   },
   preferenceInfo: {
     flex: 1,

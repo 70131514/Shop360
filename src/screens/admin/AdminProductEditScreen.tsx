@@ -50,6 +50,8 @@ export default function AdminProductEditScreen() {
   const [rating, setRating] = useState('0');
   const [discountPercentage, setDiscountPercentage] = useState('0');
   const [isFeatured, setIsFeatured] = useState(false);
+  const [isNewArrival, setIsNewArrival] = useState(false);
+  const [isBestSeller, setIsBestSeller] = useState(false);
 
   // Existing (remote) assets
   const [images, setImages] = useState<string[]>([]);
@@ -108,6 +110,8 @@ export default function AdminProductEditScreen() {
         setDiscountPercentage(String((p as any).discountPercentage ?? 0));
         setModelUrl(String((p as any).modelUrl ?? ''));
         setIsFeatured(Boolean((p as any).isFeatured ?? false));
+        setIsNewArrival(Boolean((p as any).isNewArrival ?? false));
+        setIsBestSeller(Boolean((p as any).isBestSeller ?? false));
       } catch {
         // ignore
       } finally {
@@ -302,6 +306,8 @@ export default function AdminProductEditScreen() {
         description: description.trim(),
         modelUrl: nextModelUrl,
         isFeatured,
+        isNewArrival,
+        isBestSeller,
       });
       alert('Saved', 'Product has been saved.');
       navigation.goBack();
@@ -698,6 +704,70 @@ export default function AdminProductEditScreen() {
                     {
                       backgroundColor: colors.background,
                       transform: [{ translateX: isFeatured ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.featuredRow, { marginTop: 16 }]}>
+              <View style={styles.flex1}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  New Arrival
+                </Text>
+                <Text style={[styles.featuredHint, { color: colors.textSecondary }]}>
+                  Show in New Arrivals section
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  {
+                    backgroundColor: isNewArrival ? colors.primary : colors.surface,
+                    borderColor: isNewArrival ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setIsNewArrival(!isNewArrival)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      backgroundColor: colors.background,
+                      transform: [{ translateX: isNewArrival ? 20 : 0 }],
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.featuredRow, { marginTop: 16 }]}>
+              <View style={styles.flex1}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Best Seller
+                </Text>
+                <Text style={[styles.featuredHint, { color: colors.textSecondary }]}>
+                  Show in Best Sellers section
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.toggleSwitch,
+                  {
+                    backgroundColor: isBestSeller ? colors.primary : colors.surface,
+                    borderColor: isBestSeller ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => setIsBestSeller(!isBestSeller)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.toggleThumb,
+                    {
+                      backgroundColor: colors.background,
+                      transform: [{ translateX: isBestSeller ? 20 : 0 }],
                     },
                   ]}
                 />

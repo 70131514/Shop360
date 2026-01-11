@@ -14,10 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import {
-  getOrderById,
+  subscribeOrderById,
   requestOrderCancellation,
   type Order,
   type OrderStatus,
+  type OrderTimelineEntry,
 } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 
@@ -29,6 +30,7 @@ const OrderDetailScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { alert } = useAppAlert();
   const { orderId } = (route.params as OrderDetailRouteParams) || {};
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -44,26 +46,35 @@ const OrderDetailScreen = () => {
     }
 
     let mounted = true;
-    getOrderById(orderId)
-      .then((orderData) => {
+    setLoading(true);
+    setError(null);
+
+    // Subscribe to real-time order updates
+    const unsubscribe = subscribeOrderById(
+      orderId,
+      (orderData) => {
         if (mounted) {
           if (orderData) {
             setOrder(orderData);
+            setError(null);
           } else {
             setError('Order not found');
+            setOrder(null);
           }
           setLoading(false);
         }
-      })
-      .catch((err) => {
+      },
+      (err) => {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to load order');
           setLoading(false);
         }
-      });
+      },
+    );
 
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, [orderId]);
 
@@ -136,11 +147,7 @@ const OrderDetailScreen = () => {
             try {
               setRequestingCancellation(true);
               await requestOrderCancellation(orderId);
-              // Refresh order data
-              const updatedOrder = await getOrderById(orderId);
-              if (updatedOrder) {
-                setOrder(updatedOrder);
-              }
+              // Order will be updated automatically via subscription
               alert('Success', 'Cancellation request submitted. Waiting for admin approval.');
             } catch (err) {
               alert('Error', err instanceof Error ? err.message : 'Failed to request cancellation');
@@ -367,6 +374,42 @@ const OrderDetailScreen = () => {
               </TouchableOpacity>
             </View>
           )}
+
+        {/* Order Timeline Card */}
+        {order.timeline && order.timeline.length > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Order Status Timeline</Text>
+            <View style={styles.timelineContainer}>
+              {order.timeline.map((entry: OrderTimelineEntry, index: number) => {
+                const isLast = index === order.timeline!.length - 1;
+                const statusColor = getStatusColor(entry.status);
+                return (
+                  <View key={index} style={styles.timelineItem}>
+                    <View style={styles.timelineLeft}>
+                      <View style={[styles.timelineDot, { backgroundColor: statusColor }]} />
+                      {!isLast && (
+                        <View style={[styles.timelineLine, { backgroundColor: colors.border || '#E5E5EA' }]} />
+                      )}
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <View style={styles.timelineHeader}>
+                        <Text style={[styles.timelineStatus, { color: colors.text }]}>
+                          {String(entry.status).charAt(0).toUpperCase() + String(entry.status).slice(1)}
+                        </Text>
+                        <Text style={[styles.timelineDate, { color: colors.textSecondary }]}>
+                          {formatTimelineDate(entry.timestamp)}
+                        </Text>
+                      </View>
+                      {entry.note && (
+                        <Text style={[styles.timelineNote, { color: colors.textSecondary }]}>{entry.note}</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Summary Card */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>

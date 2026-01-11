@@ -181,6 +181,55 @@ service cloud.firestore {
         allow delete: if isOwner(uid) && isEmailVerified();
       }
 
+      // ✅ Payment Methods subcollection (per-user)
+      match /paymentMethods/{cardId} {
+        // Users can only read/list their own payment methods
+        allow get, list: if isOwner(uid) && isEmailVerified();
+
+        // Users can create payment methods only for themselves
+        allow create: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'cardType',
+            'last4',
+            'expiryMonth',
+            'expiryYear',
+            'cardholderName',
+            'isDefault',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.cardType in ['visa', 'mastercard', 'amex', 'discover']
+          && request.resource.data.last4 is string
+          && request.resource.data.expiryMonth is string
+          && request.resource.data.expiryYear is string
+          && request.resource.data.isDefault is bool;
+
+        // Users can update their own payment methods
+        allow update: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'userId',
+            'cardType',
+            'last4',
+            'expiryMonth',
+            'expiryYear',
+            'cardholderName',
+            'isDefault',
+            'createdAt',
+            'updatedAt'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.cardType in ['visa', 'mastercard', 'amex', 'discover']
+          && request.resource.data.last4 is string
+          && request.resource.data.expiryMonth is string
+          && request.resource.data.expiryYear is string
+          && request.resource.data.isDefault is bool;
+
+        // Users can delete their own payment methods
+        allow delete: if isOwner(uid) && isEmailVerified();
+      }
+
       // ✅ Orders subcollection (per-user)
       match /orders/{orderId} {
         // Users can only read/list their own orders
@@ -347,6 +396,12 @@ service cloud.firestore {
 
       // No one can delete tickets (for record keeping)
       allow delete: if false;
+    }
+
+    // ✅ Collection Group Queries
+    // Allow admins to query orders collection group (for admin dashboard)
+    match /{path=**}/orders/{orderId} {
+      allow read: if isAdmin() && isEmailVerified();
     }
 
     // Everything else locked down

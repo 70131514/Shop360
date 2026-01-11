@@ -49,11 +49,9 @@ export function subscribePaymentMethods(
   onError?: (err: unknown) => void,
 ): Unsubscribe {
   const uid = requireUid();
-  const q = query(
-    paymentMethodsCollectionRef(uid),
-    orderBy('isDefault', 'desc'),
-    orderBy('createdAt', 'desc'),
-  );
+  // Remove orderBy to avoid requiring a composite index
+  // We'll sort in memory instead
+  const q = query(paymentMethodsCollectionRef(uid));
   return onSnapshot(
     q,
     (snap) => {
@@ -61,6 +59,31 @@ export function subscribePaymentMethods(
         id: d.id,
         ...(d.data() as any),
       })) as SavedCard[];
+
+      // Sort in memory: default first, then by createdAt (newest first)
+      methods.sort((a: any, b: any) => {
+        // First sort by isDefault (true first)
+        if (a.isDefault !== b.isDefault) {
+          return b.isDefault ? 1 : -1;
+        }
+        // Then sort by createdAt (newest first)
+        const aTime = a.createdAt?.toMillis
+          ? a.createdAt.toMillis()
+          : a.createdAt?.toDate
+          ? a.createdAt.toDate().getTime()
+          : a.createdAt
+          ? new Date(a.createdAt).getTime()
+          : 0;
+        const bTime = b.createdAt?.toMillis
+          ? b.createdAt.toMillis()
+          : b.createdAt?.toDate
+          ? b.createdAt.toDate().getTime()
+          : b.createdAt
+          ? new Date(b.createdAt).getTime()
+          : 0;
+        return bTime - aTime; // Descending order (newest first)
+      });
+
       onMethods(methods);
     },
     (err) => {
@@ -76,19 +99,39 @@ export function subscribePaymentMethods(
  */
 export async function getDefaultPaymentMethod(): Promise<SavedCard | null> {
   const uid = requireUid();
-  const q = query(
-    paymentMethodsCollectionRef(uid),
-    where('isDefault', '==', true),
-    orderBy('createdAt', 'desc'),
-  );
+  // Remove orderBy to avoid requiring a composite index
+  // We'll filter and sort in memory instead
+  const q = query(paymentMethodsCollectionRef(uid), where('isDefault', '==', true));
   const snap = await getDocs(q);
   if (snap.empty) {
     return null;
   }
-  return {
-    id: snap.docs[0].id,
-    ...(snap.docs[0].data() as any),
-  } as SavedCard;
+
+  // Sort by createdAt in memory (newest first)
+  const methods = snap.docs.map((d: any) => ({
+    id: d.id,
+    ...(d.data() as any),
+  })) as SavedCard[];
+
+  methods.sort((a: any, b: any) => {
+    const aTime = a.createdAt?.toMillis
+      ? a.createdAt.toMillis()
+      : a.createdAt?.toDate
+      ? a.createdAt.toDate().getTime()
+      : a.createdAt
+      ? new Date(a.createdAt).getTime()
+      : 0;
+    const bTime = b.createdAt?.toMillis
+      ? b.createdAt.toMillis()
+      : b.createdAt?.toDate
+      ? b.createdAt.toDate().getTime()
+      : b.createdAt
+      ? new Date(b.createdAt).getTime()
+      : 0;
+    return bTime - aTime; // Descending order (newest first)
+  });
+
+  return methods[0];
 }
 
 /**
@@ -159,19 +202,21 @@ export async function deletePaymentMethod(cardId: string): Promise<void> {
   if (!snap.exists()) {
     throw new Error('Payment method not found');
   }
-  
+
   const cardData = snap.data() as any;
-  
+
   // Check if this is the default payment method
   if (cardData?.isDefault === true) {
     // Check if there are other payment methods available
     const allMethods = await getDocs(paymentMethodsCollectionRef(uid));
     const otherMethods = allMethods.docs.filter((d: any) => d.id !== cardId);
-    
+
     if (otherMethods.length === 0) {
-      throw new Error('Cannot delete the default payment method. Please add another payment method first.');
+      throw new Error(
+        'Cannot delete the default payment method. Please add another payment method first.',
+      );
     }
-    
+
     // If there are other methods, we'll set the first one as default before deletion
     const newDefaultRef = doc(firebaseDb, 'users', uid, 'paymentMethods', otherMethods[0].id);
     await updateDoc(newDefaultRef, {
@@ -179,7 +224,7 @@ export async function deletePaymentMethod(cardId: string): Promise<void> {
       updatedAt: serverTimestamp(),
     });
   }
-  
+
   // For now, we'll do a hard delete
   const { deleteDoc } = await import('@react-native-firebase/firestore');
   await deleteDoc(ref);

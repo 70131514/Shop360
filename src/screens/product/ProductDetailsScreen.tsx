@@ -26,7 +26,7 @@ import {
 } from '../../services/wishlistService';
 import { addToCart } from '../../services/cartService';
 import {
-  getProductById as getStoreProductById,
+  subscribeProductById,
   getProductsByCategory,
   type StoreProduct,
 } from '../../services/productCatalogService';
@@ -74,36 +74,23 @@ export default function ProductDetailsScreen() {
   const [related, setRelated] = useState<Product[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
 
-  const fetchProduct = useCallback(async () => {
-    try {
-      const p = await getStoreProductById(String(id));
-      if (!p) {
-        setError('Product not found');
-        setLoading(false);
-        return;
-      }
-      const mapped: Product = {
-        id: p.id,
-        title: p.title,
-        price: p.price,
-        category: p.category,
-        description: p.description,
-        thumbnail: p.thumbnail,
-        images: p.images,
-        rating: p.rating,
-        discountPercentage: p.discountPercentage,
-        stock: p.stock,
-        brand: p.brand,
-        modelUrl: p.modelUrl,
-      };
-      setProduct(mapped);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching product:', err);
-      setError('Failed to load product. Please try again.');
-      setLoading(false);
-    }
-  }, [id]);
+  const mapStoreProductToProduct = useCallback((p: StoreProduct | null): Product | null => {
+    if (!p) return null;
+    return {
+      id: p.id,
+      title: p.title,
+      price: p.price,
+      category: p.category,
+      description: p.description,
+      thumbnail: p.thumbnail,
+      images: p.images,
+      rating: p.rating,
+      discountPercentage: p.discountPercentage,
+      stock: p.stock,
+      brand: p.brand,
+      modelUrl: p.modelUrl,
+    };
+  }, []);
 
   const checkWishlistStatus = useCallback(async () => {
     try {
@@ -115,14 +102,48 @@ export default function ProductDetailsScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (id) {
-      fetchProduct();
-      checkWishlistStatus();
-    } else {
+    if (!id) {
       setError('No product ID provided');
       setLoading(false);
+      return;
     }
-  }, [id, fetchProduct, checkWishlistStatus]);
+
+    setLoading(true);
+    setError(null);
+
+    // Subscribe to real-time product updates
+    const unsubscribe = subscribeProductById(
+      String(id),
+      (productData) => {
+        if (productData) {
+          const mapped = mapStoreProductToProduct(productData);
+          if (mapped) {
+            setProduct(mapped);
+            setError(null);
+          } else {
+            setError('Product not found');
+            setProduct(null);
+          }
+        } else {
+          setError('Product not found');
+          setProduct(null);
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error loading product:', err);
+        setError('Failed to load product. Please try again.');
+        setLoading(false);
+      },
+    );
+
+    // Check wishlist status
+    checkWishlistStatus();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [id, mapStoreProductToProduct, checkWishlistStatus]);
 
   useEffect(() => {
     // Reset quantity when product changes

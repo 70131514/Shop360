@@ -37,6 +37,7 @@ import PersonalInfoScreen from '../screens/profile/PersonalInfoScreen';
 import ShippingAddressesScreen from '../screens/profile/ShippingAddressesScreen';
 import AddressFormScreen from '../screens/profile/AddressFormScreen';
 import PaymentMethodsScreen from '../screens/profile/PaymentMethodsScreen';
+import AddPaymentCardScreen from '../screens/profile/AddPaymentCardScreen';
 import WishlistScreen from '../screens/profile/WishlistScreen';
 import OrderHistoryScreen from '../screens/profile/OrderHistoryScreen';
 import OrderDetailScreen from '../screens/profile/OrderDetailScreen';
@@ -523,12 +524,12 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="PersonalInfo"
           component={PersonalInfoScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="ShippingAddresses"
           component={ShippingAddressesScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="AddressForm"
@@ -538,17 +539,22 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="PaymentMethods"
           component={PaymentMethodsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AddPaymentCard"
+          component={AddPaymentCardScreen}
           options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
         />
         <Stack.Screen
           name="Wishlist"
           component={WishlistScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Orders"
           component={OrderHistoryScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="OrderDetail"
@@ -558,7 +564,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="Notifications"
           component={NotificationsScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Settings"

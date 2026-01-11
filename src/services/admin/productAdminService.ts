@@ -27,6 +27,8 @@ export type AdminProduct = {
   description?: string;
   modelUrl?: string;
   isFeatured?: boolean;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -59,8 +61,19 @@ export async function upsertProduct(input: {
   description?: string;
   modelUrl?: string;
   isFeatured?: boolean;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
 }): Promise<string> {
-  // Validate that the category exists
+  // Validate title
+  const title = String(input.title || '').trim();
+  if (!title) {
+    throw new Error('Product title is required');
+  }
+  if (title.length > 200) {
+    throw new Error('Product title must be 200 characters or less');
+  }
+
+  // Validate category
   const categoryId = String(input.category || '').trim();
   if (!categoryId) {
     throw new Error('Category is required');
@@ -71,19 +84,68 @@ export async function upsertProduct(input: {
     throw new Error(`Category "${categoryId}" does not exist. Please select a valid category.`);
   }
 
+  // Validate price
+  const price = Number(input.price ?? 0);
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error('Price must be a valid number greater than or equal to 0');
+  }
+  if (price > 1000000) {
+    throw new Error('Price cannot exceed $1,000,000');
+  }
+
+  // Validate stock
+  const stock = Number(input.stock ?? 0);
+  if (!Number.isFinite(stock) || stock < 0) {
+    throw new Error('Stock must be a valid number greater than or equal to 0');
+  }
+  if (stock > 1000000) {
+    throw new Error('Stock cannot exceed 1,000,000');
+  }
+
+  // Validate discount percentage
+  const discountPercentage = Number(input.discountPercentage ?? 0);
+  if (!Number.isFinite(discountPercentage) || discountPercentage < 0 || discountPercentage > 100) {
+    throw new Error('Discount percentage must be between 0 and 100');
+  }
+
+  // Validate rating
+  const rating = Number(input.rating ?? 0);
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+    throw new Error('Rating must be between 0 and 5');
+  }
+
+  // Validate thumbnail
+  const thumbnail = String(input.thumbnail ?? '').trim();
+  if (!thumbnail) {
+    throw new Error('Product thumbnail image is required');
+  }
+
+  // Validate images array
+  const images = Array.isArray(input.images)
+    ? input.images.map((img) => String(img).trim()).filter(Boolean)
+    : [];
+  if (images.length === 0) {
+    throw new Error('At least one product image is required');
+  }
+  if (images.length > 10) {
+    throw new Error('Maximum 10 images allowed per product');
+  }
+
   const payload = {
-    title: input.title,
-    category: input.category,
-    price: Number(input.price ?? 0),
-    stock: Number(input.stock ?? 0),
-    thumbnail: input.thumbnail ?? '',
-    images: Array.isArray(input.images) ? input.images : [],
-    rating: Number(input.rating ?? 0),
-    discountPercentage: Number(input.discountPercentage ?? 0),
-    brand: input.brand ?? '',
-    description: input.description ?? '',
-    modelUrl: input.modelUrl ?? '',
+    title,
+    category: categoryId,
+    price,
+    stock: Math.floor(stock),
+    thumbnail,
+    images,
+    rating: Math.max(0, Math.min(5, Math.round(rating * 10) / 10)), // Round to 1 decimal, clamp 0-5
+    discountPercentage: Math.max(0, Math.min(100, Math.round(discountPercentage * 10) / 10)), // Round to 1 decimal, clamp 0-100
+    brand: String(input.brand ?? '').trim(),
+    description: String(input.description ?? '').trim(),
+    modelUrl: input.modelUrl ? String(input.modelUrl).trim() : '',
     isFeatured: Boolean(input.isFeatured ?? false),
+    isNewArrival: Boolean(input.isNewArrival ?? false),
+    isBestSeller: Boolean(input.isBestSeller ?? false),
     updatedAt: serverTimestamp(),
   };
 
@@ -123,50 +185,61 @@ export async function upsertProduct(input: {
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const ref = doc(firebaseDb, 'products', id);
+  const idTrimmed = String(id || '').trim();
+  if (!idTrimmed) {
+    throw new Error('Product ID is required');
+  }
+
+  const ref = doc(firebaseDb, 'products', idTrimmed);
   const existing = await getDoc(ref);
   if (!existing.exists()) {
     throw new Error('Product not found');
   }
 
-  // Check if product is in any active orders (not cancelled or delivered)
-  // We need to check all users' orders collections
-  const usersRef = collection(firebaseDb, 'users');
-  const usersSnap = await getDocs(usersRef);
-  
-  // Check active orders first
-  for (const userDoc of usersSnap.docs) {
-    const userId = userDoc.id;
-    const ordersRef = collection(firebaseDb, 'users', userId, 'orders');
-    const ordersSnap = await getDocs(ordersRef);
-    
-    for (const orderDoc of ordersSnap.docs) {
-      const orderData = orderDoc.data();
-      const status = orderData?.status;
-      
-      // Only check active orders (processing or shipped)
-      if (status === 'processing' || status === 'shipped') {
-        const items = orderData?.items || [];
-        const hasProduct = items.some((item: any) => item.productId === id);
-        if (hasProduct) {
-          throw new Error(
-            `Cannot delete product. It is in an active order (${status}). Please wait for the order to be completed or cancelled.`
-          );
-        }
-      }
+  // Optimized: Use collectionGroup to check all orders at once
+  // Check if product is in any active orders (processing or shipped)
+  // Note: We check up to 1000 active orders. If there are more, we may miss some,
+  // but this is a reasonable trade-off for performance vs. checking all users individually.
+  const activeOrdersQuery = query(
+    collectionGroup(firebaseDb, 'orders'),
+    where('status', 'in', ['processing', 'shipped']),
+    limit(1000),
+  );
+  const activeOrdersSnap = await getDocs(activeOrdersQuery);
+
+  // Check if we hit the limit (potential edge case)
+  if (activeOrdersSnap.docs.length === 1000) {
+    console.warn(
+      'deleteProduct: Checking 1000 active orders. If there are more, some may not be checked. Consider increasing limit if needed.',
+    );
+  }
+
+  for (const orderDoc of activeOrdersSnap.docs) {
+    const orderData = orderDoc.data();
+    const items = orderData?.items || [];
+    if (!Array.isArray(items)) {
+      continue; // Skip invalid order data
+    }
+    const hasProduct = items.some((item: any) => item?.productId === idTrimmed);
+    if (hasProduct) {
+      const status = orderData?.status || 'unknown';
+      throw new Error(
+        `Cannot delete product. It is in an active order (${status}). Please wait for the order to be completed or cancelled.`,
+      );
     }
   }
 
-  // Check if product is in any user carts
-  for (const userDoc of usersSnap.docs) {
-    const userId = userDoc.id;
-    const cartRef = doc(firebaseDb, 'users', userId, 'cart', id);
-    const cartSnap = await getDoc(cartRef);
-    if (cartSnap.exists()) {
-      throw new Error(
-        'Cannot delete product. It is currently in one or more user carts. Please wait for users to remove it from their carts.'
-      );
-    }
+  // Optimized: Use collectionGroup to check all carts at once
+  const cartsQuery = query(
+    collectionGroup(firebaseDb, 'cart'),
+    where('id', '==', idTrimmed),
+    limit(1),
+  );
+  const cartsSnap = await getDocs(cartsQuery);
+  if (!cartsSnap.empty) {
+    throw new Error(
+      'Cannot delete product. It is currently in one or more user carts. Please wait for users to remove it from their carts.',
+    );
   }
 
   await deleteDoc(ref);

@@ -7,7 +7,9 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
-  Alert,
+  Modal,
+  TextInput,
+  Pressable,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { AppText as Text } from '../../components/common/AppText';
@@ -15,14 +17,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 import {
-  getOrderByIdForAdmin,
+  subscribeOrderByIdForAdmin,
   updateOrderStatus,
   approveOrderCancellation,
   rejectOrderCancellation,
   markOrderAsViewed,
-  type OrderStatus,
+  getUserByUid,
+  type AdminUserRow,
 } from '../../services/admin/adminService';
+import type { OrderStatus } from '../../services/orderService';
 
 type AdminOrderDetailRouteParams = {
   orderId: string;
@@ -30,16 +35,21 @@ type AdminOrderDetailRouteParams = {
 };
 
 const AdminOrderDetailScreen = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { isAdmin } = useAuth();
+  const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { orderId, userId } = (route.params as AdminOrderDetailRouteParams) || {};
 
   const [order, setOrder] = useState<any | null>(null);
+  const [user, setUser] = useState<AdminUserRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [processingCancellation, setProcessingCancellation] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -55,12 +65,32 @@ const AdminOrderDetailScreen = () => {
     }
 
     let mounted = true;
-    getOrderByIdForAdmin(orderId, userId)
-      .then(async (orderData) => {
+    setLoading(true);
+    setError(null);
+
+    // Fetch user data (one-time)
+    getUserByUid(userId)
+      .then((userData) => {
+        if (mounted) {
+          setUser(userData);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load user:', err);
+      });
+
+    // Subscribe to real-time order updates
+    // This subscription will always sync with Firestore in real-time
+    const unsubscribe = subscribeOrderByIdForAdmin(
+      orderId,
+      userId,
+      async (orderData) => {
         if (mounted) {
           if (orderData) {
+            // Always apply the latest data from Firestore (overrides any optimistic updates)
             setOrder(orderData);
-            // Mark order as viewed when admin opens it
+            setError(null);
+            // Mark order as viewed when admin opens it (only once)
             if (!orderData.viewedByAdmin) {
               try {
                 await markOrderAsViewed(orderId, userId);
@@ -70,19 +100,22 @@ const AdminOrderDetailScreen = () => {
             }
           } else {
             setError('Order not found');
+            setOrder(null);
           }
           setLoading(false);
         }
-      })
-      .catch((err) => {
+      },
+      (err) => {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to load order');
           setLoading(false);
         }
-      });
+      },
+    );
 
     return () => {
       mounted = false;
+      unsubscribe();
     };
   }, [orderId, userId, isAdmin]);
 
@@ -127,46 +160,70 @@ const AdminOrderDetailScreen = () => {
       } else {
         date = new Date(timestamp);
       }
-      return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return (
+        date.toLocaleDateString() +
+        ' ' +
+        date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      );
     } catch {
       return 'N/A';
     }
   };
 
   const handleStatusUpdate = (newStatus: OrderStatus) => {
-    if (!order || !orderId || !userId) return;
+    if (!order || !orderId || !userId) {
+      return;
+    }
 
-    Alert.alert(
-      'Update Order Status',
-      `Change order status to "${newStatus}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Update',
-          onPress: async () => {
-            try {
-              setUpdating(true);
-              await updateOrderStatus(orderId, userId, newStatus);
-              // Refresh order data
-              const updatedOrder = await getOrderByIdForAdmin(orderId, userId);
-              if (updatedOrder) {
-                setOrder(updatedOrder);
-              }
-            } catch (err) {
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update order status');
-            } finally {
-              setUpdating(false);
-            }
-          },
+    alert('Update Order Status', `Change order status to "${newStatus}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Update',
+        onPress: async () => {
+          const previousOrder = { ...order }; // Store for potential rollback
+          try {
+            setUpdating(true);
+
+            // Optimistic update: Update local state immediately for instant UI feedback
+            const currentTimeline = (order.timeline as any[]) || [];
+            const optimisticTimeline = [
+              ...currentTimeline,
+              {
+                status: newStatus,
+                timestamp: new Date(),
+                note: `Status changed to ${newStatus}`,
+              },
+            ];
+
+            setOrder({
+              ...order,
+              status: newStatus,
+              timeline: optimisticTimeline,
+              updatedAt: new Date(),
+            });
+
+            // Update in Firestore - subscription will sync the real data in real-time
+            await updateOrderStatus(orderId, userId, newStatus);
+            // The onSnapshot subscription will automatically update the order state
+            // with the latest Firestore data, including server timestamps
+          } catch (err) {
+            // Revert optimistic update on error
+            setOrder(previousOrder);
+            alert('Error', err instanceof Error ? err.message : 'Failed to update order status');
+          } finally {
+            setUpdating(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const handleApproveCancellation = () => {
-    if (!order || !orderId || !userId) return;
+    if (!order || !orderId || !userId) {
+      return;
+    }
 
-    Alert.alert(
+    alert(
       'Approve Cancellation',
       'This will cancel the order and restore stock quantities. Continue?',
       [
@@ -175,17 +232,38 @@ const AdminOrderDetailScreen = () => {
           text: 'Approve',
           style: 'destructive',
           onPress: async () => {
+            const previousOrder = { ...order }; // Store for potential rollback
             try {
               setProcessingCancellation(true);
+
+              // Optimistic update: Update local state immediately
+              const currentTimeline = (order.timeline as any[]) || [];
+              const optimisticTimeline = [
+                ...currentTimeline,
+                {
+                  status: 'cancelled',
+                  timestamp: new Date(),
+                  note: 'Order cancelled - stock restored',
+                },
+              ];
+
+              setOrder({
+                ...order,
+                status: 'cancelled',
+                timeline: optimisticTimeline,
+                cancellationRequested: false,
+                updatedAt: new Date(),
+              });
+
+              // Update in Firestore - subscription will sync the real data in real-time
               await approveOrderCancellation(orderId, userId, 'Cancellation approved by admin');
-              // Refresh order data
-              const updatedOrder = await getOrderByIdForAdmin(orderId, userId);
-              if (updatedOrder) {
-                setOrder(updatedOrder);
-              }
-              Alert.alert('Success', 'Order cancelled and stock restored.');
+              // The onSnapshot subscription will automatically update the order state
+              // with the latest Firestore data, including server timestamps
+              alert('Success', 'Order cancelled and stock restored.');
             } catch (err) {
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to approve cancellation');
+              // Revert optimistic update on error
+              setOrder(previousOrder);
+              alert('Error', err instanceof Error ? err.message : 'Failed to approve cancellation');
             } finally {
               setProcessingCancellation(false);
             }
@@ -196,36 +274,28 @@ const AdminOrderDetailScreen = () => {
   };
 
   const handleRejectCancellation = () => {
+    if (!order || !orderId || !userId) {
+      return;
+    }
+    setRejectionReason('');
+    setRejectModalVisible(true);
+  };
+
+  const handleRejectConfirm = async () => {
     if (!order || !orderId || !userId) return;
 
-    Alert.prompt(
-      'Reject Cancellation',
-      'Enter reason for rejection (optional):',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async (reason) => {
-            try {
-              setProcessingCancellation(true);
-              await rejectOrderCancellation(orderId, userId, reason || undefined);
-              // Refresh order data
-              const updatedOrder = await getOrderByIdForAdmin(orderId, userId);
-              if (updatedOrder) {
-                setOrder(updatedOrder);
-              }
-              Alert.alert('Success', 'Cancellation request rejected.');
-            } catch (err) {
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to reject cancellation');
-            } finally {
-              setProcessingCancellation(false);
-            }
-          },
-        },
-      ],
-      'plain-text',
-    );
+    try {
+      setProcessingCancellation(true);
+      setRejectModalVisible(false);
+      await rejectOrderCancellation(orderId, userId, rejectionReason.trim() || undefined);
+      // Order will be updated automatically via subscription
+      alert('Success', 'Cancellation request rejected.');
+      setRejectionReason('');
+    } catch (err) {
+      alert('Error', err instanceof Error ? err.message : 'Failed to reject cancellation');
+    } finally {
+      setProcessingCancellation(false);
+    }
   };
 
   if (loading) {
@@ -301,10 +371,49 @@ const AdminOrderDetailScreen = () => {
         <View style={styles.backButton} />
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* User Information Card */}
+        {user && (
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.userHeader}>
+              <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+              <View style={styles.userInfo}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 8 }]}>
+                  Customer Information
+                </Text>
+                <Text style={[styles.userName, { color: colors.text }]}>
+                  {user.name || 'No name provided'}
+                </Text>
+                <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+                  {user.email || 'No email provided'}
+                </Text>
+                <View style={styles.userMeta}>
+                  <View
+                    style={[styles.userMetaItem, { backgroundColor: colors.background, flex: 1 }]}
+                  >
+                    <Text style={[styles.userMetaLabel, { color: colors.textSecondary }]}>
+                      User ID
+                    </Text>
+                    <Text style={[styles.userMetaValue, { color: colors.text }]} numberOfLines={1}>
+                      {user.uid}
+                    </Text>
+                  </View>
+                  {user.role && (
+                    <View style={[styles.userMetaItem, { backgroundColor: colors.background }]}>
+                      <Text style={[styles.userMetaLabel, { color: colors.textSecondary }]}>
+                        Role
+                      </Text>
+                      <Text style={[styles.userMetaValue, { color: colors.text }]}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Order Info Card */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={styles.cardHeader}>
@@ -315,23 +424,18 @@ const AdminOrderDetailScreen = () => {
               <Text style={[styles.orderDate, { color: colors.textSecondary }]}>
                 Placed on {formatDate(order.createdAt)}
               </Text>
-              <Text style={[styles.userId, { color: colors.textSecondary, marginTop: 4 }]}>
-                User ID: {userId}
-              </Text>
               {order.paymentMethod && (
                 <Text style={[styles.paymentMethod, { color: colors.textSecondary, marginTop: 4 }]}>
                   Payment:{' '}
                   {order.paymentMethod === 'cash_on_delivery'
                     ? 'Cash on Delivery'
                     : order.paymentMethod === 'card_payment'
-                      ? 'Card Payment'
-                      : order.paymentMethod}
+                    ? 'Card Payment'
+                    : order.paymentMethod}
                 </Text>
               )}
             </View>
-            <View
-              style={[styles.statusBadge, { backgroundColor: getStatusColor(currentStatus) }]}
-            >
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentStatus) }]}>
               <Text style={styles.statusText}>
                 {String(currentStatus).charAt(0).toUpperCase() + String(currentStatus).slice(1)}
               </Text>
@@ -341,10 +445,17 @@ const AdminOrderDetailScreen = () => {
 
         {/* Cancellation Request Card (Admin Only) */}
         {order.cancellationRequested && order.status !== 'cancelled' && (
-          <View style={[styles.card, { backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: '#FF9500' }]}>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: '#FF9500' },
+            ]}
+          >
             <View style={styles.cancellationHeader}>
               <Ionicons name="alert-circle-outline" size={24} color="#FF9500" />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Cancellation Request</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Cancellation Request
+              </Text>
             </View>
             <Text style={[styles.cancellationText, { color: colors.textSecondary }]}>
               User has requested to cancel this order.
@@ -438,7 +549,9 @@ const AdminOrderDetailScreen = () => {
               )}
               <View style={styles.itemInfo}>
                 {item.brand && (
-                  <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>{item.brand}</Text>
+                  <Text style={[styles.itemBrand, { color: colors.textSecondary }]}>
+                    {item.brand}
+                  </Text>
                 )}
                 <Text style={[styles.itemName, { color: colors.text }]} numberOfLines={2}>
                   {item.name}
@@ -464,11 +577,15 @@ const AdminOrderDetailScreen = () => {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Shipping Address</Text>
           <View style={styles.addressContainer}>
             <Text style={[styles.addressText, { color: colors.text }]}>{order.address?.name}</Text>
-            <Text style={[styles.addressText, { color: colors.text }]}>{order.address?.street}</Text>
+            <Text style={[styles.addressText, { color: colors.text }]}>
+              {order.address?.street}
+            </Text>
             <Text style={[styles.addressText, { color: colors.text }]}>
               {order.address?.city}, {order.address?.state} {order.address?.zipCode}
             </Text>
-            <Text style={[styles.addressText, { color: colors.text }]}>{order.address?.country}</Text>
+            <Text style={[styles.addressText, { color: colors.text }]}>
+              {order.address?.country}
+            </Text>
           </View>
         </View>
 
@@ -495,6 +612,85 @@ const AdminOrderDetailScreen = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Reject Cancellation Modal */}
+      <Modal
+        transparent
+        visible={rejectModalVisible}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setRejectModalVisible(false)}
+      >
+        <Pressable
+          style={[
+            styles.modalBackdrop,
+            { backgroundColor: isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.45)' },
+          ]}
+          onPress={() => setRejectModalVisible(false)}
+        >
+          <Pressable
+            style={[
+              styles.modalContent,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Reject Cancellation</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>
+              Enter reason for rejection (optional):
+            </Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.text,
+                },
+              ]}
+              placeholder="Reason for rejection..."
+              placeholderTextColor={colors.textSecondary}
+              value={rejectionReason}
+              onChangeText={setRejectionReason}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonCancel,
+                  { borderColor: colors.border },
+                ]}
+                onPress={() => {
+                  setRejectModalVisible(false);
+                  setRejectionReason('');
+                }}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.textSecondary }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonReject,
+                  { backgroundColor: '#FF3B30' },
+                ]}
+                onPress={handleRejectConfirm}
+                disabled={processingCancellation}
+              >
+                {processingCancellation ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={[styles.modalButtonText, { color: '#FFF' }]}>Reject</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -564,11 +760,44 @@ const styles = StyleSheet.create({
   orderDate: {
     fontSize: 14,
   },
-  userId: {
-    fontSize: 12,
-  },
   paymentMethod: {
     fontSize: 12,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  userMeta: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  userMetaItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 100,
+  },
+  userMetaLabel: {
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  userMetaValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -769,7 +998,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 80,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonCancel: {
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  modalButtonReject: {
+    backgroundColor: '#FF3B30',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
 
 export default AdminOrderDetailScreen;
-

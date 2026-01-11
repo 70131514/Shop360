@@ -194,10 +194,12 @@ export async function placeOrderFromCart(
     });
 
     // Step 3: Create order document with initial timeline entry
+    // Use Date object for timeline entries (Firestore converts it to Timestamp)
+    // serverTimestamp() doesn't work inside arrays
     const initialTimeline: OrderTimelineEntry[] = [
       {
         status: 'processing',
-        timestamp: serverTimestamp(),
+        timestamp: new Date(),
         note: 'Order placed',
       },
     ];
@@ -282,6 +284,39 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
     id: orderSnap.id,
     ...(orderSnap.data() as any),
   } as Order;
+}
+
+/**
+ * Subscribe to a single order by ID for real-time updates (for current user)
+ */
+export function subscribeOrderById(
+  orderId: string,
+  onOrder: (order: Order | null) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const uid = requireUid();
+  const orderRef = doc(firebaseDb, 'users', uid, 'orders', orderId);
+  
+  return onSnapshot(
+    orderRef,
+    (snap) => {
+      if (!snap.exists()) {
+        onOrder(null);
+        return;
+      }
+      
+      const order = {
+        id: snap.id,
+        ...(snap.data() as any),
+      } as Order;
+      onOrder(order);
+    },
+    (err) => {
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
 }
 
 /**

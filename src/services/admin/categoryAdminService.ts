@@ -52,13 +52,40 @@ export async function createCategory(input: { name: string }): Promise<string> {
 export async function renameCategory(input: { id: string; name: string }): Promise<void> {
   const id = String(input.id || '').trim();
   const name = String(input.name || '').trim();
+
   if (!id) {
     throw new Error('Category id is required');
   }
   if (!name) {
     throw new Error('Category name is required');
   }
-  await updateDoc(doc(firebaseDb, 'categories', id), { name, updatedAt: serverTimestamp() } as any);
+
+  if (name.length > 50) {
+    throw new Error('Category name must be 50 characters or less');
+  }
+
+  // Check if category exists
+  const categoryRef = doc(firebaseDb, 'categories', id);
+  const categorySnap = await getDoc(categoryRef);
+  if (!categorySnap.exists()) {
+    throw new Error('Category not found');
+  }
+
+  // Check if new name would create a duplicate (different slug)
+  const newSlug = slugifyCategoryName(name);
+  if (newSlug !== id) {
+    // Name would result in different slug, check if that slug already exists
+    const existingRef = doc(firebaseDb, 'categories', newSlug);
+    const existingSnap = await getDoc(existingRef);
+    if (existingSnap.exists()) {
+      throw new Error(`A category with the name "${name}" already exists`);
+    }
+  }
+
+  await updateDoc(categoryRef, {
+    name,
+    updatedAt: serverTimestamp(),
+  } as any);
 }
 
 export async function deleteCategory(input: { id: string }): Promise<void> {
@@ -76,5 +103,3 @@ export async function deleteCategory(input: { id: string }): Promise<void> {
 
   await deleteDoc(doc(firebaseDb, 'categories', id));
 }
-
-

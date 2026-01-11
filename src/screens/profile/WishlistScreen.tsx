@@ -70,7 +70,7 @@ const WishlistScreen = () => {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar
@@ -78,9 +78,17 @@ const WishlistScreen = () => {
         backgroundColor={colors.background}
         translucent={false}
       />
+
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>My Wishlist</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.text }]}>My Wishlist</Text>
           {loading ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -111,28 +119,28 @@ const WishlistScreen = () => {
               const removeText = getReadableTextColor(removeBg);
 
               return (
-              <View
-                key={item.id}
-                style={[styles.itemContainer, { backgroundColor: colors.surface }]}
-              >
-                <Image source={{ uri: item.image }} style={styles.itemImage} />
-                <View style={styles.itemDetails}>
-                  <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
-                  <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
-                  <View style={styles.priceContainer}>
+                <View
+                  key={item.id}
+                  style={[styles.itemContainer, { backgroundColor: colors.surface }]}
+                >
+                  <Image source={{ uri: item.image }} style={styles.itemImage} />
+                  <View style={styles.itemDetails}>
+                    <Text style={[styles.itemBrand, { color: colors.text }]}>{item.brand}</Text>
+                    <Text style={[styles.itemName, { color: colors.text }]}>{item.name}</Text>
+                    <View style={styles.priceContainer}>
                       <Text style={[styles.itemPrice, { color: colors.text }]}>${price}</Text>
                       {originalPrice > price && (
-                      <Text style={[styles.originalPrice, { color: colors.text }]}>
+                        <Text style={[styles.originalPrice, { color: colors.text }]}>
                           ${originalPrice}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.buttonContainer}>
-                    <TouchableOpacity
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
                         style={[styles.moveToCartButton, { backgroundColor: moveBg }]}
-                      onPress={() => handleMoveToCart(item.id)}
-                      disabled={!item.inStock}
-                    >
+                        onPress={() => handleMoveToCart(item.id)}
+                        disabled={!item.inStock}
+                      >
                         <Text
                           style={[
                             styles.buttonText,
@@ -140,15 +148,15 @@ const WishlistScreen = () => {
                             { color: moveText },
                           ]}
                         >
-                        {item.inStock ? 'Move to Cart' : 'Out of Stock'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                          {item.inStock ? 'Move to Cart' : 'Out of Stock'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
                         style={[styles.removeButton, { backgroundColor: removeBg }]}
-                      onPress={() => handleRemoveItem(item.id)}
-                    >
+                        onPress={() => handleRemoveItem(item.id)}
+                      >
                         <Text style={[styles.buttonText, { color: removeText }]}>Remove</Text>
-                    </TouchableOpacity>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
@@ -165,16 +173,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 36,
+  },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
+    padding: 20,
+    paddingBottom: 100,
   },
   emptyState: {
     alignItems: 'center',
@@ -197,9 +225,10 @@ const styles = StyleSheet.create({
   },
   itemContainer: {
     flexDirection: 'row',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
+    padding: 18,
+    borderRadius: 18,
+    marginBottom: 12,
+    borderWidth: 1,
   },
   itemImage: {
     width: 100,

@@ -26,6 +26,8 @@ export type StoreProduct = {
   brand: string;
   modelUrl?: string;
   isFeatured?: boolean;
+  isNewArrival?: boolean;
+  isBestSeller?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -50,6 +52,8 @@ function normalizeProduct(id: string, data: any): StoreProduct {
     brand: String(data?.brand ?? ''),
     modelUrl: data?.modelUrl ? String(data.modelUrl) : undefined,
     isFeatured: Boolean(data?.isFeatured ?? false),
+    isNewArrival: Boolean(data?.isNewArrival ?? false),
+    isBestSeller: Boolean(data?.isBestSeller ?? false),
     createdAt: data?.createdAt,
     updatedAt: data?.updatedAt,
   };
@@ -76,6 +80,35 @@ export async function getProductById(id: string): Promise<StoreProduct | null> {
     return null;
   }
   return normalizeProduct(snap.id, snap.data());
+}
+
+/**
+ * Subscribe to a single product by ID for real-time updates
+ */
+export function subscribeProductById(
+  id: string,
+  onProduct: (product: StoreProduct | null) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const productRef = doc(firebaseDb, 'products', id);
+  
+  return onSnapshot(
+    productRef,
+    (snap) => {
+      if (!snap.exists()) {
+        onProduct(null);
+        return;
+      }
+      
+      const product = normalizeProduct(snap.id, snap.data());
+      onProduct(product);
+    },
+    (err) => {
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
 }
 
 export async function getProductsByCategory(params: {
@@ -114,6 +147,58 @@ export function subscribeFeaturedProducts(
       // just return empty array instead of showing error
       console.warn('Error loading featured products (non-critical):', err);
       // Return empty array on error - better UX than showing error
+      onProducts([]);
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
+}
+
+export function subscribeNewArrivals(
+  onProducts: (products: StoreProduct[]) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const q = query(
+    collection(firebaseDb, 'products'),
+    orderBy('createdAt', 'desc'),
+    limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const allProducts = snap.docs.map((d) => normalizeProduct(d.id, d.data()));
+      const newArrivals = allProducts.filter((p) => p.isNewArrival === true).slice(0, 20);
+      onProducts(newArrivals);
+    },
+    (err) => {
+      console.warn('Error loading new arrivals (non-critical):', err);
+      onProducts([]);
+      if (onError) {
+        onError(err);
+      }
+    },
+  );
+}
+
+export function subscribeBestSellers(
+  onProducts: (products: StoreProduct[]) => void,
+  onError?: (err: unknown) => void,
+): Unsubscribe {
+  const q = query(
+    collection(firebaseDb, 'products'),
+    orderBy('createdAt', 'desc'),
+    limit(50),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const allProducts = snap.docs.map((d) => normalizeProduct(d.id, d.data()));
+      const bestSellers = allProducts.filter((p) => p.isBestSeller === true).slice(0, 20);
+      onProducts(bestSellers);
+    },
+    (err) => {
+      console.warn('Error loading best sellers (non-critical):', err);
       onProducts([]);
       if (onError) {
         onError(err);

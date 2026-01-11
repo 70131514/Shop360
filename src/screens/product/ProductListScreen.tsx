@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -59,6 +60,8 @@ const ProductListScreen = () => {
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortBy>('newest');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const dropdownAnimation = useRef(new Animated.Value(0)).current;
 
   // Advanced filters (in bottom sheet)
   const [featuredOnly, setFeaturedOnly] = useState(false);
@@ -109,6 +112,24 @@ const ProductListScreen = () => {
     );
     return unsub;
   }, []);
+
+  // Animate dropdown
+  useEffect(() => {
+    if (sortDropdownOpen) {
+      Animated.spring(dropdownAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    } else {
+      Animated.timing(dropdownAnimation, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [sortDropdownOpen, dropdownAnimation]);
 
   // Filtered & sorted products
   const filteredProducts = useMemo(() => {
@@ -248,35 +269,38 @@ const ProductListScreen = () => {
     const discountedPrice =
       item.discountPercentage > 0 ? item.price * (1 - item.discountPercentage / 100) : item.price;
     const isOutOfStock = (item.stock ?? 0) <= 0;
-    const isAdding = addingId === item.id;
 
     return (
       <TouchableOpacity
-        style={[styles.productCard, { backgroundColor: colors.surface }]}
+        style={[styles.productCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => navigation.navigate('ProductDetails', { id: item.id })}
-        activeOpacity={0.9}
+        activeOpacity={0.7}
       >
         <View style={styles.imageContainer}>
           <Image source={{ uri: item.thumbnail || '' }} style={styles.productImage} />
-          {/* AR Badge */}
-          <View style={styles.arBadge}>
-            <Ionicons name="cube-outline" size={12} color="#FFF" />
-            <Text style={styles.arBadgeText}>AR</Text>
-          </View>
           {/* Discount Badge */}
           {item.discountPercentage > 0 && (
             <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{Math.round(item.discountPercentage)}%</Text>
+              <Text style={styles.discountText}>-{Math.round(item.discountPercentage)}%</Text>
+            </View>
+          )}
+          {/* Stock indicator */}
+          {isOutOfStock && (
+            <View style={styles.outOfStockOverlay}>
+              <Text style={styles.outOfStockText}>Out of Stock</Text>
             </View>
           )}
         </View>
 
         <View style={styles.productInfo}>
+          <Text style={[styles.productBrand, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.brand || 'Brand'}
+          </Text>
           <Text style={[styles.productTitle, { color: colors.text }]} numberOfLines={2}>
             {item.title}
           </Text>
           <View style={styles.priceRow}>
-            <Text style={[styles.productPrice, { color: colors.primary }]}>
+            <Text style={[styles.productPrice, { color: colors.text }]}>
               ${discountedPrice.toFixed(2)}
             </Text>
             {item.discountPercentage > 0 && (
@@ -346,7 +370,7 @@ const ProductListScreen = () => {
       >
         {/* Search Bar */}
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+          <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search products..."
@@ -356,7 +380,7 @@ const ProductListScreen = () => {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -364,21 +388,89 @@ const ProductListScreen = () => {
         {/* Sort & Filter Row */}
         <View style={styles.controlsRow}>
           {/* Sort Dropdown */}
-          <TouchableOpacity
-            style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => {
-              // Simple cycle through sort options
-              const currentIndex = sortOptions.findIndex((o) => o.key === sortBy);
-              const nextIndex = (currentIndex + 1) % sortOptions.length;
-              setSortBy(sortOptions[nextIndex].key);
-            }}
-          >
-            <Ionicons name="swap-vertical-outline" size={16} color={colors.text} />
-            <Text style={[styles.sortButtonText, { color: colors.text }]} numberOfLines={1}>
-              {sortOptions.find((o) => o.key === sortBy)?.label || 'Sort'}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <View style={styles.sortDropdownContainer}>
+            <TouchableOpacity
+              style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => setSortDropdownOpen(!sortDropdownOpen)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="swap-vertical-outline" size={16} color={colors.text} />
+              <Text style={[styles.sortButtonText, { color: colors.text }]} numberOfLines={1}>
+                {sortOptions.find((o) => o.key === sortBy)?.label || 'Sort'}
+              </Text>
+              <Ionicons
+                name={sortDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {/* Dropdown Menu */}
+            {sortDropdownOpen && (
+              <Animated.View
+                style={[
+                  styles.sortDropdownMenu,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    shadowColor: colors.text,
+                    opacity: dropdownAnimation,
+                    transform: [
+                      {
+                        translateY: dropdownAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-10, 0],
+                        }),
+                      },
+                      {
+                        scale: dropdownAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.95, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                {sortOptions.map((option, index) => {
+                  const isSelected = sortBy === option.key;
+                  const isLast = index === sortOptions.length - 1;
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.sortDropdownItem,
+                        {
+                          backgroundColor: isSelected ? colors.primary + '15' : 'transparent',
+                          borderBottomWidth: isLast ? 0 : 1,
+                        },
+                      ]}
+                      onPress={() => {
+                        setSortBy(option.key);
+                        setSortDropdownOpen(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.sortDropdownItemText,
+                          {
+                            color: isSelected ? colors.primary : colors.text,
+                            fontWeight: isSelected ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={18} color={colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </Animated.View>
+            )}
+          </View>
 
           {/* Filter Button */}
           <TouchableOpacity
@@ -473,6 +565,7 @@ const ProductListScreen = () => {
           }
         />
       )}
+
 
       {/* Filter Bottom Sheet Modal */}
       <Modal
@@ -659,66 +752,100 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topControls: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    zIndex: 100,
+    elevation: 5,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '400',
   },
   clearButton: {
     marginLeft: 8,
   },
   controlsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 16,
+  },
+  sortDropdownContainer: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 1001,
+    elevation: 10,
   },
   sortButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    borderRadius: 10,
+    gap: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
   },
   sortButtonText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sortDropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 20,
+    zIndex: 9999,
+  },
+  sortDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  sortDropdownItemText: {
+    fontSize: 14,
   },
   filterButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    borderRadius: 10,
+    gap: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     position: 'relative',
   },
   filterButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   filterBadge: {
     position: 'absolute',
@@ -737,17 +864,18 @@ const styles = StyleSheet.create({
   categoryChipsContainer: {
     paddingVertical: 4,
     gap: 8,
+    zIndex: 1,
   },
   categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
   categoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   centeredContainer: {
     flex: 1,
@@ -781,82 +909,89 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   productGrid: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 100,
+    zIndex: 1,
   },
   productRow: {
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   productCard: {
     width: CARD_WIDTH,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   imageContainer: {
     width: '100%',
     aspectRatio: 1,
     position: 'relative',
+    backgroundColor: '#F8F8F8',
   },
   productImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F5F5F5',
-  },
-  arBadge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  arBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
   },
   discountBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
     backgroundColor: '#FF3B30',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   discountText: {
     color: '#FFF',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
   productInfo: {
-    padding: 12,
+    padding: 14,
+  },
+  productBrand: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   productTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 6,
-    minHeight: 36,
+    marginBottom: 8,
+    minHeight: 40,
+    lineHeight: 20,
   },
   priceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    alignItems: 'baseline',
+    gap: 8,
   },
   productPrice: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
   },
   originalPrice: {
-    fontSize: 12,
+    fontSize: 13,
     textDecorationLine: 'line-through',
+    opacity: 0.6,
   },
   footer: {
     paddingVertical: 20,

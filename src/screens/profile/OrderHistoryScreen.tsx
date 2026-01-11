@@ -25,19 +25,25 @@ const OrderHistoryScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsub: undefined | (() => void);
+    let unsub: (() => void) | undefined;
+    setLoading(true);
+    setError(null);
+
     try {
       unsub = subscribeOrders(
         (next) => {
-          setOrders(next);
+          setOrders(next || []);
+          setError(null);
           setLoading(false);
         },
         (e) => {
+          console.error('Order subscription error:', e);
           setError(e instanceof Error ? e.message : 'Failed to load orders');
           setLoading(false);
         },
       );
     } catch (e: any) {
+      console.error('Failed to subscribe to orders:', e);
       setError(e?.message ?? 'Failed to load orders');
       setLoading(false);
     }
@@ -84,7 +90,7 @@ const OrderHistoryScreen = () => {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar
@@ -93,12 +99,21 @@ const OrderHistoryScreen = () => {
         translucent={false}
       />
 
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Order History</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Order History</Text>
         {loading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.helperText, { color: colors.textSecondary }]}>Loading orders…</Text>
+            <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+              Loading orders…
+            </Text>
           </View>
         ) : error ? (
           <View style={styles.centered}>
@@ -108,9 +123,7 @@ const OrderHistoryScreen = () => {
         ) : uiOrders.length === 0 ? (
           <View style={styles.centered}>
             <Ionicons name="receipt-outline" size={56} color={colors.textSecondary} />
-            <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-              No orders yet
-            </Text>
+            <Text style={[styles.helperText, { color: colors.textSecondary }]}>No orders yet</Text>
           </View>
         ) : (
           uiOrders.map((order: any) => (
@@ -187,14 +200,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 36,
+  },
   scrollContent: {
     padding: 20,
+    paddingBottom: 100,
     flexGrow: 1,
-  },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 14,
   },
   centered: {
     flex: 1,
@@ -208,9 +241,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   orderCard: {
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 18,
+    marginBottom: 12,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   orderHeader: {
     flexDirection: 'row',

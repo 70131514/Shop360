@@ -17,7 +17,14 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useTheme } from '../../contexts/ThemeContext';
-import { subscribeFeaturedProducts, type StoreProduct } from '../../services/productCatalogService';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  subscribeFeaturedProducts,
+  subscribeNewArrivals,
+  subscribeBestSellers,
+  type StoreProduct,
+} from '../../services/productCatalogService';
+import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 // Define types for props
 interface FeatureSectionProps {
@@ -46,41 +53,25 @@ const FeatureSection = ({
   sfIconName,
   ionIconName,
 }: FeatureSectionProps) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   return (
-    <View
-      style={[
-        styles.featureCard,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.featureIconContainer,
-          {
-            backgroundColor: isDark ? colors.primary : '#FFFFFF',
-            borderColor: colors.border,
-          },
-        ]}
-      >
-        {iconType === 'ionicon' ? (
-          <Ionicons
-            name={ionIconName as any}
-            size={22}
-            color={isDark ? colors.background : colors.primary}
-          />
-        ) : (
-          <IconSymbol
-            size={22}
-            name={sfIconName!}
-            color={isDark ? colors.background : colors.primary}
-          />
-        )}
-      </View>
-      <ThemedText type="defaultSemiBold" style={[styles.featureTitle, { color: colors.text }]}>
+    <View style={styles.featureCard}>
+      {iconType === 'ionicon' ? (
+        <Ionicons
+          name={ionIconName as any}
+          size={28}
+          color={colors.primary}
+          style={styles.featureIcon}
+        />
+      ) : (
+        <IconSymbol
+          size={28}
+          name={sfIconName!}
+          color={colors.primary}
+          style={styles.featureIcon}
+        />
+      )}
+      <ThemedText style={[styles.featureTitle, { color: colors.text }]}>
         {title}
       </ThemedText>
       <ThemedText style={[styles.featureDescription, { color: colors.textSecondary }]}>
@@ -145,8 +136,20 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { user, profile, isAdmin } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
+  const [newArrivals, setNewArrivals] = useState<StoreProduct[]>([]);
+  const [loadingNewArrivals, setLoadingNewArrivals] = useState(true);
+  const [bestSellers, setBestSellers] = useState<StoreProduct[]>([]);
+  const [loadingBestSellers, setLoadingBestSellers] = useState(true);
+
+  // Get avatar source for the user
+  const avatarSource = getAvatarSourceForUser({
+    avatarId: profile?.avatarId,
+    isGuest: !user,
+    isAdmin: isAdmin,
+  });
 
   useEffect(() => {
     const unsub = subscribeFeaturedProducts(
@@ -155,11 +158,39 @@ export default function HomeScreen() {
         setLoadingFeatured(false);
       },
       (err) => {
-        // Error is already handled in the service - just log for debugging
         console.warn('Featured products subscription error (handled):', err);
         setLoadingFeatured(false);
-        // Set empty array on error to show empty state instead of error
         setFeaturedProducts([]);
+      },
+    );
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeNewArrivals(
+      (products) => {
+        setNewArrivals(products);
+        setLoadingNewArrivals(false);
+      },
+      (err) => {
+        console.warn('New arrivals subscription error (handled):', err);
+        setLoadingNewArrivals(false);
+        setNewArrivals([]);
+      },
+    );
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeBestSellers(
+      (products) => {
+        setBestSellers(products);
+        setLoadingBestSellers(false);
+      },
+      (err) => {
+        console.warn('Best sellers subscription error (handled):', err);
+        setLoadingBestSellers(false);
+        setBestSellers([]);
       },
     );
     return unsub;
@@ -178,26 +209,33 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <View>
-            <ThemedText type="title" style={[styles.welcomeText, { color: colors.textSecondary }]}>
-              Welcome to
-            </ThemedText>
-            <ThemedText type="title" style={[styles.appName, { color: colors.text }]}>
-              Shop360°
-            </ThemedText>
+          <View style={styles.headerContent}>
+            <View style={styles.greetingContainer}>
+              <ThemedText style={[styles.greeting, { color: colors.textSecondary }]}>
+                {user && profile?.name
+                  ? `Hi, ${profile.name.split(' ')[0]}`
+                  : user
+                  ? 'Welcome back'
+                  : 'Welcome'}
+              </ThemedText>
+              <ThemedText type="title" style={[styles.appName, { color: colors.text }]}>
+                Shop360°
+              </ThemedText>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.profileButton,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={() => navigation.navigate('Profile')}
+              activeOpacity={0.7}
+            >
+              <Image source={avatarSource} style={styles.avatarImage} />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.profileButton,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-              },
-            ]}
-            onPress={() => navigation.navigate('Profile')}
-          >
-            <MaterialIcons name="person" size={24} color={colors.text} />
-          </TouchableOpacity>
         </View>
 
         {/* Banner */}
@@ -239,7 +277,7 @@ export default function HomeScreen() {
 
         {/* Features section */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
             Why Shop With Us
           </ThemedText>
         </View>
@@ -267,11 +305,11 @@ export default function HomeScreen() {
 
         {/* Featured products */}
         <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.text }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
             Featured Products
           </ThemedText>
-          <TouchableOpacity onPress={() => navigation.navigate('Products')}>
-            <ThemedText style={[styles.viewAllText, { color: colors.textSecondary }]}>
+          <TouchableOpacity onPress={() => navigation.navigate('Products')} activeOpacity={0.7}>
+            <ThemedText style={[styles.viewAllText, { color: colors.primary }]}>
               View All
             </ThemedText>
           </TouchableOpacity>
@@ -306,6 +344,90 @@ export default function HomeScreen() {
             ))}
           </ScrollView>
         )}
+
+        {/* New Arrivals */}
+        <View style={styles.sectionHeader}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
+            New Arrivals
+          </ThemedText>
+          <TouchableOpacity onPress={() => navigation.navigate('Products')} activeOpacity={0.7}>
+            <ThemedText style={[styles.viewAllText, { color: colors.primary }]}>
+              View All
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {loadingNewArrivals ? (
+          <View style={styles.featuredLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <ThemedText style={[styles.featuredLoadingText, { color: colors.textSecondary }]}>
+              Loading new arrivals...
+            </ThemedText>
+          </View>
+        ) : newArrivals.length === 0 ? (
+          <View style={styles.featuredEmptyContainer}>
+            <Ionicons name="sparkles-outline" size={48} color={colors.textSecondary} />
+            <ThemedText style={[styles.featuredEmptyText, { color: colors.textSecondary }]}>
+              No new arrivals yet
+            </ThemedText>
+            <ThemedText style={[styles.featuredEmptySubtext, { color: colors.textSecondary }]}>
+              Mark products as new arrivals in admin to see them here
+            </ThemedText>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.featuredProductsContainer}
+            contentContainerStyle={styles.featuredProductsContent}
+          >
+            {newArrivals.map((product) => (
+              <FeaturedProduct key={product.id} product={product} />
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Best Sellers */}
+        <View style={styles.sectionHeader}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>
+            Best Sellers
+          </ThemedText>
+          <TouchableOpacity onPress={() => navigation.navigate('Products')} activeOpacity={0.7}>
+            <ThemedText style={[styles.viewAllText, { color: colors.primary }]}>
+              View All
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {loadingBestSellers ? (
+          <View style={styles.featuredLoadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <ThemedText style={[styles.featuredLoadingText, { color: colors.textSecondary }]}>
+              Loading best sellers...
+            </ThemedText>
+          </View>
+        ) : bestSellers.length === 0 ? (
+          <View style={styles.featuredEmptyContainer}>
+            <Ionicons name="trophy-outline" size={48} color={colors.textSecondary} />
+            <ThemedText style={[styles.featuredEmptyText, { color: colors.textSecondary }]}>
+              No best sellers yet
+            </ThemedText>
+            <ThemedText style={[styles.featuredEmptySubtext, { color: colors.textSecondary }]}>
+              Mark products as best sellers in admin to see them here
+            </ThemedText>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.featuredProductsContainer}
+            contentContainerStyle={styles.featuredProductsContent}
+          >
+            {bestSellers.map((product) => (
+              <FeaturedProduct key={product.id} product={product} />
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
     </View>
   );
@@ -325,27 +447,46 @@ const styles = StyleSheet.create({
     paddingBottom: 100, // Account for tab bar
   },
   header: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
+    alignItems: 'flex-start',
   },
-  welcomeText: {
-    fontSize: 20,
-    marginBottom: 4,
+  greetingContainer: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  greeting: {
+    fontSize: 18,
+    fontWeight: '500',
+    marginBottom: 2,
+    opacity: 0.8,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginTop: 2,
   },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
+    overflow: 'hidden',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   bannerContainer: {
     marginHorizontal: 20,
@@ -396,45 +537,44 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    flex: 1,
   },
   viewAllText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
   },
   featuresContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 32,
-    justifyContent: 'space-between',
+    marginBottom: 40,
+    gap: 16,
   },
   featureCard: {
     flex: 1,
-    padding: 18,
-    marginHorizontal: 6,
-    borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
+    justifyContent: 'flex-start',
   },
-  featureIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+  featureIcon: {
     marginBottom: 12,
   },
   featureTitle: {
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 6,
     textAlign: 'center',
+    letterSpacing: -0.2,
   },
   featureDescription: {
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
+    opacity: 0.7,
   },
   featuredProductsContainer: {
     marginBottom: 32,
