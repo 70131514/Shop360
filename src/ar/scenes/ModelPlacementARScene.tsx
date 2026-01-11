@@ -8,61 +8,6 @@ import {
   ViroQuad,
 } from '@viro-community/react-viro';
 
-export type ARModelKey =
-  | 'shoes'
-  | 'hat'
-  | 'sofa'
-  | 'a_table'
-  | 'arm_chair_furniture'
-  | 'armchair'
-  | 'bath_with_sink'
-  | 'bathroom_sink_cabinet'
-  | 'bed'
-  | 'bed1'
-  | 'bed2'
-  | 'camera_canon_eos_400d'
-  | 'canon_at_1_retro_camera'
-  | 'chair'
-  | 'chair1'
-  | 'chair2'
-  | 'chesterfield_sofa'
-  | 'console_table'
-  | 'cover_chair'
-  | 'dae_bilora_bella_46_camera_game_ready_asset'
-  | 'desk_lamp'
-  | 'gameboy'
-  | 'industrial_table'
-  | 'kitchen_sink'
-  | 'laptop'
-  | 'laptop1'
-  | 'laptop2'
-  | 'laptop3'
-  | 'laptop4'
-  | 'lowpoly_old_table'
-  | 'mahogany_table'
-  | 'mid_century_lounge_chair'
-  | 'modern_sofa'
-  | 'office_chair_gaming_chair'
-  | 'ps5'
-  | 'rustic_chair'
-  | 'sink'
-  | 'sink1'
-  | 'sofa_chair'
-  | 'sofa_pink'
-  | 'sofa_single'
-  | 'sofa1'
-  | 'soviet_furniture'
-  | 'steam_deck_console'
-  | 'table_furniture'
-  | 'table_lamp_01'
-  | 'table_lamp'
-  | 'table'
-  | 'table1'
-  | 'wii_console'
-  | 'wooden_sofa'
-  | 'xbox_controller'
-  | 'xbox_series_x_console';
-
 const DEFAULT_POS: [number, number, number] = [0, 0, 0];
 
 type ModelMetrics = {
@@ -113,124 +58,8 @@ function getModelSource(modelUrl?: string) {
   if (modelUrl && typeof modelUrl === 'string' && modelUrl.trim().length > 0) {
     return { uri: modelUrl.trim() };
   }
-  // Fallback to default model if no URL provided
-  return require('../models/shoes.glb');
-}
-
-// Legacy function kept for reference but not used
-function getModelSourceLegacy(modelKey: ARModelKey, modelUrl?: string) {
-  if (modelUrl) {
-    return { uri: modelUrl };
-  }
-  switch (modelKey) {
-    case 'hat':
-      return require('../models/hat.glb');
-    case 'sofa':
-      return require('../models/sofa.glb');
-    case 'a_table':
-      return require('../models/a_table.glb');
-    case 'arm_chair_furniture':
-      return require('../models/arm_chair__furniture.glb');
-    case 'armchair':
-      return require('../models/armchair.glb');
-    case 'bath_with_sink':
-      return require('../models/bath_with_sink.glb');
-    case 'bathroom_sink_cabinet':
-      return require('../models/bathroom_sink_cabinet.glb');
-    case 'bed':
-      return require('../models/bed.glb');
-    case 'bed1':
-      return require('../models/bed(1).glb');
-    case 'bed2':
-      return require('../models/bed2.glb');
-    case 'camera_canon_eos_400d':
-      return require('../models/camera_canon_eos_400d.glb');
-    case 'canon_at_1_retro_camera':
-      return require('../models/canon_at-1_retro_camera.glb');
-    case 'chair':
-      return require('../models/chair.glb');
-    case 'chair1':
-      return require('../models/chair(1).glb');
-    case 'chair2':
-      return require('../models/chair(2).glb');
-    case 'chesterfield_sofa':
-      return require('../models/chesterfield-sofa.glb');
-    case 'console_table':
-      return require('../models/console_table.glb');
-    case 'cover_chair':
-      return require('../models/cover_chair.glb');
-    case 'dae_bilora_bella_46_camera_game_ready_asset':
-      return require('../models/dae_-_bilora_bella_46_camera_-_game_ready_asset.glb');
-    case 'desk_lamp':
-      return require('../models/desk_lamp.glb');
-    case 'gameboy':
-      return require('../models/gameboy.glb');
-    case 'industrial_table':
-      return require('../models/industrial_table.glb');
-    case 'kitchen_sink':
-      return require('../models/kitchen_sink.glb');
-    case 'laptop':
-      return require('../models/laptop.glb');
-    case 'laptop1':
-      return require('../models/laptop(1).glb');
-    case 'laptop2':
-      return require('../models/laptop(2).glb');
-    case 'laptop3':
-      return require('../models/laptop(3).glb');
-    case 'laptop4':
-      return require('../models/laptop(4).glb');
-    case 'lowpoly_old_table':
-      return require('../models/lowpoly_old_table.glb');
-    case 'mahogany_table':
-      return require('../models/mahogany_table.glb');
-    case 'mid_century_lounge_chair':
-      return require('../models/mid_century_lounge_chair.glb');
-    case 'modern_sofa':
-      return require('../models/modern__sofa.glb');
-    case 'office_chair_gaming_chair':
-      return require('../models/office chair gaming chair.glb');
-    case 'ps5':
-      return require('../models/ps5.glb');
-    case 'rustic_chair':
-      return require('../models/rustic_chair.glb');
-    case 'sink':
-      return require('../models/sink.glb');
-    case 'sink1':
-      return require('../models/sink(1).glb');
-    case 'sofa_chair':
-      return require('../models/sofa_chair.glb');
-    case 'sofa_pink':
-      return require('../models/sofa_pink.glb');
-    case 'sofa_single':
-      return require('../models/sofa_single.glb');
-    case 'sofa1':
-      return require('../models/sofa(1).glb');
-    case 'soviet_furniture':
-      return require('../models/soviet_furniture.glb');
-    case 'steam_deck_console':
-      return require('../models/steam_deck_console.glb');
-    case 'table_furniture':
-      return require('../models/table_furniture.glb');
-    case 'table_lamp_01':
-      return require('../models/table_lamp_01.glb');
-    case 'table_lamp':
-      return require('../models/table_lamp.glb');
-    case 'table':
-      return require('../models/table.glb');
-    case 'table1':
-      return require('../models/table(1).glb');
-    case 'wii_console':
-      return require('../models/wii_console.glb');
-    case 'wooden_sofa':
-      return require('../models/wooden_sofa.glb');
-    case 'xbox_controller':
-      return require('../models/xbox_controller.glb');
-    case 'xbox_series_x_console':
-      return require('../models/xbox_series_x_console.glb');
-    case 'shoes':
-    default:
-      return require('../models/shoes.glb');
-  }
+  // No fallback - models must be fetched from Firebase Storage
+  return null;
 }
 
 export const ModelPlacementARScene = (props: Props) => {
@@ -511,6 +340,21 @@ export const ModelPlacementARScene = (props: Props) => {
       // ignore
     }
   }, []);
+
+  // Don't render model if no valid source URL from Firebase Storage
+  if (!source) {
+    return (
+      <ViroARScene
+        ref={arSceneRef}
+        onTrackingUpdated={(state: unknown, reason: unknown) => {
+          props?.arSceneNavigator?.viroAppProps?.onTrackingUpdate?.(state, reason);
+        }}
+        anchorDetectionTypes={[]}
+      >
+        <ViroAmbientLight color="#ffffff" intensity={600} />
+      </ViroARScene>
+    );
+  }
 
   return (
     <ViroARScene
