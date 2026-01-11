@@ -159,10 +159,27 @@ export async function deletePaymentMethod(cardId: string): Promise<void> {
   if (!snap.exists()) {
     throw new Error('Payment method not found');
   }
-  await updateDoc(ref, {
-    // Soft delete by marking as deleted (or use deleteDoc for hard delete)
-    updatedAt: serverTimestamp(),
-  });
+  
+  const cardData = snap.data() as any;
+  
+  // Check if this is the default payment method
+  if (cardData?.isDefault === true) {
+    // Check if there are other payment methods available
+    const allMethods = await getDocs(paymentMethodsCollectionRef(uid));
+    const otherMethods = allMethods.docs.filter((d: any) => d.id !== cardId);
+    
+    if (otherMethods.length === 0) {
+      throw new Error('Cannot delete the default payment method. Please add another payment method first.');
+    }
+    
+    // If there are other methods, we'll set the first one as default before deletion
+    const newDefaultRef = doc(firebaseDb, 'users', uid, 'paymentMethods', otherMethods[0].id);
+    await updateDoc(newDefaultRef, {
+      isDefault: true,
+      updatedAt: serverTimestamp(),
+    });
+  }
+  
   // For now, we'll do a hard delete
   const { deleteDoc } = await import('@react-native-firebase/firestore');
   await deleteDoc(ref);

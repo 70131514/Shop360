@@ -3,9 +3,13 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from '@react-native-firebase/firestore';
 import { firebaseDb } from '../firebase';
 
@@ -56,6 +60,17 @@ export async function upsertProduct(input: {
   modelUrl?: string;
   isFeatured?: boolean;
 }): Promise<string> {
+  // Validate that the category exists
+  const categoryId = String(input.category || '').trim();
+  if (!categoryId) {
+    throw new Error('Category is required');
+  }
+  const categoryRef = doc(firebaseDb, 'categories', categoryId);
+  const categorySnap = await getDoc(categoryRef);
+  if (!categorySnap.exists()) {
+    throw new Error(`Category "${categoryId}" does not exist. Please select a valid category.`);
+  }
+
   const payload = {
     title: input.title,
     category: input.category,
@@ -113,5 +128,46 @@ export async function deleteProduct(id: string): Promise<void> {
   if (!existing.exists()) {
     throw new Error('Product not found');
   }
+
+  // Check if product is in any active orders (not cancelled or delivered)
+  // We need to check all users' orders collections
+  const usersRef = collection(firebaseDb, 'users');
+  const usersSnap = await getDocs(usersRef);
+  
+  // Check active orders first
+  for (const userDoc of usersSnap.docs) {
+    const userId = userDoc.id;
+    const ordersRef = collection(firebaseDb, 'users', userId, 'orders');
+    const ordersSnap = await getDocs(ordersRef);
+    
+    for (const orderDoc of ordersSnap.docs) {
+      const orderData = orderDoc.data();
+      const status = orderData?.status;
+      
+      // Only check active orders (processing or shipped)
+      if (status === 'processing' || status === 'shipped') {
+        const items = orderData?.items || [];
+        const hasProduct = items.some((item: any) => item.productId === id);
+        if (hasProduct) {
+          throw new Error(
+            `Cannot delete product. It is in an active order (${status}). Please wait for the order to be completed or cancelled.`
+          );
+        }
+      }
+    }
+  }
+
+  // Check if product is in any user carts
+  for (const userDoc of usersSnap.docs) {
+    const userId = userDoc.id;
+    const cartRef = doc(firebaseDb, 'users', userId, 'cart', id);
+    const cartSnap = await getDoc(cartRef);
+    if (cartSnap.exists()) {
+      throw new Error(
+        'Cannot delete product. It is currently in one or more user carts. Please wait for users to remove it from their carts.'
+      );
+    }
+  }
+
   await deleteDoc(ref);
 }

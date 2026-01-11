@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   updateDoc,
@@ -137,7 +138,39 @@ export async function updateAddress(
  */
 export async function deleteAddress(addressId: string): Promise<void> {
   const uid = requireUid();
-  await deleteDoc(doc(firebaseDb, 'users', uid, 'addresses', addressId));
+  const ref = doc(firebaseDb, 'users', uid, 'addresses', addressId);
+  
+  // Get the address to check if it exists and if it's default
+  const addressSnap = await getDoc(ref);
+  
+  if (!addressSnap.exists()) {
+    throw new Error('Address not found');
+  }
+  
+  const addressData = addressSnap.data() as any;
+  const isDefault = addressData?.isDefault === true;
+  
+  // Get all addresses to check count
+  const allAddressesSnap = await getDocs(addressesCollectionRef(uid));
+  const allAddresses = allAddressesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Address[];
+  
+  // Check if this is the default address and it's the only one
+  if (isDefault && allAddresses.length === 1) {
+    throw new Error('Cannot delete the default address. Please add another address first.');
+  }
+  
+  // If deleting the default address but there are others, set the first other address as default
+  if (isDefault && allAddresses.length > 1) {
+    const otherAddress = allAddresses.find((a) => a.id !== addressId);
+    if (otherAddress) {
+      await updateDoc(doc(firebaseDb, 'users', uid, 'addresses', otherAddress.id), {
+        isDefault: true,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+  
+  await deleteDoc(ref);
 }
 
 /**
