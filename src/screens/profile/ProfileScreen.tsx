@@ -134,7 +134,7 @@ const ProfileScreen = () => {
     return unsubscribe;
   }, [navigation, user]);
 
-  const menuItems: MenuItem[] = [
+  const allMenuItems: MenuItem[] = [
     {
       icon: 'person-outline',
       title: 'Personal Information',
@@ -191,6 +191,14 @@ const ProfileScreen = () => {
     },
   ];
 
+  // Filter menu items based on guest mode
+  // Guests can only see: Settings
+  // All other items require authentication
+  const guestAllowedRoutes = new Set(['Settings']);
+  const menuItems = isGuest
+    ? allMenuItems.filter((item) => guestAllowedRoutes.has(item.route))
+    : allMenuItems;
+
   const handleLogout = async () => {
     if (loggingOut) {
       return;
@@ -233,7 +241,8 @@ const ProfileScreen = () => {
       'Wishlist',
       'Orders',
       'Notifications',
-      'Settings',
+      'AvatarPicker',
+      'HelpSupport',
     ]);
 
     if (isGuest && routesRequiringAuth.has(route)) {
@@ -267,18 +276,20 @@ const ProfileScreen = () => {
                 source={avatarSource}
                 style={[styles.profileImage, { borderColor: colors.primary }]}
               />
-              <TouchableOpacity
-                style={[
-                  styles.cameraButton,
-                  {
-                    backgroundColor: colors.primary,
-                    borderColor: colors.background,
-                  },
-                ]}
-                onPress={() => navigation.navigate('AvatarPicker')}
-              >
-                <Ionicons name="camera" size={16} color={colors.background} />
-              </TouchableOpacity>
+              {!isGuest && (
+                <TouchableOpacity
+                  style={[
+                    styles.cameraButton,
+                    {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.background,
+                    },
+                  ]}
+                  onPress={() => navigation.navigate('AvatarPicker')}
+                >
+                  <Ionicons name="camera" size={16} color={colors.background} />
+                </TouchableOpacity>
+              )}
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: colors.text }]}>
@@ -348,6 +359,9 @@ const ProfileScreen = () => {
                 <Text style={[styles.authButtonText, { color: colors.text }]}>Create Account</Text>
               </TouchableOpacity>
             </View>
+            <Text style={[styles.guestPromptText, { color: colors.textSecondary }]}>
+              Sign in or create an account to access the complete functionality of the profile page.
+            </Text>
           </View>
         ) : (
           <TouchableOpacity
@@ -366,33 +380,96 @@ const ProfileScreen = () => {
           </TouchableOpacity>
         )}
 
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="bag-outline" size={24} color={colors.primary} style={styles.statIcon} />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
+        {isGuest && (
+          <View
+            style={[
+              styles.guestWelcomeCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.guestIconWrapper}>
+              <View
+                style={[
+                  styles.guestGradientCircle,
+                  styles.guestGradientOuter,
+                  { borderColor: colors.primary + '20' },
+                ]}
+              />
+              <View
+                style={[
+                  styles.guestGradientCircle,
+                  styles.guestGradientMiddle,
+                  { borderColor: colors.primary + '30' },
+                ]}
+              />
+              <View style={[styles.guestIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                <Ionicons name="person-outline" size={48} color={colors.primary} />
+              </View>
+            </View>
+            <Text style={[styles.guestWelcomeTitle, { color: colors.text }]}>
+              You're browsing as a guest
+            </Text>
+            <Text style={[styles.guestWelcomeSubtitle, { color: colors.textSecondary }]}>
+              Sign in or create an account to become a valued member of our community and unlock all
+              features.
+            </Text>
+            <View style={styles.guestBenefitsContainer}>
+              <View style={styles.guestBenefitItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                <Text style={[styles.guestBenefitText, { color: colors.text }]}>
+                  Save your wishlist
+                </Text>
+              </View>
+              <View style={styles.guestBenefitItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                <Text style={[styles.guestBenefitText, { color: colors.text }]}>
+                  Track your orders
+                </Text>
+              </View>
+              <View style={styles.guestBenefitItem}>
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                <Text style={[styles.guestBenefitText, { color: colors.text }]}>
+                  Manage addresses & payments
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons
-              name="heart-outline"
-              size={24}
-              color={colors.primary}
-              style={styles.statIcon}
-            />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
+        )}
+
+        {!isGuest && (
+          <View style={styles.statsContainer}>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+              <Ionicons
+                name="bag-outline"
+                size={24}
+                color={colors.primary}
+                style={styles.statIcon}
+              />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+              <Ionicons
+                name="heart-outline"
+                size={24}
+                color={colors.primary}
+                style={styles.statIcon}
+              />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+              <Ionicons
+                name="location-outline"
+                size={24}
+                color={colors.primary}
+                style={styles.statIcon}
+              />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
+            </View>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons
-              name="location-outline"
-              size={24}
-              color={colors.primary}
-              style={styles.statIcon}
-            />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
-          </View>
-        </View>
+        )}
 
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
@@ -613,6 +690,81 @@ const styles = StyleSheet.create({
   authButtonText: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  guestPromptText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
+  guestWelcomeCard: {
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: 20,
+    padding: 32,
+    borderWidth: 1,
+    marginTop: 24,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  guestIconWrapper: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  guestGradientCircle: {
+    position: 'absolute',
+    borderRadius: 50,
+    borderWidth: 1.5,
+  },
+  guestGradientOuter: {
+    width: 100,
+    height: 100,
+    opacity: 0.4,
+  },
+  guestGradientMiddle: {
+    width: 90,
+    height: 90,
+    opacity: 0.5,
+  },
+  guestIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  guestWelcomeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  guestWelcomeSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  guestBenefitsContainer: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  guestBenefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  guestBenefitText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   adminPortalCard: {
     width: '90%',

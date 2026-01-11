@@ -569,8 +569,8 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="Settings"
           component={SettingsScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
-          />
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="ChangeEmail"
           component={ChangeEmailScreen}

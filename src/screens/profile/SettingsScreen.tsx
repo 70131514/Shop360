@@ -36,6 +36,7 @@ const SettingsScreen = () => {
   const { user, linkGoogleAccount } = useAuth();
   const [locationEnabled, setLocationEnabled] = useState<boolean>(true);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+  const isGuest = !user;
 
   const [isClearing, setIsClearing] = useState(false);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
@@ -112,7 +113,9 @@ const SettingsScreen = () => {
   const checkLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
-        const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        const result = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
         return result;
       } catch (err) {
         console.warn(err);
@@ -224,9 +227,23 @@ const SettingsScreen = () => {
     return user.providerData.some((provider) => provider.providerId === 'google.com');
   };
 
+  const promptAuth = (reason: string) => {
+    alert('Sign in required', reason, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign In',
+        onPress: () => navigation.navigate('Login', { redirectToTab: 'Profile' }),
+      },
+      {
+        text: 'Create Account',
+        onPress: () => navigation.navigate('Signup', { redirectToTab: 'Profile' }),
+      },
+    ]);
+  };
+
   const handleLinkGoogle = async () => {
     if (!user) {
-      alert('Sign in required', 'Please sign in to link your Google account.');
+      promptAuth('Please sign in or create an account to link your Google account.');
       return;
     }
 
@@ -251,7 +268,10 @@ const SettingsScreen = () => {
     setIsLinkingGoogle(true);
     try {
       await linkGoogleAccount();
-      alert('Success', 'Google account linked successfully. You can now sign in with either email or Google.');
+      alert(
+        'Success',
+        'Google account linked successfully. You can now sign in with either email or Google.',
+      );
     } catch (e: any) {
       // Handle user cancellation gracefully
       if (
@@ -288,7 +308,7 @@ const SettingsScreen = () => {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar
@@ -297,9 +317,15 @@ const SettingsScreen = () => {
         translucent={false}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Settings</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
+        <View style={styles.placeholder} />
+      </View>
 
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Theme (top) */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
         <View
@@ -352,76 +378,80 @@ const SettingsScreen = () => {
         </TouchableOpacity>
 
         {/* Account cards */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
-        <View style={styles.cardRow}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[
-              styles.actionCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => navigation.navigate('ChangeEmail')}
-          >
-            <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
-              <Ionicons name="mail-outline" size={20} color={colors.text} />
-            </View>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Change Email</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-              Update your login email (verification required)
-            </Text>
-          </TouchableOpacity>
+        {!isGuest && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
+            <View style={styles.cardRow}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[
+                  styles.actionCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+                onPress={() => navigation.navigate('ChangeEmail')}
+              >
+                <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
+                  <Ionicons name="mail-outline" size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Change Email</Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  Update your login email (verification required)
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[
-              styles.actionCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => navigation.navigate('ChangePassword')}
-          >
-            <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
-              <Ionicons name="key-outline" size={20} color={colors.text} />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[
+                  styles.actionCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+                onPress={() => navigation.navigate('ChangePassword')}
+              >
+                <View style={[styles.cardIcon, { backgroundColor: colors.background }]}>
+                  <Ionicons name="key-outline" size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>Change Password</Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  Keep your account secure
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Change Password</Text>
-            <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-              Keep your account secure
-            </Text>
-          </TouchableOpacity>
-        </View>
 
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={[
-            styles.rowCard,
-            styles.linkGoogleCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-          onPress={handleLinkGoogle}
-          disabled={isLinkingGoogle}
-        >
-          <View style={styles.rowLeft}>
-            <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
-              <Ionicons name="logo-google" size={20} color={colors.text} />
-            </View>
-            <View style={styles.rowInfo}>
-              <Text style={[styles.rowTitle, { color: colors.text }]}>
-                {isGoogleLinked() ? 'Google account linked' : 'Link Google account'}
-              </Text>
-              <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
-                {isGoogleLinked()
-                  ? 'You can sign in with Google or email'
-                  : 'Add Google Sign-In to your existing account'}
-              </Text>
-            </View>
-          </View>
-          {isLinkingGoogle ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : isGoogleLinked() ? (
-            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-          ) : (
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          )}
-        </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[
+                styles.rowCard,
+                styles.linkGoogleCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={handleLinkGoogle}
+              disabled={isLinkingGoogle}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <Ionicons name="logo-google" size={20} color={colors.text} />
+                </View>
+                <View style={styles.rowInfo}>
+                  <Text style={[styles.rowTitle, { color: colors.text }]}>
+                    {isGoogleLinked() ? 'Google account linked' : 'Link Google account'}
+                  </Text>
+                  <Text style={[styles.rowDesc, { color: colors.textSecondary }]}>
+                    {isGoogleLinked()
+                      ? 'You can sign in with Google or email'
+                      : 'Add Google Sign-In to your existing account'}
+                  </Text>
+                </View>
+              </View>
+              {isLinkingGoogle ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : isGoogleLinked() ? (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              ) : (
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Remaining options */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Preferences</Text>
@@ -573,14 +603,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 28,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 12,
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 36,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 100,
   },
   sectionTitle: {
     marginTop: 14,
