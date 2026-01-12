@@ -227,15 +227,27 @@ export function subscribeCart(
       if (!productUnsubs.has(item.id)) {
         const productRef = doc(firebaseDb, 'products', item.id);
         
-        // Get initial stock
+        // Get initial stock and update price with discount if applicable
         try {
           const productSnap = await getDoc(productRef);
           if (productSnap.exists()) {
             const productData = productSnap.data();
+            const productPrice = Number(productData?.price ?? item.price);
+            const discountPercentage = Number(productData?.discountPercentage ?? 0);
+            const currentStock = Number(productData?.stock ?? 0);
+            
+            // Calculate discounted price if there's a discount
+            const discountedPrice =
+              discountPercentage > 0
+                ? productPrice * (1 - discountPercentage / 100)
+                : productPrice;
+            
             enrichedItems.push({
               ...item,
-              stock: Number(productData?.stock ?? 0),
-              inStock: Number(productData?.stock ?? 0) > 0,
+              price: discountedPrice,
+              originalPrice: discountPercentage > 0 ? productPrice : item.originalPrice,
+              stock: currentStock,
+              inStock: currentStock > 0,
             });
           } else {
             enrichedItems.push({
@@ -248,7 +260,9 @@ export function subscribeCart(
           enrichedItems.push(item);
         }
 
-        // Subscribe to product changes
+        // Subscribe to product changes in real-time
+        // This listener will automatically fire when stock is updated during order placement
+        // or when admin updates stock, ensuring cart items always show current stock
         const productUnsub = onSnapshot(
           productRef,
           (productSnap) => {
@@ -268,16 +282,27 @@ export function subscribeCart(
 
               const productData = productSnap.data();
               const currentStock = Number(productData?.stock ?? 0);
+              const productPrice = Number(productData?.price ?? i.price);
+              const discountPercentage = Number(productData?.discountPercentage ?? 0);
+
+              // Calculate discounted price if there's a discount
+              const discountedPrice =
+                discountPercentage > 0
+                  ? productPrice * (1 - discountPercentage / 100)
+                  : productPrice;
+
               return {
                 ...i,
                 stock: currentStock,
                 inStock: currentStock > 0,
-                // Update price and name if changed
-                price: Number(productData?.price ?? i.price),
+                // Update price with discounted price, preserve originalPrice if discount exists
+                price: discountedPrice,
+                originalPrice: discountPercentage > 0 ? productPrice : i.originalPrice,
                 name: String(productData?.title ?? i.name),
               };
             });
             currentItems = updatedItems;
+            // This callback updates the cart UI in real-time when stock changes
             onItems(updatedItems);
           },
           (err) => {
@@ -330,7 +355,7 @@ export async function addToCart(
     }
     // Authenticated user - use Firestore (never local storage)
     const uid = user.uid;
-  const productId = item.id;
+    const productId = item.id;
   const qtyToAdd = Math.max(1, Number(item.quantity ?? 1));
   const ref = cartDocRef(uid, productId);
   const productRef = doc(firebaseDb, 'products', productId);
@@ -343,17 +368,32 @@ export async function addToCart(
     }
     const productData = productSnap.data();
     const currentStock = Number(productData?.stock ?? 0);
-    
+
     if (currentStock <= 0) {
       throw new Error('Product is out of stock');
     }
+
+    // Calculate discounted price from product data if discount exists
+    const productPrice = Number(productData?.price ?? item.price);
+    const discountPercentage = Number(productData?.discountPercentage ?? 0);
+    const discountedPrice =
+      discountPercentage > 0 ? productPrice * (1 - discountPercentage / 100) : productPrice;
+
+    // Use the discounted price from item if provided, otherwise calculate from product
+    const finalPrice = item.price !== undefined ? item.price : discountedPrice;
+    const finalOriginalPrice =
+      item.originalPrice !== undefined
+        ? item.originalPrice
+        : discountPercentage > 0
+          ? productPrice
+          : undefined;
 
     const cartSnap = await tx.get(ref);
     if (cartSnap.exists()) {
       const cartData = cartSnap.data();
       const currentQuantity = Number(cartData?.quantity ?? 0);
       const newQuantity = currentQuantity + qtyToAdd;
-      
+
       if (newQuantity > currentStock) {
         throw new Error(`Only ${currentStock} item(s) available in stock`);
       }
@@ -361,10 +401,10 @@ export async function addToCart(
       tx.update(ref, {
         // keep latest product info in case it changes
         name: item.name,
-        price: item.price,
+        price: finalPrice,
         image: item.image ?? null,
         brand: item.brand ?? null,
-        originalPrice: item.originalPrice ?? null,
+        originalPrice: finalOriginalPrice ?? null,
         inStock: currentStock > 0,
         stock: currentStock,
         quantity: increment(qtyToAdd),
@@ -380,6 +420,8 @@ export async function addToCart(
         {
           ...item,
           id: productId,
+          price: finalPrice,
+          originalPrice: finalOriginalPrice,
           quantity: qtyToAdd,
           stock: currentStock,
           inStock: currentStock > 0,

@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   PAYMENT_METHODS: '@payment_methods',
   NOTIFICATION_PREFERENCES: '@notification_preferences',
   FONT_SIZE_PRESET: '@font_size_preset',
+  AVATARS_INITIALIZED: '@avatars_initialized',
 } as const;
 
 export type FontSizePreset = 'xs' | 's' | 'm' | 'l' | 'xl';
@@ -188,6 +189,82 @@ export const getFontSizePreset = async (): Promise<FontSizePreset | null> => {
   } catch (error) {
     console.error('Error getting font size preset:', error);
     return null;
+  }
+};
+
+// Avatar storage - stores avatar images as base64 in AsyncStorage
+// Avatar ID is synced with Firestore, images are loaded from local storage for offline access
+
+/**
+ * Store a single avatar image in AsyncStorage as base64
+ * @param avatarId - The avatar ID (e.g., 'm1', 'w2', 'user', 'admin')
+ * @param base64Data - Base64 encoded image data
+ */
+export const storeAvatarImage = async (avatarId: string, base64Data: string): Promise<void> => {
+  try {
+    const key = `@avatar_${avatarId}`;
+    await AsyncStorage.setItem(key, base64Data);
+  } catch (error) {
+    console.error(`Error storing avatar ${avatarId}:`, error);
+  }
+};
+
+/**
+ * Get a stored avatar image from AsyncStorage
+ * @param avatarId - The avatar ID to retrieve
+ * @returns Base64 encoded image data or null if not found
+ */
+export const getAvatarImage = async (avatarId: string): Promise<string | null> => {
+  try {
+    const key = `@avatar_${avatarId}`;
+    return await AsyncStorage.getItem(key);
+  } catch (error) {
+    console.error(`Error getting avatar ${avatarId}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Store all avatar images at once
+ * @param avatars - Object mapping avatar IDs to base64 data
+ */
+export const storeAllAvatars = async (avatars: Record<string, string>): Promise<void> => {
+  try {
+    const promises = Object.entries(avatars).map(([avatarId, base64Data]) =>
+      storeAvatarImage(avatarId, base64Data),
+    );
+    await Promise.all(promises);
+    // Mark avatars as initialized
+    await AsyncStorage.setItem(STORAGE_KEYS.AVATARS_INITIALIZED, 'true');
+  } catch (error) {
+    console.error('Error storing all avatars:', error);
+  }
+};
+
+/**
+ * Check if avatars have been initialized in AsyncStorage
+ * @returns True if avatars are initialized
+ */
+export const areAvatarsInitialized = async (): Promise<boolean> => {
+  try {
+    const initialized = await AsyncStorage.getItem(STORAGE_KEYS.AVATARS_INITIALIZED);
+    return initialized === 'true';
+  } catch (error) {
+    console.error('Error checking avatar initialization:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear all stored avatar images
+ */
+export const clearAvatarImages = async (): Promise<void> => {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const avatarKeys = keys.filter((key) => key.startsWith('@avatar_'));
+    await AsyncStorage.multiRemove([...avatarKeys, STORAGE_KEYS.AVATARS_INITIALIZED]);
+  } catch (error) {
+    console.error('Error clearing avatar images:', error);
   }
 };
 

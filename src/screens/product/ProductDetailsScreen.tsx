@@ -112,6 +112,11 @@ export default function ProductDetailsScreen() {
     setError(null);
 
     // Subscribe to real-time product updates
+    // This listener automatically updates when:
+    // - Stock is deducted during order placement (via Firestore transaction)
+    // - Admin updates product stock
+    // - Product details are modified
+    // The UI will update immediately without manual refresh
     const unsubscribe = subscribeProductById(
       String(id),
       (productData) => {
@@ -120,6 +125,7 @@ export default function ProductDetailsScreen() {
           if (mapped) {
             setProduct(mapped);
             setError(null);
+            // Stock updates are reflected immediately via this subscription
           } else {
             setError('Product not found');
             setProduct(null);
@@ -258,6 +264,7 @@ export default function ProductDetailsScreen() {
     if (!product) {
       return;
     }
+    // Real-time stock check - product stock is updated via subscribeProductById
     if (product.stock <= 0) {
       alert('Out of Stock', 'This product is currently out of stock.', [{ text: 'OK' }]);
       return;
@@ -266,6 +273,11 @@ export default function ProductDetailsScreen() {
       alert('Insufficient Stock', `Only ${product.stock} item(s) available in stock.`, [
         { text: 'OK' },
       ]);
+      return;
+    }
+    // Additional validation: ensure quantity is positive
+    if (quantity <= 0) {
+      alert('Invalid Quantity', 'Please select a valid quantity.', [{ text: 'OK' }]);
       return;
     }
 

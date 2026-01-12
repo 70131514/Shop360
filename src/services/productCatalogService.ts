@@ -84,6 +84,13 @@ export async function getProductById(id: string): Promise<StoreProduct | null> {
 
 /**
  * Subscribe to a single product by ID for real-time updates
+ * This provides immediate updates when:
+ * - Stock is deducted during order placement (via Firestore transaction)
+ * - Admin updates product information or stock
+ * - Product is modified in any way
+ * 
+ * The listener automatically triggers when Firestore document changes,
+ * ensuring UI stays synchronized with database state in real-time
  */
 export function subscribeProductById(
   id: string,
@@ -91,7 +98,9 @@ export function subscribeProductById(
   onError?: (err: unknown) => void,
 ): Unsubscribe {
   const productRef = doc(firebaseDb, 'products', id);
-  
+
+  // onSnapshot creates a real-time listener that fires immediately on setup
+  // and whenever the document changes, including stock updates from transactions
   return onSnapshot(
     productRef,
     (snap) => {
@@ -99,8 +108,9 @@ export function subscribeProductById(
         onProduct(null);
         return;
       }
-      
+
       const product = normalizeProduct(snap.id, snap.data());
+      // This callback is triggered in real-time when stock changes
       onProduct(product);
     },
     (err) => {

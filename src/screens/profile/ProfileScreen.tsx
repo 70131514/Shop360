@@ -19,6 +19,7 @@ import { subscribeOrderCount } from '../../services/orderService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { subscribeMyAddresses } from '../../services/addressService';
 import { getAvatarSourceForUser } from '../../utils/avatarUtils';
+import { useAvatarSourceForUser } from '../../hooks/useAvatarSource';
 
 type MenuItem = {
   icon: string;
@@ -44,7 +45,12 @@ const ProfileScreen = () => {
   const [addressCount, setAddressCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const isGuest = !user;
-  const avatarSource = getAvatarSourceForUser({
+  // Use async hook to load from AsyncStorage first, then fallback to bundled
+  const avatarSource = useAvatarSourceForUser({
+    avatarId: profile?.avatarId,
+    isGuest,
+    isAdmin,
+  }) || getAvatarSourceForUser({
     avatarId: profile?.avatarId,
     isGuest,
     isAdmin,
@@ -59,15 +65,15 @@ const ProfileScreen = () => {
 
     // Live wishlist count for the signed-in user
     let unsub: undefined | (() => void);
-    try {
+      try {
       unsub = subscribeWishlist(
         (items) => setWishlistCount(Array.isArray(items) ? items.length : 0),
         () => setWishlistCount(0),
       );
-    } catch {
+      } catch {
       // Likely signed out / no uid yet
-      setWishlistCount(0);
-    }
+        setWishlistCount(0);
+      }
 
     return () => {
       if (unsub) {
@@ -111,15 +117,15 @@ const ProfileScreen = () => {
 
     // Live address count for the signed-in user
     let unsub: undefined | (() => void);
-    try {
+      try {
       unsub = subscribeMyAddresses(
         (addresses) => setAddressCount(Array.isArray(addresses) ? addresses.length : 0),
         () => setAddressCount(0),
       );
-    } catch {
+      } catch {
       // Likely signed out / no uid yet
-      setAddressCount(0);
-    }
+        setAddressCount(0);
+      }
 
     return () => {
       if (unsub) {
@@ -271,18 +277,18 @@ const ProfileScreen = () => {
                 style={[styles.profileImage, { borderColor: colors.primary }]}
               />
               {!isGuest && (
-                <TouchableOpacity
-                  style={[
-                    styles.cameraButton,
-                    {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.background,
-                    },
-                  ]}
-                  onPress={() => navigation.navigate('AvatarPicker')}
-                >
-                  <Ionicons name="camera" size={16} color={colors.background} />
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.cameraButton,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.background,
+                  },
+                ]}
+                onPress={() => navigation.navigate('AvatarPicker')}
+              >
+                <Ionicons name="camera" size={16} color={colors.background} />
+              </TouchableOpacity>
               )}
             </View>
             <View style={styles.userInfo}>
@@ -431,38 +437,38 @@ const ProfileScreen = () => {
         )}
 
         {!isGuest && (
-          <View style={styles.statsContainer}>
-            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+        <View style={styles.statsContainer}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
               <Ionicons
                 name="bag-outline"
                 size={24}
                 color={colors.primary}
                 style={styles.statIcon}
               />
-              <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-              <Ionicons
-                name="heart-outline"
-                size={24}
-                color={colors.primary}
-                style={styles.statIcon}
-              />
-              <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
-            </View>
-            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-              <Ionicons
-                name="location-outline"
-                size={24}
-                color={colors.primary}
-                style={styles.statIcon}
-              />
-              <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
-            </View>
+            <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
           </View>
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <Ionicons
+              name="heart-outline"
+              size={24}
+              color={colors.primary}
+              style={styles.statIcon}
+            />
+            <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+            <Ionicons
+              name="location-outline"
+              size={24}
+              color={colors.primary}
+              style={styles.statIcon}
+            />
+            <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
+          </View>
+        </View>
         )}
 
         <View style={styles.menuContainer}>

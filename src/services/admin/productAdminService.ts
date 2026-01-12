@@ -153,6 +153,9 @@ export async function upsertProduct(input: {
     const ref = doc(firebaseDb, 'products', input.id);
     const existing = await getDoc(ref);
     if (existing.exists()) {
+      // Use updateDoc for existing products - this is safe as Firestore updates are atomic
+      // Stock updates by admin will be reflected immediately, and any concurrent orders
+      // will use transactions that read the latest stock value
       await updateDoc(ref, payload as any);
       return input.id;
     }

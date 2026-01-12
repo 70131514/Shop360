@@ -570,7 +570,7 @@ export const AppNavigator = () => {
           name="Settings"
           component={SettingsScreen}
           options={{ headerShown: false }}
-        />
+          />
         <Stack.Screen
           name="ChangeEmail"
           component={ChangeEmailScreen}

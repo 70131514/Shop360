@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AppAlertProvider } from './contexts/AppAlertContext';
 import { useTheme } from './contexts/ThemeContext';
 import { FontSizeProvider } from './contexts/FontSizeContext';
+import { initializeAvatarStorage } from './utils/avatarStorageInit';
 
 // Configure Google Sign-In as early as possible (before any auth screen interaction).
 GoogleSignin.configure({
@@ -31,6 +32,16 @@ const ThemedStatusBar = () => {
 };
 
 const App = () => {
+  // Initialize avatar storage on app startup
+  useEffect(() => {
+    // Initialize avatars in AsyncStorage for offline access
+    // This runs once on app startup
+    initializeAvatarStorage().catch((error) => {
+      console.error('Failed to initialize avatar storage:', error);
+      // Don't block app startup if initialization fails
+    });
+  }, []);
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

@@ -657,10 +657,21 @@ export async function approveOrderCancellation(
 
         const newStock = currentStock + quantityToRestore;
 
-        transaction.update(productRef, {
-          stock: newStock,
-          updatedAt: serverTimestamp(),
-        });
+        // Ensure stock doesn't exceed reasonable limits (defensive check)
+        if (newStock > 1000000) {
+          console.warn(
+            `Stock restoration would exceed limit for product ${item.productId}, capping at 1,000,000`,
+          );
+          transaction.update(productRef, {
+            stock: 1000000,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          transaction.update(productRef, {
+            stock: newStock,
+            updatedAt: serverTimestamp(),
+          });
+        }
       } else {
         console.warn(`Product ${item.productId} not found, cannot restore stock`);
       }

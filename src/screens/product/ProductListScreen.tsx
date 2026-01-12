@@ -396,21 +396,21 @@ const ProductListScreen = () => {
         <View style={styles.controlsRow}>
           {/* Sort Dropdown */}
           <View style={styles.sortDropdownContainer}>
-            <TouchableOpacity
-              style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          <TouchableOpacity
+            style={[styles.sortButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => setSortDropdownOpen(!sortDropdownOpen)}
               activeOpacity={0.7}
-            >
-              <Ionicons name="swap-vertical-outline" size={16} color={colors.text} />
-              <Text style={[styles.sortButtonText, { color: colors.text }]} numberOfLines={1}>
-                {sortOptions.find((o) => o.key === sortBy)?.label || 'Sort'}
-              </Text>
+          >
+            <Ionicons name="swap-vertical-outline" size={16} color={colors.text} />
+            <Text style={[styles.sortButtonText, { color: colors.text }]} numberOfLines={1}>
+              {sortOptions.find((o) => o.key === sortBy)?.label || 'Sort'}
+            </Text>
               <Ionicons
                 name={sortDropdownOpen ? 'chevron-up' : 'chevron-down'}
                 size={14}
                 color={colors.textSecondary}
               />
-            </TouchableOpacity>
+          </TouchableOpacity>
 
             {/* Dropdown Menu */}
             {sortDropdownOpen && (

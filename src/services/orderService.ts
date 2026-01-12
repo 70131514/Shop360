@@ -177,6 +177,14 @@ export async function placeOrderFromCart(
       }
 
       const newStock = currentStock - orderedQuantity;
+
+      // Double-check: Ensure stock never goes negative (defensive programming)
+      if (newStock < 0) {
+        throw new Error(
+          `Stock calculation error for ${item.name}. Current: ${currentStock}, Requested: ${orderedQuantity}`,
+        );
+      }
+
       productUpdates.push({
         productId: item.productId,
         newStock,
@@ -184,7 +192,10 @@ export async function placeOrderFromCart(
       });
     }
 
-    // Step 2: Update all product stocks
+    // Step 2: Update all product stocks atomically
+    // This ensures stock is deducted correctly and prevents race conditions
+    // Firestore will automatically notify all active onSnapshot listeners (real-time subscriptions)
+    // when this transaction commits, so ProductDetailsScreen and CartScreen will update immediately
     productUpdates.forEach((update) => {
       const productRef = doc(firebaseDb, 'products', update.productId);
       transaction.update(productRef, {
