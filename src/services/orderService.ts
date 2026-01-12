@@ -139,12 +139,14 @@ export async function placeOrderFromCart(
   const total = subtotal + shipping;
   const itemCount = items.reduce((sum, i) => sum + Number(i.quantity), 0);
 
+  // IMPORTANT: Stock is ONLY deducted here when order is placed, NOT when items are added to cart
+  // This ensures stock is reserved only when user commits to purchase
   // Use a transaction to atomically:
-  // 1. Check and update product stock
+  // 1. Check and DEDUCT product stock (this is where stock is actually reduced)
   // 2. Create order
   // 3. Clear cart
   const orderId = await runTransaction(firebaseDb, async (transaction) => {
-    // Step 1: Check stock availability and prepare stock updates
+    // Step 1: Check stock availability and prepare stock DEDUCTIONS
     const productUpdates: Array<{ productId: string; newStock: number; productName: string }> = [];
     const productRefs = items.map((item) => doc(firebaseDb, 'products', item.productId));
     
@@ -176,6 +178,7 @@ export async function placeOrderFromCart(
         );
       }
 
+      // Calculate new stock after deduction
       const newStock = currentStock - orderedQuantity;
 
       // Double-check: Ensure stock never goes negative (defensive programming)
@@ -192,14 +195,16 @@ export async function placeOrderFromCart(
       });
     }
 
-    // Step 2: Update all product stocks atomically
+    // Step 2: DEDUCT stock from all products atomically
+    // THIS IS WHERE STOCK IS ACTUALLY REDUCED - not when adding to cart
     // This ensures stock is deducted correctly and prevents race conditions
     // Firestore will automatically notify all active onSnapshot listeners (real-time subscriptions)
     // when this transaction commits, so ProductDetailsScreen and CartScreen will update immediately
     productUpdates.forEach((update) => {
       const productRef = doc(firebaseDb, 'products', update.productId);
+      // Stock is deducted here - this update triggers real-time listeners
       transaction.update(productRef, {
-        stock: update.newStock,
+        stock: update.newStock, // Reduced stock value
         updatedAt: serverTimestamp(),
       });
     });
@@ -242,6 +247,15 @@ export async function placeOrderFromCart(
     return orderRef.id;
   });
 
+  // After transaction commits successfully:
+  // 1. Stock has been DEDUCTED from all products (this is the ONLY place stock is reduced)
+  // 2. Order has been created
+  // 3. Cart has been cleared
+  // 4. All active Firestore listeners (onSnapshot) will automatically receive updates in real-time:
+  //    - ProductDetailsScreen will show updated stock immediately via subscribeProductById
+  //    - CartScreen will reflect cleared cart immediately via subscribeCart
+  //    - Any other screens with product subscriptions will update automatically
+  // No manual refresh needed - all updates happen in real-time at runtime
   return { orderId };
 }
 

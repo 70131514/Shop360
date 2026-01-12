@@ -361,7 +361,11 @@ export async function addToCart(
   const productRef = doc(firebaseDb, 'products', productId);
 
   await runTransaction(firebaseDb, async (tx) => {
-    // Get current product stock
+    // IMPORTANT: This function only CHECKS stock availability - it does NOT deduct stock
+    // Stock is only deducted when an order is placed (in placeOrderFromCart)
+    // This allows multiple users to add items to cart without reserving stock
+    
+    // Get current product stock for validation only
     const productSnap = await tx.get(productRef);
     if (!productSnap.exists()) {
       throw new Error('Product not found');
@@ -369,6 +373,7 @@ export async function addToCart(
     const productData = productSnap.data();
     const currentStock = Number(productData?.stock ?? 0);
 
+    // Validate stock availability (but don't deduct)
     if (currentStock <= 0) {
       throw new Error('Product is out of stock');
     }
@@ -400,13 +405,14 @@ export async function addToCart(
 
       tx.update(ref, {
         // keep latest product info in case it changes
+        // Note: 'stock' field here is just a snapshot for display - actual product stock is NOT changed
         name: item.name,
         price: finalPrice,
         image: item.image ?? null,
         brand: item.brand ?? null,
         originalPrice: finalOriginalPrice ?? null,
         inStock: currentStock > 0,
-        stock: currentStock,
+        stock: currentStock, // Stored for reference only - product stock remains unchanged
         quantity: increment(qtyToAdd),
         updatedAt: serverTimestamp(),
       } as any);
@@ -423,7 +429,7 @@ export async function addToCart(
           price: finalPrice,
           originalPrice: finalOriginalPrice,
           quantity: qtyToAdd,
-          stock: currentStock,
+          stock: currentStock, // Stored for reference only - product stock remains unchanged
           inStock: currentStock > 0,
           addedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -458,22 +464,25 @@ export async function setCartItemQuantity(productId: string, quantity: number): 
   const productRef = doc(firebaseDb, 'products', productId);
 
   await runTransaction(firebaseDb, async (tx) => {
-    // Check stock
+    // IMPORTANT: This function only CHECKS stock availability - it does NOT deduct stock
+    // Stock is only deducted when an order is placed (in placeOrderFromCart)
+    
+    // Check stock availability (but don't deduct)
     const productSnap = await tx.get(productRef);
     if (!productSnap.exists()) {
       throw new Error('Product not found');
     }
     const productData = productSnap.data();
     const currentStock = Number(productData?.stock ?? 0);
-    
+
     if (q > currentStock) {
       throw new Error(`Only ${currentStock} item(s) available in stock`);
     }
 
-    // Update quantity
+    // Update cart quantity only - product stock remains unchanged
     tx.update(ref, {
       quantity: q,
-      stock: currentStock,
+      stock: currentStock, // Stored for reference only - product stock remains unchanged
       inStock: currentStock > 0,
       updatedAt: serverTimestamp(),
     } as any);
