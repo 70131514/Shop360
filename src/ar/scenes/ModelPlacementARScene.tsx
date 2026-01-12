@@ -29,11 +29,11 @@ const DEFAULT_METRICS: ModelMetrics = {
 ViroMaterials.createMaterials({
   Shop360PlacementReticleReady: {
     lightingModel: 'Constant',
-    diffuseColor: '#2EE59D88',
+    diffuseColor: '#2EE59DFF', // Fully opaque green when ready
   },
   Shop360PlacementReticleSearching: {
     lightingModel: 'Constant',
-    diffuseColor: '#FFFFFF55',
+    diffuseColor: '#FFFFFFDD', // Much brighter white with high opacity when searching
   },
 });
 
@@ -48,6 +48,7 @@ type Props = {
       onPlacementError?: (message: string) => void;
       onTrackingUpdate?: (state: unknown, reason: unknown) => void;
       onPlaneSelected?: (planeUpdateMap: unknown) => void;
+      onModelLoaded?: () => void;
       resetPlaneSelectionKey?: number;
       placeRequestKey?: number;
     };
@@ -153,6 +154,7 @@ export const ModelPlacementARScene = (props: Props) => {
         lastPosRef.current = previewPos;
         props?.arSceneNavigator?.viroAppProps?.onModelPositionChange?.(previewPos);
         setPlaneLocked(true);
+        // Note: onModelLoaded will be called when Viro3DObject's onLoadEnd fires
       } catch {
         // ignore placement failures; user can try again
       }
@@ -375,8 +377,8 @@ export const ModelPlacementARScene = (props: Props) => {
         <ViroNode position={previewPos}>
           <ViroQuad
             rotation={[-90, 0, 0]}
-            width={0.08}
-            height={0.08}
+            width={0.12}
+            height={0.12}
             materials={
               previewStable ? 'Shop360PlacementReticleReady' : 'Shop360PlacementReticleSearching'
             }
@@ -409,7 +411,11 @@ export const ModelPlacementARScene = (props: Props) => {
               modelMetrics.scale[2] * modelScaleMultiplier,
             ]}
             rotation={[0, modelRotationY, 0]}
-            onLoadEnd={applyBoundingBoxCorrections}
+            onLoadEnd={async () => {
+              await applyBoundingBoxCorrections();
+              // Notify parent that model is loaded and rendered
+              props?.arSceneNavigator?.viroAppProps?.onModelLoaded?.();
+            }}
           />
         </ViroNode>
       )}

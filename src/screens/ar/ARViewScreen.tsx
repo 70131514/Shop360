@@ -9,16 +9,18 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ViroARSceneNavigator } from '@viro-community/react-viro';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AppText as Text } from '../../components/common/AppText';
-import { SPACING } from '../../theme';
 import { ModelPlacementARScene } from '../../ar/scenes/ModelPlacementARScene';
 import { getProductById as getStoreProductById } from '../../services/productCatalogService';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const ARViewScreen = () => {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
 
@@ -40,50 +42,198 @@ export const ARViewScreen = () => {
   const [remoteModelUrl, setRemoteModelUrl] = useState<string>('');
   const [productName, setProductName] = useState<string>('');
   const [productLoaded, setProductLoaded] = useState<boolean>(false);
+  const [modelLoading, setModelLoading] = useState<boolean>(false);
+  const [modelLoadingProgress, setModelLoadingProgress] = useState<number>(0);
+  const [modelLoadingError, setModelLoadingError] = useState<string>('');
+  const [isOnline, setIsOnline] = useState<boolean>(true);
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
   const [modelRotationY, setModelRotationY] = useState<number>(0);
   const [modelScaleMultiplier, setModelScaleMultiplier] = useState<number>(1);
   const [resetPlaneSelectionKey, setResetPlaneSelectionKey] = useState<number>(0);
   const [planeLocked, setPlaneLocked] = useState<boolean>(false);
   const [placeRequestKey, setPlaceRequestKey] = useState<number>(0);
+  const [placingModel, setPlacingModel] = useState<boolean>(false);
   const [uiMinimized, setUiMinimized] = useState<boolean>(false);
   const controlsOpacity = useRef(new Animated.Value(1)).current;
   const controlsTranslateY = useRef(new Animated.Value(0)).current;
 
+  // Check network connectivity
+  const checkNetworkConnectivity = useCallback(async (): Promise<boolean> => {
+    try {
+      await fetch('https://www.google.com', {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-cache',
+      });
+      return true;
+    } catch {
+      // Network request failed - likely offline
+      return false;
+    }
+  }, []);
+
+  // Load model with progress tracking
+  const loadModelWithProgress = useCallback(async (modelUrl: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setModelLoading(true);
+      setModelLoadingProgress(0);
+      setModelLoadingError('');
+
+      // Check if URL is valid
+      if (!modelUrl || !modelUrl.trim()) {
+        setModelLoading(false);
+        reject(new Error('Invalid model URL'));
+        return;
+      }
+
+      // Use XMLHttpRequest for progress tracking
+      const xhr = new XMLHttpRequest();
+      const timeout = 30000; // 30 second timeout
+
+      xhr.open('HEAD', modelUrl, true);
+      xhr.timeout = timeout;
+
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const progress = (event.loaded / event.total) * 100;
+          setModelLoadingProgress(Math.min(progress, 95)); // Cap at 95% until complete
+        } else {
+          // If we can't compute progress, simulate it
+          setModelLoadingProgress((prev) => Math.min(prev + 10, 90));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setModelLoadingProgress(100);
+          setTimeout(() => {
+            setModelLoading(false);
+            resolve();
+          }, 300);
+        } else {
+          setModelLoading(false);
+          reject(new Error(`Failed to load model: HTTP ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        setModelLoading(false);
+        reject(new Error('Network error: Unable to load model'));
+      };
+
+      xhr.ontimeout = () => {
+        setModelLoading(false);
+        reject(new Error('Request timeout: Model took too long to load'));
+      };
+
+      xhr.onabort = () => {
+        setModelLoading(false);
+        reject(new Error('Request aborted'));
+      };
+
+      try {
+        xhr.send();
+      } catch (error) {
+        setModelLoading(false);
+        reject(new Error('Failed to start model download'));
+      }
+    });
+  }, []);
+
   useEffect(() => {
     let alive = true;
-    if (!productId) {
-      // No productId provided - mark as loaded with no model
-      setRemoteModelUrl('');
-      setProductName('');
-      setProductLoaded(true);
-      return () => {
-        alive = false;
-      };
-    }
-    // Reset loading state when productId changes
-    setProductLoaded(false);
-    getStoreProductById(productId)
-      .then((p) => {
+    let modelLoadAborted = false;
+
+    const loadProduct = async () => {
+      if (!productId) {
+        // No productId provided - mark as loaded with no model
+        setRemoteModelUrl('');
+        setProductName('');
+        setProductLoaded(true);
+        setModelLoading(false);
+        return;
+      }
+
+      // Reset loading state when productId changes
+      setProductLoaded(false);
+      setModelLoading(false);
+      setModelLoadingProgress(0);
+      setModelLoadingError('');
+
+      // Check network connectivity first
+      const online = await checkNetworkConnectivity();
+      setIsOnline(online);
+
+      if (!online) {
         if (alive) {
-          const modelUrl = p?.modelUrl ? String(p.modelUrl).trim() : '';
-          setRemoteModelUrl(modelUrl);
-          setProductName(String(p?.title ?? ''));
+          setModelLoadingError('No internet connection. AR models require an active internet connection.');
           setProductLoaded(true);
         }
-      })
-      .catch((err) => {
+        return;
+      }
+
+      try {
+        const p = await getStoreProductById(productId);
+        if (!alive || modelLoadAborted) return;
+
+        const modelUrl = p?.modelUrl ? String(p.modelUrl).trim() : '';
+        setProductName(String(p?.title ?? ''));
+
+        if (!modelUrl) {
+          setRemoteModelUrl('');
+          setProductLoaded(true);
+          return;
+        }
+
+        // Validate URL format
+        let isValidUrl = false;
+        try {
+          // eslint-disable-next-line no-new
+          new URL(modelUrl);
+          isValidUrl = true;
+        } catch {
+          isValidUrl = false;
+        }
+        if (!isValidUrl) {
+          if (alive) {
+            setModelLoadingError('Invalid model URL format');
+            setProductLoaded(true);
+          }
+          return;
+        }
+
+        // Load model with progress tracking
+        setRemoteModelUrl(modelUrl);
+        try {
+          await loadModelWithProgress(modelUrl);
+          if (alive && !modelLoadAborted) {
+            setProductLoaded(true);
+          }
+        } catch (error: any) {
+          if (alive && !modelLoadAborted) {
+            setModelLoadingError(error?.message || 'Failed to load AR model');
+            setProductLoaded(true);
+          }
+        }
+      } catch (err) {
         console.warn('Error loading product for AR view:', err);
-        if (alive) {
+        if (alive && !modelLoadAborted) {
           setRemoteModelUrl('');
           setProductName('');
+          setModelLoadingError('Failed to load product information');
           setProductLoaded(true);
         }
-      });
+      }
+    };
+
+    loadProduct();
+
     return () => {
       alive = false;
+      modelLoadAborted = true;
+      setModelLoading(false);
     };
-  }, [productId]);
+  }, [productId, checkNetworkConnectivity, loadModelWithProgress]);
 
   const refreshCameraPermissionState = useCallback(async () => {
     if (Platform.OS !== 'android') {
@@ -175,8 +325,12 @@ export const ARViewScreen = () => {
       },
       onPlacementError: (message: string) => {
         setPlacementError(message);
+        setPlacingModel(false);
         // auto-clear after a bit
         setTimeout(() => setPlacementError(''), 2500);
+      },
+      onModelLoaded: () => {
+        setPlacingModel(false);
       },
     }),
     [
@@ -253,7 +407,12 @@ export const ARViewScreen = () => {
 
   const placeAtCenter = useCallback(() => {
     // Triggers Figment-style hit test placement from within the AR scene.
+    setPlacingModel(true);
     setPlaceRequestKey((k) => k + 1);
+    // Auto-hide loading after max 5 seconds as fallback
+    setTimeout(() => {
+      setPlacingModel(false);
+    }, 5000);
   }, []);
 
   const toggleUIMinimize = useCallback(() => {
@@ -276,8 +435,8 @@ export const ARViewScreen = () => {
   // Check if we have a valid model URL
   const hasModelUrl = remoteModelUrl && remoteModelUrl.trim().length > 0;
 
-  // Show loading state while product is being fetched
-  if (!productLoaded) {
+  // Show loading state while product is being fetched or model is loading
+  if (!productLoaded || modelLoading) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.overlay} pointerEvents="box-none">
@@ -286,19 +445,48 @@ export const ARViewScreen = () => {
               <Ionicons name="close" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          <View style={styles.noModelContainer}>
+          <View style={styles.loadingContainer}>
             <Ionicons name="cube-outline" size={64} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.noModelTitle}>Loading AR Model...</Text>
-            <Text style={styles.noModelText}>Please wait while we load the product details.</Text>
+            <Text style={styles.loadingTitle}>
+              {modelLoading ? 'Loading AR Model...' : 'Loading Product...'}
+            </Text>
+            {modelLoading && (
+              <>
+                <View style={styles.progressBarContainer}>
+                  <View style={styles.progressBarBackground}>
+                    <Animated.View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${modelLoadingProgress}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.progressText}>{Math.round(modelLoadingProgress)}%</Text>
+              </>
+            )}
+            {!modelLoading && (
+              <Text style={styles.loadingText}>Please wait while we load the product details.</Text>
+            )}
+            <ActivityIndicator
+              size="small"
+              color="rgba(255,255,255,0.8)"
+              style={styles.loadingSpinner}
+            />
           </View>
         </SafeAreaView>
       </View>
     );
   }
 
-  // Show message if no model URL is available (only after product has loaded)
-  if (productLoaded && !hasModelUrl) {
-    return (
+  // Show message if no model URL is available or if there's an error (only after product has loaded)
+  if (productLoaded && (!hasModelUrl || modelLoadingError)) {
+      const isOfflineError =
+        modelLoadingError.includes('No internet') || !isOnline;
+
+      return (
       <View style={styles.container}>
         <SafeAreaView style={styles.overlay} pointerEvents="box-none">
           <View style={styles.header}>
@@ -307,13 +495,51 @@ export const ARViewScreen = () => {
             </TouchableOpacity>
           </View>
           <View style={styles.noModelContainer}>
-            <Ionicons name="cube-outline" size={64} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.noModelTitle}>No AR Model Available</Text>
+            <Ionicons
+              name={
+                isOfflineError
+                  ? 'cloud-offline-outline'
+                  : modelLoadingError
+                  ? 'alert-circle-outline'
+                  : 'cube-outline'
+              }
+              size={64}
+              color="rgba(255,255,255,0.6)"
+            />
+            <Text style={styles.noModelTitle}>
+              {isOfflineError
+                ? 'No Internet Connection'
+                : modelLoadingError
+                ? 'Unable to Load AR Model'
+                : 'No AR Model Available'}
+            </Text>
             <Text style={styles.noModelText}>
-              {productId
+              {isOfflineError
+                ? 'AR models require an active internet connection. Please check your connection and try again.'
+                : modelLoadingError
+                ? modelLoadingError
+                : productId
                 ? "This product doesn't have an AR model yet. Check back later!"
                 : 'No product selected for AR view.'}
             </Text>
+            {isOfflineError && (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={async () => {
+                  const online = await checkNetworkConnectivity();
+                  setIsOnline(online);
+                  if (online && productId) {
+                    // Retry loading
+                    setModelLoadingError('');
+                    setProductLoaded(false);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="refresh" size={16} color="#fff" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.noModelButton}
               onPress={() => navigation.goBack()}
@@ -378,6 +604,16 @@ export const ARViewScreen = () => {
 
       {/* Overlay UI */}
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+        {/* Model Placing Loading Indicator */}
+        {placingModel && (
+          <View style={styles.placingLoaderContainer} pointerEvents="none">
+            <View style={styles.placingLoader}>
+              <ActivityIndicator size="large" color="#fff" />
+              <Text style={styles.placingLoaderText}>Placing Model...</Text>
+            </View>
+          </View>
+        )}
+
         {/* Top Header - Always Visible */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -387,8 +623,11 @@ export const ARViewScreen = () => {
           >
             <Ionicons name={uiMinimized ? 'chevron-up' : 'chevron-down'} size={20} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={20} color="#fff" />
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="close" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -403,42 +642,45 @@ export const ARViewScreen = () => {
           ]}
           pointerEvents={uiMinimized ? 'none' : 'auto'}
         >
-          <ScrollView
-            style={styles.controlsScroll}
-            contentContainerStyle={styles.controlsContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            {/* Status Info - Compact */}
-            <View style={styles.statusBar}>
-              <View style={styles.statusItem}>
-                <Ionicons name="radio" size={12} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.statusText}>
-                  {trackingState === 'READY' ? 'Ready' : trackingState}
-                </Text>
+          <View style={styles.glassPanel}>
+            <ScrollView
+              style={styles.controlsScroll}
+              contentContainerStyle={styles.controlsContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+              nestedScrollEnabled={true}
+              scrollEnabled={true}
+            >
+              {/* Status Info - Compact */}
+              <View style={styles.statusBar}>
+                <View style={styles.statusItem}>
+                  <Ionicons name="radio" size={14} color="#fff" />
+                  <Text style={styles.statusText}>
+                    {trackingState === 'READY' ? 'Ready' : trackingState}
+                  </Text>
+                </View>
+                {!!placementError && (
+                  <View style={[styles.statusItem, styles.statusError]}>
+                    <Ionicons name="alert-circle" size={14} color="#ff6b6b" />
+                    <Text style={[styles.statusText, styles.statusErrorText]}>{placementError}</Text>
+                  </View>
+                )}
               </View>
-              {!!placementError && (
-                <View style={[styles.statusItem, styles.statusError]}>
-                  <Ionicons name="alert-circle" size={12} color="#ff6b6b" />
-                  <Text style={[styles.statusText, styles.statusErrorText]}>{placementError}</Text>
+
+              {/* Product Info */}
+              {productName && (
+                <View style={styles.productInfoCard}>
+                  <Ionicons name="cube" size={20} color="#fff" />
+                  <Text style={styles.productInfoText} numberOfLines={1}>
+                    {productName}
+                  </Text>
                 </View>
               )}
-            </View>
 
-            {/* Product Info */}
-            {productName && (
-              <View style={styles.productInfoCard}>
-                <Ionicons name="cube" size={16} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.productInfoText} numberOfLines={1}>
-                  {productName}
-                </Text>
-              </View>
-            )}
-
-            {/* Quick Instruction */}
-            <Text style={styles.instructionText}>
-              {planeLocked ? 'Drag to adjust placement' : 'Move camera to scan, then tap Place'}
-            </Text>
+              {/* Quick Instruction */}
+              <Text style={styles.instructionText}>
+                {planeLocked ? 'Drag to adjust placement' : 'Move camera to scan, then tap Place'}
+              </Text>
 
             {/* Main Controls Panel */}
             <View style={styles.controlsPanel}>
@@ -448,7 +690,7 @@ export const ARViewScreen = () => {
                 onPress={placeAtCenter}
                 activeOpacity={0.7}
               >
-                <Ionicons name="locate" size={18} color="#fff" />
+                <Ionicons name="locate" size={22} color="#fff" />
                 <Text style={styles.placeButtonText}>Place Model</Text>
               </TouchableOpacity>
 
@@ -463,31 +705,31 @@ export const ARViewScreen = () => {
                       onPress={() => moveModel('y', 1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="chevron-up" size={20} color="#fff" />
+                      <Ionicons name="chevron-up" size={22} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadLeft]}
                       onPress={() => moveModel('x', -1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="chevron-back" size={20} color="#fff" />
+                      <Ionicons name="chevron-back" size={22} color="#fff" />
                     </TouchableOpacity>
                     <View style={styles.dpadCenter}>
-                      <Ionicons name="move" size={14} color="rgba(255,255,255,0.6)" />
+                      <Ionicons name="move" size={18} color="rgba(255,255,255,0.8)" />
                     </View>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadRight]}
                       onPress={() => moveModel('x', 1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="chevron-forward" size={20} color="#fff" />
+                      <Ionicons name="chevron-forward" size={22} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadDown]}
                       onPress={() => moveModel('y', -1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="chevron-down" size={20} color="#fff" />
+                      <Ionicons name="chevron-down" size={22} color="#fff" />
                     </TouchableOpacity>
                   </View>
 
@@ -499,7 +741,7 @@ export const ARViewScreen = () => {
                       onPress={() => moveModel('z', -1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="arrow-up" size={16} color="#fff" />
+                      <Ionicons name="arrow-up" size={18} color="#fff" />
                       <Text style={styles.pillBtnText}>Near</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -507,7 +749,7 @@ export const ARViewScreen = () => {
                       onPress={() => moveModel('z', 1)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="arrow-down" size={16} color="#fff" />
+                      <Ionicons name="arrow-down" size={18} color="#fff" />
                       <Text style={styles.pillBtnText}>Far</Text>
                     </TouchableOpacity>
                   </View>
@@ -526,7 +768,7 @@ export const ARViewScreen = () => {
                     onPress={() => rotateModel(-1)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="return-up-back" size={16} color="#fff" />
+                    <Ionicons name="return-up-back" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>Left</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -534,7 +776,7 @@ export const ARViewScreen = () => {
                     onPress={resetRotation}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="refresh" size={16} color="#fff" />
+                    <Ionicons name="refresh" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>Reset</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -542,7 +784,7 @@ export const ARViewScreen = () => {
                     onPress={() => rotateModel(1)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="return-up-forward" size={16} color="#fff" />
+                    <Ionicons name="return-up-forward" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>Right</Text>
                   </TouchableOpacity>
                 </View>
@@ -560,11 +802,15 @@ export const ARViewScreen = () => {
                     onPress={() => zoom(1)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="add" size={16} color="#fff" />
+                    <Ionicons name="add" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>In</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.iconBtn} onPress={resetZoom} activeOpacity={0.75}>
-                    <Ionicons name="refresh" size={16} color="#fff" />
+                  <TouchableOpacity 
+                    style={styles.iconBtn} 
+                    onPress={resetZoom} 
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="refresh" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>Reset</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -572,7 +818,7 @@ export const ARViewScreen = () => {
                     onPress={() => zoom(-1)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="remove" size={16} color="#fff" />
+                    <Ionicons name="remove" size={20} color="#fff" />
                     <Text style={styles.iconBtnText}>Out</Text>
                   </TouchableOpacity>
                 </View>
@@ -585,7 +831,7 @@ export const ARViewScreen = () => {
                   onPress={resetPosition}
                   activeOpacity={0.75}
                 >
-                  <Ionicons name="navigate" size={14} color="#fff" />
+                  <Ionicons name="navigate" size={18} color="#fff" />
                   <Text style={styles.secondaryBtnText}>Reset Pos</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -593,7 +839,7 @@ export const ARViewScreen = () => {
                   onPress={resetPlane}
                   activeOpacity={0.75}
                 >
-                  <Ionicons name="scan" size={14} color="#fff" />
+                  <Ionicons name="scan" size={18} color="#fff" />
                   <Text style={styles.secondaryBtnText}>Reset Plane</Text>
                 </TouchableOpacity>
               </View>
@@ -611,6 +857,7 @@ export const ARViewScreen = () => {
               )}
             </View>
           </ScrollView>
+          </View>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -634,9 +881,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   header: {
-    paddingHorizontal: SPACING.m,
-    paddingTop: SPACING.s,
-    paddingBottom: SPACING.xs,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -645,191 +892,203 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(26,26,26,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(51,51,51,0.8)',
   },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(26,26,26,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(51,51,51,0.8)',
   },
   controlsContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: '70%',
+    maxHeight: '65%',
+    height: '65%',
+  },
+  glassPanel: {
+    flex: 1,
+    backgroundColor: 'rgba(26,26,26,0.9)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1.5,
+    borderColor: 'rgba(51,51,51,0.8)',
+    overflow: 'hidden',
   },
   controlsScroll: {
     flex: 1,
   },
   controlsContent: {
-    padding: SPACING.m,
-    paddingBottom: SPACING.xl,
-    gap: 4,
+    padding: 18,
+    paddingBottom: 28,
+    gap: 10,
   },
   statusBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: SPACING.xs,
+    gap: 6,
+    marginBottom: 8,
     justifyContent: 'center',
   },
   statusItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(26,26,26,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(51,51,51,0.7)',
   },
   statusError: {
-    backgroundColor: 'rgba(255,107,107,0.2)',
+    backgroundColor: 'rgba(255,59,48,0.8)',
+    borderColor: 'rgba(255,100,100,0.9)',
   },
   statusText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   statusErrorText: {
-    color: '#ff6b6b',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   instructionText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 12,
-    marginBottom: SPACING.s,
+    fontSize: 16,
+    marginBottom: 12,
     textAlign: 'center',
-    fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontWeight: '700',
+    color: '#fff',
   },
   debugHint: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 10,
-    marginTop: SPACING.s,
+    fontSize: 11,
+    marginTop: 8,
     textAlign: 'center',
-    paddingHorizontal: SPACING.m,
+    paddingHorizontal: 16,
     fontStyle: 'italic',
+    color: 'rgba(255,255,255,0.9)',
   },
   productInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    gap: 10,
+    backgroundColor: 'rgba(26,26,26,0.9)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(51,51,51,0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginBottom: SPACING.s,
+    marginBottom: 10,
   },
   productInfoText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
+    color: '#fff',
   },
   controlsPanel: {
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backdropFilter: 'blur(10px)',
+    borderRadius: 16,
+    padding: 18,
+    backgroundColor: 'rgba(26,26,26,0.85)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(51,51,51,0.7)',
     gap: 16,
   },
   controlSection: {
     marginTop: 0,
+    marginBottom: 4,
   },
   sectionTitle: {
-    color: 'rgba(255,255,255,0.95)',
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '800',
-    marginBottom: 10,
+    marginBottom: 12,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    color: '#fff',
   },
   controlRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   dpad: {
-    width: 110,
-    height: 110,
+    width: 140,
+    height: 140,
     position: 'relative',
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(26,26,26,0.9)',
+    borderWidth: 2,
+    borderColor: 'rgba(51,51,51,0.8)',
   },
   dpadBtn: {
     position: 'absolute',
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(153,153,153,0.5)',
+    borderWidth: 2,
+    borderColor: 'rgba(204,204,204,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dpadUp: { top: 5, left: 35 },
-  dpadDown: { bottom: 5, left: 35 },
-  dpadLeft: { left: 5, top: 35 },
-  dpadRight: { right: 5, top: 35 },
+  dpadUp: { top: 8, left: 50 },
+  dpadDown: { bottom: 8, left: 50 },
+  dpadLeft: { left: 8, top: 50 },
+  dpadRight: { right: 8, top: 50 },
   dpadCenter: {
     position: 'absolute',
-    left: 35,
-    top: 35,
+    left: 50,
+    top: 50,
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(26,26,26,0.95)',
+    borderWidth: 2,
+    borderColor: 'rgba(51,51,51,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stackControls: {
     flex: 1,
-    gap: 6,
-    minWidth: 100,
+    gap: 4,
+    minWidth: 90,
   },
   controlMiniLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.3,
-    marginBottom: 4,
+    marginBottom: 8,
+    color: '#fff',
   },
   pillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(153,153,153,0.45)',
+    borderWidth: 2,
+    borderColor: 'rgba(204,204,204,0.65)',
   },
   pillBtnText: {
-    color: '#fff',
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
   },
   rotateHeader: {
     flexDirection: 'row',
@@ -838,9 +1097,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rotateValue: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 11,
+    fontSize: 15,
     fontWeight: '800',
+    color: '#fff',
   },
   rotateBtns: {
     flexDirection: 'row',
@@ -851,23 +1110,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(153,153,153,0.45)',
+    borderWidth: 2,
+    borderColor: 'rgba(204,204,204,0.65)',
   },
   iconBtnText: {
-    color: 'rgba(255,255,255,0.95)',
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
   },
   footerActions: {
     marginTop: 8,
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   secondaryBtn: {
     flex: 1,
@@ -875,40 +1134,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(26,26,26,0.9)',
+    borderWidth: 2,
+    borderColor: 'rgba(51,51,51,0.8)',
   },
   secondaryBtnText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
   },
   placeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(59,130,246,0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(59,130,246,0.95)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginBottom: SPACING.s,
-    gap: 8,
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    marginBottom: 12,
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2.5,
+    borderColor: 'rgba(204,204,204,0.75)',
   },
   placeButtonText: {
-    color: '#fff',
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
+    color: '#fff',
   },
   permissionContainer: {
     flex: 1,
@@ -964,6 +1218,54 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '700',
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  loadingText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 15,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  loadingSpinner: {
+    marginTop: 24,
+  },
+  progressBarContainer: {
+    width: '100%',
+    maxWidth: 280,
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 3,
+  },
+  progressText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+  },
   noModelContainer: {
     flex: 1,
     alignItems: 'center',
@@ -987,7 +1289,7 @@ const styles = StyleSheet.create({
   noModelButton: {
     marginTop: 32,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.3)',
     paddingHorizontal: 32,
     paddingVertical: 14,
@@ -997,5 +1299,47 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+  },
+  retryButton: {
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  placingLoaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  placingLoader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  placingLoaderText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 10,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
