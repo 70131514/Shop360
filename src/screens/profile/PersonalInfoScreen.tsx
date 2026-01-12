@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   View,
   TextInput,
@@ -9,6 +8,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,47 +16,73 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyUserProfile, updateMyName } from '../../services/userService';
+import { updateMyName } from '../../services/userService';
 import { useAppAlert } from '../../contexts/AppAlertContext';
+import { useAvatarSourceForUser } from '../../hooks/useAvatarSource';
+import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 const PersonalInfoScreen = () => {
   const { colors } = useTheme();
-  const navigation = useNavigation();
-  const { user } = useAuth();
+  const navigation = useNavigation<any>();
+  const { user, profile } = useAuth();
   const { alert } = useAppAlert();
+  const isGuest = !user;
+  const isAdmin = profile?.role === 'admin';
 
-  const initialEmail = useMemo(() => user?.email ?? '', [user?.email]);
-  const initialName = useMemo(() => user?.displayName ?? '', [user?.displayName]);
+  // Load avatar source
+  const avatarSource =
+    useAvatarSourceForUser({
+      avatarId: profile?.avatarId,
+      isGuest,
+      isAdmin,
+    }) ||
+    getAvatarSourceForUser({
+      avatarId: profile?.avatarId,
+      isGuest,
+      isAdmin,
+    });
+
+  const initialEmail = useMemo(
+    () => (profile?.email || user?.email) ?? '',
+    [profile?.email, user?.email],
+  );
+  const initialName = useMemo(
+    () => (profile?.name || user?.displayName) ?? '',
+    [profile?.name, user?.displayName],
+  );
 
   const [name, setName] = useState(initialName);
   const [email] = useState(initialEmail);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const lastProfileNameRef = useRef<string>(initialName);
+  const userHasEditedRef = useRef<boolean>(false);
 
+  // Initialize from profile when available and update in real-time
   useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        setLoading(true);
-        const profile = await getMyUserProfile();
-        if (!alive) {
-          return;
-        }
-        setName(profile?.name ?? initialName);
-      } catch {
-        // fallback to Auth displayName
-      } finally {
-        if (alive) {
-          setLoading(false);
-        }
+    const profileName = profile?.name || user?.displayName || '';
+    if (profileName && profileName !== lastProfileNameRef.current) {
+      // Only update if user hasn't manually edited
+      if (!userHasEditedRef.current) {
+        setName(profileName);
+        lastProfileNameRef.current = profileName;
+      } else {
+        // Profile changed externally, but user has edits - update the ref but don't overwrite user's input
+        lastProfileNameRef.current = profileName;
       }
-    };
+    }
+  }, [profile?.name, user?.displayName]);
 
-    load();
-    return () => {
-      alive = false;
-    };
-  }, [initialName]);
+  // Track when user manually edits the name
+  const handleNameChange = (newName: string) => {
+    userHasEditedRef.current = true;
+    setName(newName);
+  };
+
+  // Reset edit flag after successful save
+  const handleSaveSuccess = () => {
+    userHasEditedRef.current = false;
+    lastProfileNameRef.current = name;
+  };
 
   const handleSave = async () => {
     try {
@@ -65,6 +91,7 @@ const PersonalInfoScreen = () => {
       }
       setSaving(true);
       await updateMyName(name);
+      handleSaveSuccess();
       alert('Saved', 'Your name has been updated.');
       navigation.goBack();
     } catch (e: any) {
@@ -100,75 +127,98 @@ const PersonalInfoScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                Loading profile…
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AvatarPicker')}
+              activeOpacity={0.8}
+              style={[styles.avatarContainer, { borderColor: colors.border }]}
+            >
+              <Image source={avatarSource} style={styles.avatarImage} />
+            </TouchableOpacity>
+            <Text style={[styles.avatarLabel, { color: colors.textSecondary }]}>Avatar</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('AvatarPicker')}
+              activeOpacity={0.7}
+              style={styles.avatarChangeButton}
+            >
+              <Text style={[styles.avatarChangeText, { color: colors.primary }]}>
+                Change Avatar
               </Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.surface,
-                      color: colors.text,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Enter your name"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
 
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.readOnlyInput,
-                    {
-                      backgroundColor: colors.surface,
-                      color: colors.textSecondary,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                  value={email}
-                  editable={false}
-                  selectTextOnFocus={false}
-                />
-                <Text style={[styles.helper, { color: colors.textSecondary }]}>
-                  Email can’t be changed here.
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={name}
+              onChangeText={handleNameChange}
+              placeholder="Enter your name"
+              placeholderTextColor={colors.textSecondary}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Email</Text>
+            <TextInput
+              style={[
+                styles.input,
+                styles.readOnlyInput,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.textSecondary,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={email}
+              editable={false}
+              selectTextOnFocus={false}
+            />
+            <View style={styles.helperContainer}>
+              <Text style={[styles.helper, { color: colors.textSecondary }]}>
+                Email can't be changed here.
+              </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Settings')}
+                activeOpacity={0.7}
+                style={styles.settingsLink}
+              >
+                <Ionicons name="settings-outline" size={14} color={colors.primary} />
+                <Text style={[styles.settingsLinkText, { color: colors.primary }]}>
+                  Change email in Settings
                 </Text>
-              </View>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    {
-                      backgroundColor: colors.primary,
-                      borderColor: colors.primary,
-                      opacity: saving ? 0.7 : 1,
-                    },
-                  ]}
-                  onPress={handleSave}
-                  activeOpacity={0.7}
-                  disabled={saving}
-                >
-                  <Text style={[styles.saveButtonText, { color: colors.background }]}>
-                    {saving ? 'Saving…' : 'Save'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary,
+                  opacity: saving ? 0.7 : 1,
+                },
+              ]}
+              onPress={handleSave}
+              activeOpacity={0.7}
+              disabled={saving}
+            >
+              <Text style={[styles.saveButtonText, { color: colors.background }]}>
+                {saving ? 'Saving…' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -236,9 +286,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 8,
   },
-  helper: {
+  helperContainer: {
     marginTop: 8,
+    gap: 8,
+  },
+  helper: {
     fontSize: 12,
+  },
+  settingsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  settingsLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   input: {
     height: 48,
@@ -258,6 +321,41 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(128, 128, 128, 0.2)',
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    marginBottom: 12,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 47,
+  },
+  avatarLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  avatarChangeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  avatarChangeText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

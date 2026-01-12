@@ -70,8 +70,8 @@ export const ModelPlacementARScene = (props: Props) => {
   const modelRotationY: number =
     Number(props?.arSceneNavigator?.viroAppProps?.modelRotationY ?? 0) || 0;
   const modelScaleMultiplier: number = Math.max(
-    0.25,
-    Math.min(4, Number(props?.arSceneNavigator?.viroAppProps?.modelScaleMultiplier ?? 1) || 1),
+    0.1,
+    Math.min(10, Number(props?.arSceneNavigator?.viroAppProps?.modelScaleMultiplier ?? 1) || 1),
   );
 
   const resetPlaneSelectionKey = props?.arSceneNavigator?.viroAppProps?.resetPlaneSelectionKey ?? 0;
@@ -326,13 +326,30 @@ export const ModelPlacementARScene = (props: Props) => {
       const centerX = (minX + maxX) / 2;
       const centerZ = (minZ + maxZ) / 2;
 
-      // Real-size mode: keep original model scale, just compute its physical footprint for gating placement.
+      // Calculate the model's raw footprint (before any scaling).
       const sizeX = Math.max(0.0001, maxX - minX);
       const sizeZ = Math.max(0.0001, maxZ - minZ);
-      const footprint = Math.max(sizeX, sizeZ);
+      const rawFootprint = Math.max(sizeX, sizeZ);
+
+      // Maximum acceptable footprint in meters (1.5m = reasonable size for AR viewing).
+      // Models larger than this will be automatically scaled down.
+      const MAX_FOOTPRINT = 1.5;
+
+      // Calculate scale factor: if model is too large, scale it down proportionally.
+      // For models that are already appropriately sized, keep scale at 1.0.
+      let scaleFactor = 1.0;
+      if (rawFootprint > MAX_FOOTPRINT) {
+        scaleFactor = MAX_FOOTPRINT / rawFootprint;
+      }
+
+      // Apply the scale factor uniformly to all axes to maintain proportions.
+      const scale: [number, number, number] = [scaleFactor, scaleFactor, scaleFactor];
+
+      // Calculate the effective footprint after scaling (for placement gating).
+      const footprint = rawFootprint * scaleFactor;
 
       const next: ModelMetrics = {
-        scale: [1, 1, 1],
+        scale,
         localOffset: [-centerX, -minY, -centerZ],
         footprint,
       };

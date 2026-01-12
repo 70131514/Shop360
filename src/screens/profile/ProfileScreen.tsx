@@ -191,12 +191,24 @@ const ProfileScreen = () => {
     },
   ];
 
-  // Filter menu items based on guest mode
+  // Filter menu items based on guest mode and admin status
   // Guests can only see: Settings
+  // Admins should not see: Shipping Addresses, Payment Methods, Wishlist, Order History, Notifications, Help & Support
   // All other items require authentication
   const guestAllowedRoutes = new Set(['Settings']);
+  const adminExcludedRoutes = new Set([
+    'ShippingAddresses',
+    'PaymentMethods',
+    'Wishlist',
+    'Orders',
+    'Notifications',
+    'HelpSupport',
+  ]);
+
   const menuItems = isGuest
     ? allMenuItems.filter((item) => guestAllowedRoutes.has(item.route))
+    : isAdmin
+    ? allMenuItems.filter((item) => !adminExcludedRoutes.has(item.route))
     : allMenuItems;
 
   const handleLogout = async () => {
@@ -293,39 +305,95 @@ const ProfileScreen = () => {
             </View>
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: colors.text }]}>
-                {isGuest ? 'Guest' : user?.displayName || 'User'}
+                {isGuest ? 'Guest' : profile?.name || user?.displayName || 'User'}
               </Text>
               <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
                 {isGuest
                   ? 'You are browsing in guest mode'
                   : isAdmin
                   ? 'Admin account'
-                  : user?.email || 'No email'}
+                  : profile?.email || user?.email || 'No email'}
               </Text>
             </View>
           </View>
         </View>
 
         {!isGuest && isAdmin && (
-          <TouchableOpacity
-            style={[
-              styles.adminPortalCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('AdminTabs')}
-          >
-            <View style={[styles.adminPortalIcon, { backgroundColor: colors.background }]}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.flex1}>
-              <Text style={[styles.adminPortalTitle, { color: colors.text }]}>Admin Portal</Text>
-              <Text style={[styles.adminPortalSubtitle, { color: colors.textSecondary }]}>
-                Manage users, products, and orders
+          <>
+            <TouchableOpacity
+              style={[
+                styles.adminPortalCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('AdminTabs')}
+            >
+              <View style={[styles.adminPortalIcon, { backgroundColor: colors.background }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.flex1}>
+                <Text style={[styles.adminPortalTitle, { color: colors.text }]}>Admin Portal</Text>
+                <Text style={[styles.adminPortalSubtitle, { color: colors.textSecondary }]}>
+                  Manage users, products, and orders
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <View
+              style={[
+                styles.adminWelcomeCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.adminIconWrapper}>
+                <View
+                  style={[
+                    styles.adminGradientCircle,
+                    styles.adminGradientOuter,
+                    { borderColor: colors.primary + '20' },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.adminGradientCircle,
+                    styles.adminGradientMiddle,
+                    { borderColor: colors.primary + '30' },
+                  ]}
+                />
+                <View style={[styles.adminIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="shield-checkmark" size={48} color={colors.primary} />
+                </View>
+              </View>
+              <Text style={[styles.adminWelcomeTitle, { color: colors.text }]}>
+                Welcome, Admin
               </Text>
+              <Text style={[styles.adminWelcomeSubtitle, { color: colors.textSecondary }]}>
+                You have full access to manage the platform, including users, products, orders, and
+                system settings.
+              </Text>
+              <View style={styles.adminBenefitsContainer}>
+                <View style={styles.adminBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  <Text style={[styles.adminBenefitText, { color: colors.text }]}>
+                    Manage products & inventory
+                  </Text>
+                </View>
+                <View style={styles.adminBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  <Text style={[styles.adminBenefitText, { color: colors.text }]}>
+                    View & process orders
+                  </Text>
+                </View>
+                <View style={styles.adminBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  <Text style={[styles.adminBenefitText, { color: colors.text }]}>
+                    Manage users & accounts
+                  </Text>
+                </View>
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          </>
         )}
 
         {isGuest ? (
@@ -436,7 +504,7 @@ const ProfileScreen = () => {
           </View>
         )}
 
-        {!isGuest && (
+        {!isGuest && !isAdmin && (
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
               <Ionicons
@@ -791,6 +859,74 @@ const styles = StyleSheet.create({
   adminPortalSubtitle: {
     fontSize: 12,
     marginTop: 2,
+  },
+  adminWelcomeCard: {
+    width: '90%',
+    alignSelf: 'center',
+    borderRadius: 20,
+    padding: 32,
+    borderWidth: 1,
+    marginTop: 24,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  adminIconWrapper: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  adminGradientCircle: {
+    position: 'absolute',
+    borderRadius: 50,
+    borderWidth: 1.5,
+  },
+  adminGradientOuter: {
+    width: 100,
+    height: 100,
+    opacity: 0.4,
+  },
+  adminGradientMiddle: {
+    width: 90,
+    height: 90,
+    opacity: 0.5,
+  },
+  adminIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  adminWelcomeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  adminWelcomeSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  adminBenefitsContainer: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  adminBenefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  adminBenefitText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   flex1: {
     flex: 1,

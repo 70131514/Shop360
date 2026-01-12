@@ -47,6 +47,13 @@ export const ARViewScreen = () => {
   const [modelLoadingError, setModelLoadingError] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [modelPosition, setModelPosition] = useState<[number, number, number]>([0, 0, 0]);
+  // Keep track of the last "good" placed position so Reset Pos doesn't send the model to world origin.
+  const lastPlacedPositionRef = useRef<[number, number, number] | null>(null);
+  // Keep track of the original "home" placement position (captured right after a successful Place Model).
+  // Reset Pos should go back to this position, not the latest moved position.
+  const homePlacedPositionRef = useRef<[number, number, number] | null>(null);
+  // When Place Model is pressed, we set this to capture the next position update as the "home" position.
+  const pendingHomeCaptureRef = useRef<boolean>(false);
   const [modelRotationY, setModelRotationY] = useState<number>(0);
   const [modelScaleMultiplier, setModelScaleMultiplier] = useState<number>(1);
   const [resetPlaneSelectionKey, setResetPlaneSelectionKey] = useState<number>(0);
@@ -322,6 +329,11 @@ export const ARViewScreen = () => {
       },
       onModelPositionChange: (pos: [number, number, number]) => {
         setModelPosition(pos);
+        lastPlacedPositionRef.current = pos;
+        if (pendingHomeCaptureRef.current) {
+          homePlacedPositionRef.current = pos;
+          pendingHomeCaptureRef.current = false;
+        }
       },
       onPlacementError: (message: string) => {
         setPlacementError(message);
@@ -345,6 +357,100 @@ export const ARViewScreen = () => {
 
   const MOVE_STEP = 0.05; // 5cm per step
 
+  type HoldState = {
+    timeout: NodeJS.Timeout | null;
+    interval: NodeJS.Timeout | null;
+    token: number;
+    isPressed: boolean;
+  };
+
+  // Keyed hold state so timers survive re-renders and always get stopped correctly.
+  const holdStatesRef = useRef<Map<string, HoldState>>(new Map());
+
+  const stopHold = useCallback((key: string) => {
+    const st =
+      holdStatesRef.current.get(key) ??
+      ({ timeout: null, interval: null, token: 0, isPressed: false } as HoldState);
+
+    if (st.timeout) {
+      clearTimeout(st.timeout);
+      st.timeout = null;
+    }
+    if (st.interval) {
+      clearInterval(st.interval);
+      st.interval = null;
+    }
+    st.isPressed = false;
+    st.token += 1; // invalidate any pending async callbacks
+
+    holdStatesRef.current.set(key, st);
+  }, []);
+
+  const startHold = useCallback(
+    (key: string, action: () => void) => {
+      // Stop any previous timers for this key first.
+      stopHold(key);
+
+      const st =
+        holdStatesRef.current.get(key) ??
+        ({ timeout: null, interval: null, token: 0, isPressed: false } as HoldState);
+
+      st.isPressed = true;
+      st.token += 1;
+      const myToken = st.token;
+      holdStatesRef.current.set(key, st);
+
+      // Single tap behavior: execute once immediately.
+      action();
+
+      // Hold behavior: after delay, repeat while still pressed + same token.
+      st.timeout = setTimeout(() => {
+        const cur = holdStatesRef.current.get(key);
+        if (!cur || !cur.isPressed || cur.token !== myToken) {
+          return;
+        }
+
+        cur.interval = setInterval(() => {
+          const cur2 = holdStatesRef.current.get(key);
+          if (!cur2 || !cur2.isPressed || cur2.token !== myToken) {
+            // Stop interval reliably even if onPressOut didn't fire.
+            stopHold(key);
+            return;
+          }
+          action();
+        }, 100);
+      }, 300);
+    },
+    [stopHold],
+  );
+
+  // Cleanup when screen loses focus (or unmount).
+  useEffect(() => {
+    const cleanupAll = () => {
+      Array.from(holdStatesRef.current.keys()).forEach((k) => stopHold(k));
+      holdStatesRef.current.clear();
+    };
+    const unsubscribeBlur = navigation.addListener('blur', cleanupAll);
+    return () => {
+      cleanupAll();
+      unsubscribeBlur();
+    };
+  }, [navigation, stopHold]);
+
+  const createHoldToRepeatHandlers = useCallback(
+    (key: string, action: () => void) => {
+      return {
+        onPressIn: () => startHold(key, action),
+        onPressOut: () => stopHold(key),
+        onResponderTerminate: () => stopHold(key),
+        onTouchCancel: () => stopHold(key),
+        delayPressIn: 0,
+        delayPressOut: 0,
+      } as const;
+    },
+    [startHold, stopHold],
+  );
+
   const moveModel = useCallback(
     (axis: 'x' | 'y' | 'z', direction: 1 | -1) => {
       setModelPosition((prev) => {
@@ -365,7 +471,14 @@ export const ARViewScreen = () => {
   );
 
   const resetPosition = useCallback(() => {
-    setModelPosition([0, 0, 0]);
+    const homePlaced = homePlacedPositionRef.current;
+    if (homePlaced) {
+      setModelPosition(homePlaced);
+      return;
+    }
+    // If the model hasn't been placed yet, avoid moving it to world origin (can appear "gone").
+    setPlacementError('Place the model first, then you can reset its position.');
+    setTimeout(() => setPlacementError(''), 2500);
   }, []);
 
   const ROTATE_STEP = 10; // degrees
@@ -386,11 +499,11 @@ export const ARViewScreen = () => {
     setModelRotationY(0);
   }, []);
 
-  const ZOOM_STEP = 0.1; // 10% per step
+  const ZOOM_STEP = 0.05; // 5% per step for finer control
   const zoom = useCallback((direction: 1 | -1) => {
     setModelScaleMultiplier((prev) => {
       const next = Number((prev + direction * ZOOM_STEP).toFixed(2));
-      return Math.max(0.25, Math.min(4, next));
+      return Math.max(0.1, Math.min(10, next)); // Range: 10% to 1000%
     });
   }, []);
 
@@ -400,14 +513,20 @@ export const ARViewScreen = () => {
 
   const resetPlane = useCallback(() => {
     setPlaneLocked(false);
-    resetPosition();
+    // Resetting the plane means we also discard any previously "good" placed position.
+    lastPlacedPositionRef.current = null;
+    homePlacedPositionRef.current = null;
+    pendingHomeCaptureRef.current = false;
+    setModelPosition([0, 0, 0]);
     setResetPlaneSelectionKey((k) => k + 1);
     setPlacementError('');
-  }, [resetPosition]);
+  }, []);
 
   const placeAtCenter = useCallback(() => {
     // Triggers Figment-style hit test placement from within the AR scene.
     setPlacingModel(true);
+    // Capture the next position update from the AR scene as the "home" position.
+    pendingHomeCaptureRef.current = true;
     setPlaceRequestKey((k) => k + 1);
     // Auto-hide loading after max 5 seconds as fallback
     setTimeout(() => {
@@ -702,14 +821,14 @@ export const ARViewScreen = () => {
                   <View style={styles.dpad}>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadUp]}
-                      onPress={() => moveModel('y', 1)}
+                      {...createHoldToRepeatHandlers('move-y-up', () => moveModel('y', 1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="chevron-up" size={22} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadLeft]}
-                      onPress={() => moveModel('x', -1)}
+                      {...createHoldToRepeatHandlers('move-x-left', () => moveModel('x', -1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="chevron-back" size={22} color="#fff" />
@@ -719,14 +838,14 @@ export const ARViewScreen = () => {
                     </View>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadRight]}
-                      onPress={() => moveModel('x', 1)}
+                      {...createHoldToRepeatHandlers('move-x-right', () => moveModel('x', 1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="chevron-forward" size={22} color="#fff" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.dpadBtn, styles.dpadDown]}
-                      onPress={() => moveModel('y', -1)}
+                      {...createHoldToRepeatHandlers('move-y-down', () => moveModel('y', -1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="chevron-down" size={22} color="#fff" />
@@ -738,7 +857,7 @@ export const ARViewScreen = () => {
                     <Text style={styles.controlMiniLabel}>Depth</Text>
                     <TouchableOpacity
                       style={styles.pillBtn}
-                      onPress={() => moveModel('z', -1)}
+                      {...createHoldToRepeatHandlers('move-z-near', () => moveModel('z', 1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="arrow-up" size={18} color="#fff" />
@@ -746,7 +865,7 @@ export const ARViewScreen = () => {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.pillBtn}
-                      onPress={() => moveModel('z', 1)}
+                      {...createHoldToRepeatHandlers('move-z-far', () => moveModel('z', -1))}
                       activeOpacity={0.75}
                     >
                       <Ionicons name="arrow-down" size={18} color="#fff" />
@@ -765,7 +884,7 @@ export const ARViewScreen = () => {
                 <View style={styles.rotateBtns}>
                   <TouchableOpacity
                     style={styles.iconBtn}
-                    onPress={() => rotateModel(-1)}
+                    {...createHoldToRepeatHandlers('rotate-left', () => rotateModel(-1))}
                     activeOpacity={0.75}
                   >
                     <Ionicons name="return-up-back" size={20} color="#fff" />
@@ -781,7 +900,7 @@ export const ARViewScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.iconBtn}
-                    onPress={() => rotateModel(1)}
+                    {...createHoldToRepeatHandlers('rotate-right', () => rotateModel(1))}
                     activeOpacity={0.75}
                   >
                     <Ionicons name="return-up-forward" size={20} color="#fff" />
@@ -799,7 +918,7 @@ export const ARViewScreen = () => {
                 <View style={styles.rotateBtns}>
                   <TouchableOpacity
                     style={styles.iconBtn}
-                    onPress={() => zoom(1)}
+                    {...createHoldToRepeatHandlers('zoom-in', () => zoom(1))}
                     activeOpacity={0.75}
                   >
                     <Ionicons name="add" size={20} color="#fff" />
@@ -815,7 +934,7 @@ export const ARViewScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.iconBtn}
-                    onPress={() => zoom(-1)}
+                    {...createHoldToRepeatHandlers('zoom-out', () => zoom(-1))}
                     activeOpacity={0.75}
                   >
                     <Ionicons name="remove" size={20} color="#fff" />
