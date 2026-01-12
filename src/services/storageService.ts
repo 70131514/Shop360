@@ -1,4 +1,4 @@
-import storage from '@react-native-firebase/storage';
+import storage, { getDownloadURL } from '@react-native-firebase/storage';
 import { getApp } from '@react-native-firebase/app';
 
 // Get the storage instance using the app instance to avoid deprecation warning
@@ -59,7 +59,7 @@ export async function uploadProductImage(params: {
   const storageInstance = getStorageInstance();
   const storageRef = storageInstance.ref(storagePath);
   await storageRef.putFile(normalizeLocalPath(file.uri));
-  const downloadUrl = await storageRef.getDownloadURL();
+  const downloadUrl = await getDownloadURL(storageRef);
   return { downloadUrl, storagePath };
 }
 
@@ -76,6 +76,6 @@ export async function uploadProductModel(params: {
   const storageInstance = getStorageInstance();
   const storageRef = storageInstance.ref(storagePath);
   await storageRef.putFile(normalizeLocalPath(file.uri));
-  const downloadUrl = await storageRef.getDownloadURL();
+  const downloadUrl = await getDownloadURL(storageRef);
   return { downloadUrl, storagePath };
 }
