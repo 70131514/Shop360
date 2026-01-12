@@ -171,7 +171,7 @@ const HelpSupportScreen = () => {
 
   return (
     <SafeAreaView
-      edges={['bottom', 'left', 'right']}
+      edges={['top', 'bottom', 'left', 'right']}
       style={[styles.container, { backgroundColor: colors.background }]}
     >
       <StatusBar
@@ -180,12 +180,19 @@ const HelpSupportScreen = () => {
         translucent={false}
       />
 
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Help & Support</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={[styles.pageTitle, { color: colors.text }]}>Help & Support</Text>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           Frequently Asked Questions
         </Text>
@@ -330,13 +337,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 36,
+  },
   scrollContent: {
     padding: 16,
-  },
-  pageTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 20,

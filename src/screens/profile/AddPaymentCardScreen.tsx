@@ -98,7 +98,7 @@ function formatCardNumber(cardNumber: string): string {
 }
 
 const AddPaymentCardScreen = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
 
@@ -160,13 +160,13 @@ const AddPaymentCardScreen = () => {
       return 'Unsupported card type';
     }
 
-    if (!expiryMonth || expiryMonth.length !== 2) {
-      return 'Expiry month is required (MM)';
+    if (!expiryMonth) {
+      return 'Expiry month is required';
     }
 
     const month = parseInt(expiryMonth, 10);
-    if (month < 1 || month > 12) {
-      return 'Invalid expiry month';
+    if (isNaN(month) || month < 1 || month > 12) {
+      return 'Invalid expiry month (must be 1-12)';
     }
 
     if (!expiryYear || expiryYear.length !== 2) {
@@ -211,8 +211,8 @@ const AddPaymentCardScreen = () => {
       const cleanedCardNumber = cardNumber.replace(/\s/g, '');
       const last4 = cleanedCardNumber.slice(-4);
 
-      // Format expiry month with leading zero if needed
-      const formattedMonth = expiryMonth.padStart(2, '0');
+      // Format expiry month with leading zero if needed (e.g., "7" -> "07")
+      const formattedMonth = String(parseInt(expiryMonth, 10)).padStart(2, '0');
 
       // Convert 2-digit year to 4-digit (assuming 20xx)
       const fullYear = `20${expiryYear}`;
@@ -240,18 +240,41 @@ const AddPaymentCardScreen = () => {
   };
 
   const getCardColor = (cardType: CardType | null) => {
-    if (!cardType) return colors.border;
-    switch (cardType) {
-      case 'visa':
-        return '#1A1F71';
-      case 'mastercard':
-        return '#EB001B';
-      case 'amex':
-        return '#006FCF';
-      case 'discover':
-        return '#FF6000';
-      default:
-        return colors.primary;
+    // Default card color when no card type is detected
+    if (!cardType) {
+      // Use darker color in light mode for better contrast with white text
+      return isDark ? colors.border : '#4A4A4A';
+    }
+
+    // Use darker colors in light mode for better contrast, keep same in dark mode
+    if (isDark) {
+      // Dark mode: keep original colors
+      switch (cardType) {
+        case 'visa':
+          return '#1A1F71';
+        case 'mastercard':
+          return '#EB001B';
+        case 'amex':
+          return '#006FCF';
+        case 'discover':
+          return '#FF6000';
+        default:
+          return colors.primary;
+      }
+    } else {
+      // Light mode: use darker, more saturated colors for better contrast with white text
+      switch (cardType) {
+        case 'visa':
+          return '#0D1F66'; // Darker blue for better contrast
+        case 'mastercard':
+          return '#CC0015'; // Darker red for better contrast
+        case 'amex':
+          return '#0052CC'; // Darker blue for better contrast
+        case 'discover':
+          return '#CC4D00'; // Darker orange for better contrast
+        default:
+          return colors.primary;
+      }
     }
   };
 

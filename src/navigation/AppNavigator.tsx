@@ -544,7 +544,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="AddPaymentCard"
           component={AddPaymentCardScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="Wishlist"
@@ -584,7 +584,7 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="HelpSupport"
           component={HelpSupportScreen}
-          options={{ headerShown: true, headerTitle: '', headerBackTitleVisible: false }}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="MyTickets"
