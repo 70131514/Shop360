@@ -11,8 +11,12 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from '@react-native-firebase/firestore';
 import { firebaseDb } from '../firebase';
+import { deleteStorageFilesByUrls } from '../storageService';
+import { createNotificationsForUsers } from '../notificationService';
+import { getCart, storeCart, getWishlist, storeWishlist } from '../../utils/storage';
 
 export type AdminProduct = {
   id: string;
@@ -200,10 +204,11 @@ export async function deleteProduct(id: string): Promise<void> {
     throw new Error('Product not found');
   }
 
-  // Optimized: Use collectionGroup to check all orders at once
-  // Check if product is in any active orders (processing or shipped)
-  // Note: We check up to 1000 active orders. If there are more, we may miss some,
-  // but this is a reasonable trade-off for performance vs. checking all users individually.
+  const productData = existing.data() as AdminProduct;
+  const productTitle = productData.title || 'this product';
+
+  // Step 1: Check if product is in any active orders (processing or shipped)
+  // We cannot delete products that are in active orders
   const activeOrdersQuery = query(
     collectionGroup(firebaseDb, 'orders'),
     where('status', 'in', ['processing', 'shipped']),
@@ -233,18 +238,134 @@ export async function deleteProduct(id: string): Promise<void> {
     }
   }
 
-  // Optimized: Use collectionGroup to check all carts at once
+  // Step 2: Find all users who have this product in their cart (Firestore)
   const cartsQuery = query(
     collectionGroup(firebaseDb, 'cart'),
     where('id', '==', idTrimmed),
-    limit(1),
   );
   const cartsSnap = await getDocs(cartsQuery);
-  if (!cartsSnap.empty) {
-    throw new Error(
-      'Cannot delete product. It is currently in one or more user carts. Please wait for users to remove it from their carts.',
-    );
+
+  // Collect user IDs who have this product in their cart
+  const affectedUserIds = new Set<string>();
+  const cartDocsToDelete: Array<{ userId: string; productId: string }> = [];
+
+  cartsSnap.docs.forEach((cartDoc) => {
+    // Extract userId from the document path: users/{userId}/cart/{productId}
+    const pathParts = cartDoc.ref.path.split('/');
+    if (pathParts.length >= 2 && pathParts[0] === 'users') {
+      const userId = pathParts[1];
+      affectedUserIds.add(userId);
+      cartDocsToDelete.push({ userId, productId: idTrimmed });
+    }
+  });
+
+  // Step 3: Find all users who have this product in their wishlist (Firestore)
+  const wishlistsQuery = query(
+    collectionGroup(firebaseDb, 'wishlist'),
+    where('id', '==', idTrimmed),
+  );
+  const wishlistsSnap = await getDocs(wishlistsQuery);
+
+  const wishlistDocsToDelete: Array<{ userId: string; productId: string }> = [];
+
+  wishlistsSnap.docs.forEach((wishlistDoc) => {
+    // Extract userId from the document path: users/{userId}/wishlist/{productId}
+    const pathParts = wishlistDoc.ref.path.split('/');
+    if (pathParts.length >= 2 && pathParts[0] === 'users') {
+      const userId = pathParts[1];
+      affectedUserIds.add(userId);
+      wishlistDocsToDelete.push({ userId, productId: idTrimmed });
+    }
+  });
+
+  // Step 4: Remove product from guest carts and wishlists (AsyncStorage)
+  // Note: We can't know which guests have the product, so we'll clean it from all guest carts/wishlists
+  // This is safe because guest data is local-only
+  try {
+    const guestCart = (await getCart()) || [];
+    const updatedGuestCart = guestCart.filter((item: any) => item?.id !== idTrimmed);
+    if (updatedGuestCart.length !== guestCart.length) {
+      await storeCart(updatedGuestCart);
+    }
+  } catch (error) {
+    console.warn('Failed to remove product from guest carts:', error);
   }
 
+  try {
+    const guestWishlist = (await getWishlist()) || [];
+    const updatedGuestWishlist = guestWishlist.filter((item: any) => item?.id !== idTrimmed);
+    if (updatedGuestWishlist.length !== guestWishlist.length) {
+      await storeWishlist(updatedGuestWishlist);
+    }
+  } catch (error) {
+    console.warn('Failed to remove product from guest wishlists:', error);
+  }
+
+  // Step 5: Delete product from Firestore carts and wishlists using batch
+  const batch = writeBatch(firebaseDb);
+  cartDocsToDelete.forEach(({ userId, productId }) => {
+    const cartRef = doc(firebaseDb, 'users', userId, 'cart', productId);
+    batch.delete(cartRef);
+  });
+  wishlistDocsToDelete.forEach(({ userId, productId }) => {
+    const wishlistRef = doc(firebaseDb, 'users', userId, 'wishlist', productId);
+    batch.delete(wishlistRef);
+  });
+
+  // Commit batch deletion of carts and wishlists
+  if (cartDocsToDelete.length > 0 || wishlistDocsToDelete.length > 0) {
+    await batch.commit();
+  }
+
+  // Step 6: Delete storage files (thumbnail, images, modelUrl)
+  const storageUrlsToDelete: string[] = [];
+  if (productData.thumbnail) {
+    storageUrlsToDelete.push(productData.thumbnail);
+  }
+  if (Array.isArray(productData.images)) {
+    storageUrlsToDelete.push(...productData.images.filter(Boolean));
+  }
+  if (productData.modelUrl) {
+    storageUrlsToDelete.push(productData.modelUrl);
+  }
+
+  // Delete storage files (best effort - don't fail if some fail)
+  if (storageUrlsToDelete.length > 0) {
+    await deleteStorageFilesByUrls(storageUrlsToDelete).catch((error) => {
+      console.warn('Failed to delete some storage files:', error);
+      // Continue with deletion even if storage cleanup fails
+    });
+  }
+
+  // Step 7: Send notifications to affected users
+  if (affectedUserIds.size > 0) {
+    const userIdsArray = Array.from(affectedUserIds);
+    const hasCart = cartDocsToDelete.length > 0;
+    const hasWishlist = wishlistDocsToDelete.length > 0;
+
+    let message = '';
+    if (hasCart && hasWishlist) {
+      message = `"${productTitle}" has been removed from your cart and wishlist as it is no longer available.`;
+    } else if (hasCart) {
+      message = `"${productTitle}" has been removed from your cart as it is no longer available.`;
+    } else if (hasWishlist) {
+      message = `"${productTitle}" has been removed from your wishlist as it is no longer available.`;
+    }
+
+    if (message) {
+      await createNotificationsForUsers({
+        userIds: userIdsArray,
+        title: 'Product Unavailable',
+        message,
+        type: 'product_removed',
+        data: { productId: idTrimmed },
+      }).catch((error) => {
+        console.warn('Failed to create notifications for affected users:', error);
+        // Continue with deletion even if notifications fail
+      });
+    }
+  }
+
+  // Step 8: Delete the product document from Firestore
   await deleteDoc(ref);
 }

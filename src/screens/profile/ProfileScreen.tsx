@@ -46,15 +46,17 @@ const ProfileScreen = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const isGuest = !user;
   // Use async hook to load from AsyncStorage first, then fallback to bundled
-  const avatarSource = useAvatarSourceForUser({
-    avatarId: profile?.avatarId,
-    isGuest,
-    isAdmin,
-  }) || getAvatarSourceForUser({
-    avatarId: profile?.avatarId,
-    isGuest,
-    isAdmin,
-  });
+  const avatarSource =
+    useAvatarSourceForUser({
+      avatarId: profile?.avatarId,
+      isGuest,
+      isAdmin,
+    }) ||
+    getAvatarSourceForUser({
+      avatarId: profile?.avatarId,
+      isGuest,
+      isAdmin,
+    });
 
   useEffect(() => {
     // Reset wishlist count when logged out
@@ -65,15 +67,15 @@ const ProfileScreen = () => {
 
     // Live wishlist count for the signed-in user
     let unsub: undefined | (() => void);
-      try {
+    try {
       unsub = subscribeWishlist(
         (items) => setWishlistCount(Array.isArray(items) ? items.length : 0),
         () => setWishlistCount(0),
       );
-      } catch {
+    } catch {
       // Likely signed out / no uid yet
-        setWishlistCount(0);
-      }
+      setWishlistCount(0);
+    }
 
     return () => {
       if (unsub) {
@@ -117,15 +119,15 @@ const ProfileScreen = () => {
 
     // Live address count for the signed-in user
     let unsub: undefined | (() => void);
-      try {
+    try {
       unsub = subscribeMyAddresses(
         (addresses) => setAddressCount(Array.isArray(addresses) ? addresses.length : 0),
         () => setAddressCount(0),
       );
-      } catch {
+    } catch {
       // Likely signed out / no uid yet
-        setAddressCount(0);
-      }
+      setAddressCount(0);
+    }
 
     return () => {
       if (unsub) {
@@ -281,26 +283,34 @@ const ProfileScreen = () => {
         bounces={true}
         scrollEventThrottle={16}
       >
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 0) + 10 }]}>
-          <View style={styles.profileSection}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 0) + 20 }]}>
+          <TouchableOpacity
+            style={styles.profileSection}
+            activeOpacity={!isGuest ? 0.7 : 1}
+            onPress={() => {
+              if (!isGuest) {
+                navigation.navigate('PersonalInfo');
+              }
+            }}
+            disabled={isGuest}
+          >
             <View style={styles.profileImageContainer}>
               <Image
                 source={avatarSource}
-                style={[styles.profileImage, { borderColor: colors.primary }]}
+                style={[styles.profileImage, { borderColor: colors.border }]}
               />
               {!isGuest && (
-              <TouchableOpacity
-                style={[
-                  styles.cameraButton,
-                  {
-                    backgroundColor: colors.primary,
-                    borderColor: colors.background,
-                  },
-                ]}
-                onPress={() => navigation.navigate('AvatarPicker')}
-              >
-                <Ionicons name="camera" size={16} color={colors.background} />
-              </TouchableOpacity>
+                <View
+                  style={[
+                    styles.editBadge,
+                    {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.background,
+                    },
+                  ]}
+                >
+                  <Ionicons name="pencil" size={12} color={colors.background} />
+                </View>
               )}
             </View>
             <View style={styles.userInfo}>
@@ -315,7 +325,7 @@ const ProfileScreen = () => {
                   : profile?.email || user?.email || 'No email'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {!isGuest && isAdmin && (
@@ -361,13 +371,13 @@ const ProfileScreen = () => {
                     { borderColor: colors.primary + '30' },
                   ]}
                 />
-                <View style={[styles.adminIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                <View
+                  style={[styles.adminIconContainer, { backgroundColor: colors.primary + '15' }]}
+                >
                   <Ionicons name="shield-checkmark" size={48} color={colors.primary} />
                 </View>
               </View>
-              <Text style={[styles.adminWelcomeTitle, { color: colors.text }]}>
-                Welcome, Admin
-              </Text>
+              <Text style={[styles.adminWelcomeTitle, { color: colors.text }]}>Welcome, Admin</Text>
               <Text style={[styles.adminWelcomeSubtitle, { color: colors.textSecondary }]}>
                 You have full access to manage the platform, including users, products, orders, and
                 system settings.
@@ -505,38 +515,38 @@ const ProfileScreen = () => {
         )}
 
         {!isGuest && !isAdmin && (
-        <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={styles.statsContainer}>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
               <Ionicons
                 name="bag-outline"
                 size={24}
                 color={colors.primary}
                 style={styles.statIcon}
               />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
+              <Text style={[styles.statNumber, { color: colors.text }]}>{orderCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Orders</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+              <Ionicons
+                name="heart-outline"
+                size={24}
+                color={colors.primary}
+                style={styles.statIcon}
+              />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
+            </View>
+            <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+              <Ionicons
+                name="location-outline"
+                size={24}
+                color={colors.primary}
+                style={styles.statIcon}
+              />
+              <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
+            </View>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons
-              name="heart-outline"
-              size={24}
-              color={colors.primary}
-              style={styles.statIcon}
-            />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{wishlistCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wishlist</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
-            <Ionicons
-              name="location-outline"
-              size={24}
-              color={colors.primary}
-              style={styles.statIcon}
-            />
-            <Text style={[styles.statNumber, { color: colors.text }]}>{addressCount}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Addresses</Text>
-          </View>
-        </View>
         )}
 
         <View style={styles.menuContainer}>
@@ -581,44 +591,48 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
+    alignItems: 'center',
+    marginBottom: 24,
   },
   profileSection: {
-    flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   profileImageContainer: {
     position: 'relative',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
   },
-  cameraButton: {
+  editBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
   },
   userInfo: {
-    marginLeft: 16,
-    flex: 1,
+    alignItems: 'center',
+    width: '100%',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   userEmail: {
     fontSize: 14,
     fontWeight: '400',
+    textAlign: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
