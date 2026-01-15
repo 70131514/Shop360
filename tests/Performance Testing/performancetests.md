@@ -993,117 +993,27 @@ Performance testing is a non-functional testing technique performed to determine
 
 ---
 
-### 9. Stress Testing Scenarios
+### 9. Stress Testing Reference
 
-#### PT-STRESS-001: Network Interruption Stress Test
-- **Test ID**: PT-STRESS-001
-- **Priority**: High
-- **Description**: Test app behavior under network interruptions and poor connectivity
-- **Preconditions**: 
-  - App is in active use
-  - Network can be controlled (simulated interruptions)
-- **Test Steps**:
-  1. Start various operations (browsing, cart, checkout)
-  2. Interrupt network connection
-  3. Monitor error handling and user feedback
-  4. Restore network connection
-  5. Monitor reconnection and data sync
-  6. Test with slow/unstable network (3G, poor signal)
-- **Expected Results**:
-  - App handles network errors gracefully
-  - User receives clear error messages
-  - Operations retry automatically when network restores
-  - Data syncs correctly after reconnection
-  - No data loss or corruption
-  - Offline capabilities work (guest cart, cached data)
-- **Performance Targets**:
-  - **Error Handling**: Immediate user feedback (< 0.5s)
-  - **Reconnection**: < 3s after network restore
-  - **Data Sync**: Complete within 5s after reconnection
-  - **Offline Support**: Guest cart works offline
-  - **Error Recovery**: 100% successful recovery
-- **Measurement Tools**: Network Conditioner, React Native Performance Monitor
+**Note**: Comprehensive stress testing scenarios have been moved to a dedicated stress testing document. Stress testing focuses on extreme conditions beyond normal operational capacity, breaking points, and recovery mechanisms.
 
-#### PT-STRESS-002: Memory Stress Test
-- **Test ID**: PT-STRESS-002
-- **Priority**: High
-- **Description**: Test app behavior under memory pressure
-- **Preconditions**: 
-  - Device with limited memory (2-3GB RAM)
-  - App is in active use
-- **Test Steps**:
-  1. Navigate through multiple screens rapidly
-  2. Load multiple product images
-  3. Open AR view with 3D models
-  4. Monitor memory usage and garbage collection
-  5. Test on low-memory devices
-  6. Test memory leak scenarios (extended use)
-- **Expected Results**:
-  - App handles memory pressure gracefully
-  - Images are cached efficiently and released when not needed
-  - Garbage collection works effectively
-  - No memory leaks during extended use
-  - App doesn't crash due to memory issues
-  - Performance degrades gracefully on low-memory devices
-- **Performance Targets**:
-  - **Memory Usage**: < 300MB on high-end devices
-  - **Memory Usage**: < 200MB on mid-range devices
-  - **Memory Leaks**: 0% (no leaks detected)
-  - **Garbage Collection**: Efficient, no performance impact
-  - **Crash Rate**: 0% due to memory issues
-- **Measurement Tools**: Android Profiler (Memory), Memory Profiler (Android Studio), Perfetto
+**Stress Testing Document**: See `tests/Stress Testing/stresstests.md` for comprehensive stress test scenarios including:
+- Network stress tests (extreme interruptions, slow network, high latency)
+- Memory stress tests (extreme pressure, memory leaks, large images, AR memory)
+- CPU stress tests (extreme load, concurrent operations)
+- Storage stress tests (low storage, cache growth)
+- Concurrent user stress tests (maximum users, concurrent orders, subscriptions)
+- Data volume stress tests (extreme catalogs, large order history, large carts)
+- Transaction and data integrity stress tests
+- UI and interaction stress tests
+- AR stress tests
+- Battery and thermal stress tests
+- Error recovery and resilience stress tests
+- Security and authentication stress tests
+- Data synchronization stress tests
+- Firestore quota and limit stress tests
 
-#### PT-STRESS-003: Battery Drain Stress Test
-- **Test ID**: PT-STRESS-003
-- **Priority**: Medium
-- **Description**: Test battery consumption during extended app use
-- **Preconditions**: 
-  - Device with full battery
-  - App is in active use
-- **Test Steps**:
-  1. Use app continuously for 1 hour
-  2. Test various features (browsing, AR, cart, orders)
-  3. Monitor battery drain rate
-  4. Test with AR view active (high battery usage expected)
-  5. Test background activity impact
-- **Expected Results**:
-  - Battery drain is reasonable for normal use (< 15% per hour)
-  - AR view has higher battery drain (expected, < 25% per hour)
-  - Background activity is minimal
-  - App doesn't cause excessive battery drain
-  - Battery optimization features work correctly
-- **Performance Targets**:
-  - **Normal Use**: < 15% battery per hour
-  - **AR Use**: < 25% battery per hour (expected for AR)
-  - **Background**: < 2% battery per hour
-  - **Battery Optimization**: Efficient use of device resources
-- **Measurement Tools**: Battery Monitor, Device Settings
-
-#### PT-STRESS-004: Rapid User Interaction Stress Test
-- **Test ID**: PT-STRESS-004
-- **Priority**: Medium
-- **Description**: Test app response to rapid user interactions
-- **Preconditions**: 
-  - App is in active use
-  - User can perform rapid interactions
-- **Test Steps**:
-  1. Rapidly tap buttons and navigate between screens
-  2. Rapidly add/remove items from cart
-  3. Rapidly scroll through product lists
-  4. Rapidly type in search fields
-  5. Monitor UI responsiveness and error handling
-- **Expected Results**:
-  - UI remains responsive during rapid interactions
-  - Operations are debounced/throttled appropriately
-  - No duplicate operations or race conditions
-  - Error handling works correctly
-  - App doesn't freeze or become unresponsive
-- **Performance Targets**:
-  - **UI Responsiveness**: 60 FPS maintained
-  - **Debounce/Throttle**: Appropriate delays (300-500ms)
-  - **Error Rate**: < 0.1% from rapid interactions
-  - **Race Conditions**: 0% (proper handling)
-- **Measurement Tools**: React Native Performance Monitor, Flipper Performance Plugin
+Performance testing focuses on normal operational conditions and expected performance metrics, while stress testing evaluates system behavior under extreme conditions and identifies breaking points.
 
 ---
 
