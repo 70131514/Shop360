@@ -108,6 +108,14 @@ export function subscribeNotifications(
     return () => {}; // Return no-op unsubscribe
   }
 
+  // Check email verification - required by Firestore rules
+  if (!user.emailVerified) {
+    if (onError) {
+      onError(new Error('Please verify your email to view notifications'));
+    }
+    return () => {}; // Return no-op unsubscribe
+  }
+
   const notificationsRef = collection(firebaseDb, 'users', user.uid, 'notifications');
   const q = query(notificationsRef, orderBy('createdAt', 'desc'));
 
@@ -150,6 +158,12 @@ export function subscribeUnreadNotificationCount(
     return () => {}; // Return no-op unsubscribe
   }
 
+  // Check email verification - required by Firestore rules
+  if (!user.emailVerified) {
+    onCount(0);
+    return () => {}; // Return no-op unsubscribe
+  }
+
   const notificationsRef = collection(firebaseDb, 'users', user.uid, 'notifications');
   const q = query(notificationsRef, where('read', '==', false));
 
@@ -177,6 +191,10 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     throw new Error('User not authenticated');
   }
 
+  if (!user.emailVerified) {
+    throw new Error('Please verify your email to manage notifications');
+  }
+
   const notificationRef = doc(firebaseDb, 'users', user.uid, 'notifications', notificationId);
   await updateDoc(notificationRef, {
     read: true,
@@ -190,6 +208,10 @@ export async function markAllNotificationsAsRead(): Promise<void> {
   const user = firebaseAuth.currentUser;
   if (!user?.uid) {
     throw new Error('User not authenticated');
+  }
+
+  if (!user.emailVerified) {
+    throw new Error('Please verify your email to manage notifications');
   }
 
   const notificationsRef = collection(firebaseDb, 'users', user.uid, 'notifications');
@@ -215,6 +237,10 @@ export async function deleteNotification(notificationId: string): Promise<void> 
   const user = firebaseAuth.currentUser;
   if (!user?.uid) {
     throw new Error('User not authenticated');
+  }
+
+  if (!user.emailVerified) {
+    throw new Error('Please verify your email to manage notifications');
   }
 
   const notificationRef = doc(firebaseDb, 'users', user.uid, 'notifications', notificationId);

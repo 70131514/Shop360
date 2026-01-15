@@ -230,6 +230,54 @@ service cloud.firestore {
         allow delete: if isOwner(uid) && isEmailVerified();
       }
 
+      // ✅ Notifications subcollection (per-user)
+      match /notifications/{notificationId} {
+        // Users can only read/list their own notifications (must be verified)
+        allow get, list: if isOwner(uid) && isEmailVerified();
+
+        // System can create notifications for users (via admin or server-side)
+        // Users cannot create their own notifications
+        allow create: if isAdmin() && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'title',
+            'message',
+            'type',
+            'read',
+            'data',
+            'createdAt'
+          ])
+          && request.resource.data.title is string
+          && request.resource.data.message is string
+          && request.resource.data.type in ['product_removed', 'order_update', 'promotion', 'general']
+          && request.resource.data.read is bool
+          && request.resource.data.read == false;
+
+        // Users can update their own notifications (mark as read)
+        allow update: if isOwner(uid) && isEmailVerified()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+          && request.resource.data.read is bool
+          && request.resource.data.read == true
+          && resource.data.read == false
+          && request.resource.data.title == resource.data.title
+          && request.resource.data.message == resource.data.message
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        // Admins can update notifications (for system updates)
+        allow update: if isAdmin() && isEmailVerified()
+          && request.resource.data.keys().hasOnly([
+            'title',
+            'message',
+            'type',
+            'read',
+            'data',
+            'createdAt'
+          ]);
+
+        // Users can delete their own notifications
+        allow delete: if isOwner(uid) && isEmailVerified();
+      }
+
       // ✅ Orders subcollection (per-user)
       match /orders/{orderId} {
         // Users can only read/list their own orders

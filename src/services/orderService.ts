@@ -382,6 +382,30 @@ export async function placeOrderFromCart(
   //    - CartScreen will reflect cleared cart immediately via subscribeCart
   //    - Any other screens with product subscriptions will update automatically
   // No manual refresh needed - all updates happen in real-time at runtime
+
+  // Create real-time notification for order placement
+  try {
+    const { createNotification } = await import('./notificationService');
+    const itemCount = calculation.itemCount;
+    const itemText = itemCount === 1 ? 'item' : 'items';
+    
+    await createNotification({
+      userId: uid,
+      title: 'Order Placed',
+      message: `Your order #${orderId} has been placed successfully! ${itemCount} ${itemText} will be processed soon.`,
+      type: 'order_update',
+      data: {
+        orderId,
+      },
+    }).catch((error) => {
+      // Log but don't fail the order if notification fails
+      console.warn('Failed to create order placement notification:', error);
+    });
+  } catch (error) {
+    // Log but don't fail the order if notification import fails
+    console.warn('Failed to import notification service:', error);
+  }
+
   return { orderId };
 }
 

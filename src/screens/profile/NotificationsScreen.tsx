@@ -84,15 +84,22 @@ const NotificationsScreen = () => {
       return;
     }
 
+    // Check if user's email is verified
+    if (!user.emailVerified) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const unsubscribe = subscribeNotifications(
       (notifs) => {
         setNotifications(notifs);
         setLoading(false);
       },
-      (error) => {
+      (error: any) => {
         console.error('Error fetching notifications:', error);
         setLoading(false);
+        // Error is already handled by notificationService with appropriate message
       },
     );
 

@@ -590,6 +590,43 @@ export async function updateOrderStatus(
     timeline: updatedTimeline,
     updatedAt: serverTimestamp(),
   });
+
+  // Create real-time notification for user when order status changes
+  // Only notify for shipped and delivered statuses (not for processing or cancelled)
+  if (status === 'shipped' || status === 'delivered') {
+    try {
+      const { createNotification } = await import('../notificationService');
+
+      let title = '';
+      let message = '';
+
+      if (status === 'shipped') {
+        title = 'Order Shipped';
+        message = `Your order #${orderIdTrimmed} has been shipped and is on its way!${
+          note ? ` ${note}` : ''
+        }`;
+      } else if (status === 'delivered') {
+        title = 'Order Delivered';
+        message = `Your order #${orderIdTrimmed} has been delivered!${note ? ` ${note}` : ''}`;
+      }
+
+      await createNotification({
+        userId: userIdTrimmed,
+        title,
+        message,
+        type: 'order_update',
+        data: {
+          orderId: orderIdTrimmed,
+        },
+      }).catch((error) => {
+        // Log but don't fail the order update if notification fails
+        console.warn('Failed to create order status notification:', error);
+      });
+    } catch (error) {
+      // Log but don't fail the order update if notification import fails
+      console.warn('Failed to import notification service:', error);
+    }
+  }
 }
 
 /**
@@ -694,6 +731,29 @@ export async function approveOrderCancellation(
       updatedAt: serverTimestamp(),
     });
   });
+
+  // Create real-time notification for order cancellation
+  try {
+    const { createNotification } = await import('../notificationService');
+
+    await createNotification({
+      userId: userIdTrimmed,
+      title: 'Order Cancelled',
+      message: `Your order #${orderIdTrimmed} has been cancelled.${
+        note ? ` ${note}` : ''
+      } Stock has been restored.`,
+      type: 'order_update',
+      data: {
+        orderId: orderIdTrimmed,
+      },
+    }).catch((error) => {
+      // Log but don't fail the cancellation if notification fails
+      console.warn('Failed to create order cancellation notification:', error);
+    });
+  } catch (error) {
+    // Log but don't fail the cancellation if notification import fails
+    console.warn('Failed to import notification service:', error);
+  }
 }
 
 /**
@@ -751,4 +811,27 @@ export async function rejectOrderCancellation(
       updatedAt: serverTimestamp(),
     });
   });
+
+  // Create real-time notification for cancellation rejection
+  try {
+    const { createNotification } = await import('../notificationService');
+
+    await createNotification({
+      userId: userIdTrimmed,
+      title: 'Cancellation Request Rejected',
+      message: `Your cancellation request for order #${orderIdTrimmed} has been rejected.${
+        rejectionReason ? ` Reason: ${rejectionReason}` : ''
+      }`,
+      type: 'order_update',
+      data: {
+        orderId: orderIdTrimmed,
+      },
+    }).catch((error) => {
+      // Log but don't fail the rejection if notification fails
+      console.warn('Failed to create cancellation rejection notification:', error);
+    });
+  } catch (error) {
+    // Log but don't fail the rejection if notification import fails
+    console.warn('Failed to import notification service:', error);
+  }
 }
