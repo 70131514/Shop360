@@ -67,3 +67,6 @@ buck-out/
 src/ar/models/*.glb
 src/ar/models/*.usdz
 src/ar/models/*.rar
+
+# Test Case Specs (now in tests/ folder and tracked in git)
+# Test files have been moved to tests/ folder and are now tracked

@@ -1,0 +1,39 @@
+Documentation Note: Node.js Utility Scripts for Test Case Management
+
+To streamline the test case documentation process, Node.js utility scripts were 
+developed to automate the annotation and organization of test case specifications. 
+These scripts processed markdown files to:
+
+1. Automatically annotate test cases with implementation status by analyzing the codebase
+   - Script: scripts/annotate-testcasespecs.js
+   - Purpose: Adds "Implemented in code" status to each test case by mapping functional 
+     requirements to actual code implementations (services, screens, components)
+   - Output: Annotated test case specifications with implementation evidence
+
+2. Filter test cases to maintain one positive and one negative test case per requirement
+   - Script: scripts/filter-testcases.js
+   - Purpose: Extracts the most important positive and negative test cases for each 
+     functional/non-functional requirement from the comprehensive test case document
+   - Output: Filtered test case document with essential test cases only
+
+3. Organize state transition test cases based on functional requirements
+   - Script: scripts/filter-state-transitions.js
+   - Purpose: Filters and organizes state transition test cases to align with 
+     specified functional requirements
+   - Output: Organized state transition test case document
+
+IMPORTANT NOTES:
+- These scripts were used for documentation management and organization purposes only
+- They did NOT execute actual test cases against the application
+- They are utility tools for processing markdown documentation files
+- The scripts analyze code structure and documentation to automate repetitive tasks
+- All test case specifications were manually created; scripts only assisted in 
+  organization and annotation
+
+Technical Details:
+- Language: Node.js (JavaScript)
+- Dependencies: Built-in Node.js 'fs' module for file system operations
+- Input: Markdown test case specification files
+- Output: Processed and annotated markdown files
+- Execution: Manual execution via command line (node script.js)
+- Impact: No impact on application performance or build process
