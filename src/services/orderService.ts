@@ -11,7 +11,7 @@ import {
   updateDoc,
   writeBatch,
 } from '@react-native-firebase/firestore';
-import type { Unsubscribe } from '@react-native-firebase/firestore';
+import type { Unsubscribe, Transaction } from '@react-native-firebase/firestore';
 import { firebaseAuth, firebaseDb } from './firebase';
 import type { CartItem } from './cartService';
 
@@ -108,15 +108,37 @@ function calcSubtotal(items: OrderItem[]) {
   return items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0);
 }
 
+type OrderRequestOptions = {
+  shipping?: number;
+  address?: OrderAddress;
+  paymentMethod?: PaymentMethod;
+  paymentCardId?: string;
+};
+
+type OrderCalculationResult = {
+  items: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  itemCount: number;
+};
+
+type ProductStockUpdate = {
+  productId: string;
+  newStock: number;
+  productName: string;
+};
+
 /**
- * Creates an order for the current user from their cart items and clears the cart
- * in the same Firestore batch.
+ * Validates order request inputs before processing
+ * @param cartItems - Cart items to validate
+ * @param opts - Order options to validate
+ * @throws Error if validation fails
  */
-export async function placeOrderFromCart(
+function validateOrderRequest(
   cartItems: CartItem[],
-  opts?: { shipping?: number; address?: OrderAddress; paymentMethod?: PaymentMethod; paymentCardId?: string },
-): Promise<{ orderId: string }> {
-  const uid = requireUid();
+  opts?: OrderRequestOptions,
+): void {
   if (!cartItems || cartItems.length === 0) {
     throw new Error('Cart is empty');
   }
@@ -132,119 +154,223 @@ export async function placeOrderFromCart(
   if (opts.paymentMethod === 'card_payment' && !opts.paymentCardId) {
     throw new Error('Card selection is required for card payment');
   }
+}
 
+/**
+ * Calculates order totals and normalizes items
+ * @param cartItems - Cart items to process
+ * @param shipping - Shipping cost
+ * @returns Order calculation result
+ */
+function calculateOrderTotals(
+  cartItems: CartItem[],
+  shipping: number,
+): OrderCalculationResult {
   const items = normalizeOrderItems(cartItems);
   const subtotal = calcSubtotal(items);
-  const shipping = Math.max(0, Number(opts?.shipping ?? 0));
-  const total = subtotal + shipping;
+  const calculatedShipping = Math.max(0, Number(shipping ?? 0));
+  const total = subtotal + calculatedShipping;
   const itemCount = items.reduce((sum, i) => sum + Number(i.quantity), 0);
 
-  // IMPORTANT: Stock is ONLY deducted here when order is placed, NOT when items are added to cart
-  // This ensures stock is reserved only when user commits to purchase
+  return {
+    items,
+    subtotal,
+    shipping: calculatedShipping,
+    total,
+    itemCount,
+  };
+}
+
+/**
+ * Validates stock availability and deducts stock from products
+ * @param items - Order items to validate and process
+ * @param transaction - Firestore transaction
+ * @returns Array of product stock updates
+ * @throws Error if stock validation fails
+ */
+async function validateAndDeductStock(
+  items: OrderItem[],
+  transaction: Transaction,
+): Promise<ProductStockUpdate[]> {
+  const productUpdates: ProductStockUpdate[] = [];
+  const productRefs = items.map((item) => doc(firebaseDb, 'products', item.productId));
+
+  // Read all product documents
+  const productSnaps = await Promise.all(
+    productRefs.map((ref) => transaction.get(ref)),
+  );
+
+  // Validate stock for each item
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const productSnap = productSnaps[i];
+
+    if (!productSnap.exists()) {
+      throw new Error(`Product ${item.name} (ID: ${item.productId}) not found`);
+    }
+
+    const productData = productSnap.data();
+    const currentStock = Number(productData?.stock ?? 0);
+    const orderedQuantity = Number(item.quantity ?? 0);
+
+    if (orderedQuantity <= 0) {
+      throw new Error(`Invalid quantity for ${item.name}`);
+    }
+
+    if (currentStock < orderedQuantity) {
+      throw new Error(
+        `Insufficient stock for ${item.name}. Available: ${currentStock}, Requested: ${orderedQuantity}`,
+      );
+    }
+
+    // Calculate new stock after deduction
+    const newStock = currentStock - orderedQuantity;
+
+    // Double-check: Ensure stock never goes negative (defensive programming)
+    if (newStock < 0) {
+      throw new Error(
+        `Stock calculation error for ${item.name}. Current: ${currentStock}, Requested: ${orderedQuantity}`,
+      );
+    }
+
+    productUpdates.push({
+      productId: item.productId,
+      newStock,
+      productName: item.name,
+    });
+  }
+
+  // DEDUCT stock from all products atomically
+  // THIS IS WHERE STOCK IS ACTUALLY REDUCED - not when adding to cart
+  // This ensures stock is deducted correctly and prevents race conditions
+  // Firestore will automatically notify all active onSnapshot listeners (real-time subscriptions)
+  // when this transaction commits, so ProductDetailsScreen and CartScreen will update immediately
+  productUpdates.forEach((update) => {
+    const productRef = doc(firebaseDb, 'products', update.productId);
+    // Stock is deducted here - this update triggers real-time listeners
+    transaction.update(productRef, {
+      stock: update.newStock, // Reduced stock value
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return productUpdates;
+}
+
+/**
+ * Creates order document in Firestore
+ * @param uid - User ID
+ * @param calculation - Order calculation result
+ * @param opts - Order options
+ * @param transaction - Firestore transaction
+ * @returns Order document reference ID
+ */
+function createOrderDocument(
+  uid: string,
+  calculation: OrderCalculationResult,
+  opts: Required<Pick<OrderRequestOptions, 'address' | 'paymentMethod'>> &
+    Pick<OrderRequestOptions, 'paymentCardId'>,
+  transaction: Transaction,
+): string {
+  // Create order document with initial timeline entry
+  // Use Date object for timeline entries (Firestore converts it to Timestamp)
+  // serverTimestamp() doesn't work inside arrays
+  const initialTimeline: OrderTimelineEntry[] = [
+    {
+      status: 'processing',
+      timestamp: new Date(),
+      note: 'Order placed',
+    },
+  ];
+
+  const orderRef = doc(ordersCollectionRef(uid));
+  transaction.set(orderRef, {
+    userId: uid,
+    status: 'processing',
+    paymentMethod: opts.paymentMethod,
+    paymentCardId: opts.paymentCardId || null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    timeline: initialTimeline,
+    viewedByAdmin: false, // New orders are unread by admin
+    items: calculation.items,
+    itemCount: calculation.itemCount,
+    subtotal: calculation.subtotal,
+    shipping: calculation.shipping,
+    total: calculation.total,
+    address: opts.address,
+  } as Omit<Order, 'id'>);
+
+  return orderRef.id;
+}
+
+/**
+ * Clears cart items from Firestore
+ * @param uid - User ID
+ * @param cartItems - Cart items to clear
+ * @param transaction - Firestore transaction
+ */
+function clearCartItems(
+  uid: string,
+  cartItems: CartItem[],
+  transaction: Transaction,
+): void {
+  // Clear cart documents
+  cartItems.forEach((cartItem) => {
+    const cartRef = doc(firebaseDb, 'users', uid, 'cart', cartItem.id);
+    transaction.delete(cartRef);
+  });
+}
+
+/**
+ * Creates an order for the current user from their cart items and clears the cart
+ * in the same Firestore transaction. This refactored version reduces cyclomatic complexity
+ * by breaking the logic into smaller, focused functions.
+ * 
+ * IMPORTANT: Stock is ONLY deducted here when order is placed, NOT when items are added to cart.
+ * This ensures stock is reserved only when user commits to purchase.
+ * 
+ * @param cartItems - Cart items to place order for
+ * @param opts - Order options (shipping, address, payment method, etc.)
+ * @returns Promise resolving to order ID
+ */
+export async function placeOrderFromCart(
+  cartItems: CartItem[],
+  opts?: OrderRequestOptions,
+): Promise<{ orderId: string }> {
+  const uid = requireUid();
+
+  // Step 1: Validate order request
+  validateOrderRequest(cartItems, opts);
+
+  // Step 2: Calculate order totals
+  const calculation = calculateOrderTotals(cartItems, opts?.shipping ?? 0);
+
+  // Step 3: Execute transaction atomically
   // Use a transaction to atomically:
   // 1. Check and DEDUCT product stock (this is where stock is actually reduced)
   // 2. Create order
   // 3. Clear cart
   const orderId = await runTransaction(firebaseDb, async (transaction) => {
-    // Step 1: Check stock availability and prepare stock DEDUCTIONS
-    const productUpdates: Array<{ productId: string; newStock: number; productName: string }> = [];
-    const productRefs = items.map((item) => doc(firebaseDb, 'products', item.productId));
-    
-    // Read all product documents
-    const productSnaps = await Promise.all(
-      productRefs.map((ref) => transaction.get(ref))
+    // Validate and deduct stock
+    await validateAndDeductStock(calculation.items, transaction);
+
+    // Create order document
+    const orderId = createOrderDocument(
+      uid,
+      calculation,
+      {
+        address: opts!.address!,
+        paymentMethod: opts!.paymentMethod!,
+        paymentCardId: opts?.paymentCardId,
+      },
+      transaction,
     );
 
-    // Validate stock for each item
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const productSnap = productSnaps[i];
-      
-      if (!productSnap.exists()) {
-        throw new Error(`Product ${item.name} (ID: ${item.productId}) not found`);
-      }
+    // Clear cart items
+    clearCartItems(uid, cartItems, transaction);
 
-      const productData = productSnap.data();
-      const currentStock = Number(productData?.stock ?? 0);
-      const orderedQuantity = Number(item.quantity ?? 0);
-
-      if (orderedQuantity <= 0) {
-        throw new Error(`Invalid quantity for ${item.name}`);
-      }
-
-      if (currentStock < orderedQuantity) {
-        throw new Error(
-          `Insufficient stock for ${item.name}. Available: ${currentStock}, Requested: ${orderedQuantity}`
-        );
-      }
-
-      // Calculate new stock after deduction
-      const newStock = currentStock - orderedQuantity;
-
-      // Double-check: Ensure stock never goes negative (defensive programming)
-      if (newStock < 0) {
-        throw new Error(
-          `Stock calculation error for ${item.name}. Current: ${currentStock}, Requested: ${orderedQuantity}`,
-        );
-      }
-
-      productUpdates.push({
-        productId: item.productId,
-        newStock,
-        productName: item.name,
-      });
-    }
-
-    // Step 2: DEDUCT stock from all products atomically
-    // THIS IS WHERE STOCK IS ACTUALLY REDUCED - not when adding to cart
-    // This ensures stock is deducted correctly and prevents race conditions
-    // Firestore will automatically notify all active onSnapshot listeners (real-time subscriptions)
-    // when this transaction commits, so ProductDetailsScreen and CartScreen will update immediately
-    productUpdates.forEach((update) => {
-      const productRef = doc(firebaseDb, 'products', update.productId);
-      // Stock is deducted here - this update triggers real-time listeners
-      transaction.update(productRef, {
-        stock: update.newStock, // Reduced stock value
-        updatedAt: serverTimestamp(),
-      });
-    });
-
-    // Step 3: Create order document with initial timeline entry
-    // Use Date object for timeline entries (Firestore converts it to Timestamp)
-    // serverTimestamp() doesn't work inside arrays
-    const initialTimeline: OrderTimelineEntry[] = [
-      {
-        status: 'processing',
-        timestamp: new Date(),
-        note: 'Order placed',
-      },
-    ];
-
-    const orderRef = doc(ordersCollectionRef(uid));
-    transaction.set(orderRef, {
-      userId: uid,
-      status: 'processing',
-      paymentMethod: opts.paymentMethod,
-      paymentCardId: opts.paymentCardId || null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      timeline: initialTimeline,
-      viewedByAdmin: false, // New orders are unread by admin
-      items,
-      itemCount,
-      subtotal,
-      shipping,
-      total,
-      address: opts.address,
-    } as Omit<Order, 'id'>);
-
-    // Step 4: Clear cart documents
-    cartItems.forEach((cartItem) => {
-      const cartRef = doc(firebaseDb, 'users', uid, 'cart', cartItem.id);
-      transaction.delete(cartRef);
-    });
-
-    return orderRef.id;
+    return orderId;
   });
 
   // After transaction commits successfully:
