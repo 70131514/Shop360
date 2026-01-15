@@ -152,9 +152,9 @@
 - NFR4.4: Data consistency across operations
 
 ### NFR5: Compatibility
-- NFR5.1: Support for iOS devices
-- NFR5.2: Support for Android devices
-- NFR5.3: Support for different screen sizes
+- NFR5.1: Support for Android devices
+- NFR5.2: Support for different screen sizes
+- NFR5.3: Support for different Android device brands (Samsung, Google Pixel, Xiaomi)
 
 ---
 

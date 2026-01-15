@@ -523,8 +523,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Description**: User has allowed camera access for AR functionality
 - **Valid Examples**: 
   - Permission status: `granted`
-  - Permission status: `ios-managed` (iOS automatically manages)
-- **Expected Result**: AR view can initialize, camera feed is displayed, AR tracking begins
+- **Expected Result**: AR view can initialize, camera feed is displayed, AR tracking begins (ARCore for Android)
 - **Test Cases**: Access AR View, AR Product Preview
 
 ### EP7.2: Camera Permission Denied
@@ -825,8 +824,8 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Partition**: Search terms containing special characters
 - **Description**: Search queries with special characters that are handled properly
 - **Valid Examples**: 
-  - `iPhone 13`
-  - `Samsung-Galaxy`
+  - `Samsung Galaxy S21`
+  - `Google-Pixel`
   - `Product's Name`
 - **Expected Result**: Search handles special characters and returns appropriate results
 - **Test Cases**: Search Products
@@ -839,8 +838,8 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Partition**: Valid product titles
 - **Description**: Non-empty product titles
 - **Valid Examples**: 
-  - `iPhone 13 Pro`
-  - `Samsung Galaxy S21`
+  - `Samsung Galaxy S21 Ultra`
+  - `Google Pixel 7 Pro`
   - `A` (minimum 1 character)
 - **Expected Result**: Product title is accepted and saved successfully
 - **Test Cases**: Create Product, Edit Product

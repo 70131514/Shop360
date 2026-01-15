@@ -789,7 +789,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ### BVA11.4: Product Title Typical Value (Inside)
 - **Boundary**: Typical title length
-- **Test Value**: `iPhone 13 Pro Max` (17 characters)
+- **Test Value**: `Samsung Galaxy S21 Ultra` (23 characters)
 - **Description**: Testing product title with a typical value
 - **Expected Result**: Product title is accepted and saved successfully
 - **Test Cases**: Create Product, Edit Product
