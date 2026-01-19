@@ -483,7 +483,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA10: AR Model Scale Boundaries
 
-### BVA5.1: Model Scale Minimum Boundary (Inside)
+### BVA10.1: Model Scale Minimum Boundary (Inside)
 - **Boundary**: Minimum valid scale = 0.1
 - **Test Value**: Scale = `0.1` (exactly minimum)
 - **Description**: Testing model scale with exactly the minimum value
@@ -491,7 +491,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: High
 
-### BVA5.2: Model Scale Minimum Boundary - 0.01 (Outside)
+### BVA10.2: Model Scale Minimum Boundary - 0.01 (Outside)
 - **Boundary**: Just below minimum = 0.09
 - **Test Value**: Scale = `0.09`
 - **Description**: Testing model scale with value just below minimum
@@ -499,7 +499,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: High
 
-### BVA5.3: Model Scale Minimum Boundary + 0.1 (Inside)
+### BVA10.3: Model Scale Minimum Boundary + 0.1 (Inside)
 - **Boundary**: Just above minimum = 0.2
 - **Test Value**: Scale = `0.2`
 - **Description**: Testing model scale with value just above minimum
@@ -507,7 +507,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: Medium
 
-### BVA5.4: Model Scale Maximum Boundary (Inside)
+### BVA10.4: Model Scale Maximum Boundary (Inside)
 - **Boundary**: Maximum valid scale = 10.0
 - **Test Value**: Scale = `10.0` (exactly maximum)
 - **Description**: Testing model scale with exactly the maximum value
@@ -515,7 +515,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: High
 
-### BVA5.5: Model Scale Maximum Boundary + 0.1 (Outside)
+### BVA10.5: Model Scale Maximum Boundary + 0.1 (Outside)
 - **Boundary**: Just above maximum = 10.1
 - **Test Value**: Scale = `10.1`
 - **Description**: Testing model scale with value just above maximum
@@ -523,7 +523,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: High
 
-### BVA5.6: Model Scale Maximum Boundary - 0.1 (Inside)
+### BVA10.6: Model Scale Maximum Boundary - 0.1 (Inside)
 - **Boundary**: Just below maximum = 9.9
 - **Test Value**: Scale = `9.9`
 - **Description**: Testing model scale with value just below maximum
@@ -531,7 +531,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: Medium
 
-### BVA5.7: Model Scale Typical Value (Inside)
+### BVA10.7: Model Scale Typical Value (Inside)
 - **Boundary**: Middle of valid range
 - **Test Value**: Scale = `1.0` (default/normal)
 - **Description**: Testing model scale with typical default value
@@ -539,7 +539,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: Low
 
-### BVA5.8: Model Scale Zero (Outside)
+### BVA10.8: Model Scale Zero (Outside)
 - **Boundary**: Zero scale = 0.0
 - **Test Value**: Scale = `0.0`
 - **Description**: Testing model scale with zero (invalid)
@@ -547,7 +547,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Scaling
 - **Priority**: High
 
-### BVA5.9: Model Scale Negative (Outside)
+### BVA10.9: Model Scale Negative (Outside)
 - **Boundary**: Negative scale = -0.1
 - **Test Value**: Scale = `-0.1`
 - **Description**: Testing model scale with negative value (invalid)
@@ -559,7 +559,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA11: AR Model Rotation Boundaries
 
-### BVA6.1: Model Rotation Minimum Boundary (Inside)
+### BVA11.1: Model Rotation Minimum Boundary (Inside)
 - **Boundary**: Minimum valid rotation = 0 degrees
 - **Test Value**: Rotation = `0` degrees
 - **Description**: Testing model rotation with exactly zero (no rotation)
@@ -567,7 +567,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Rotation
 - **Priority**: High
 
-### BVA6.2: Model Rotation Maximum Boundary (Inside)
+### BVA11.2: Model Rotation Maximum Boundary (Inside)
 - **Boundary**: Maximum valid rotation = 360 degrees
 - **Test Value**: Rotation = `360` degrees
 - **Description**: Testing model rotation with exactly 360 degrees (full rotation)
@@ -575,7 +575,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Rotation
 - **Priority**: High
 
-### BVA6.3: Model Rotation Maximum Boundary + 1 (Outside)
+### BVA11.3: Model Rotation Maximum Boundary + 1 (Outside)
 - **Boundary**: Just above maximum = 361 degrees
 - **Test Value**: Rotation = `361` degrees
 - **Description**: Testing model rotation with value just above maximum
@@ -583,7 +583,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Rotation
 - **Priority**: Medium
 
-### BVA6.4: Model Rotation Typical Value (Inside)
+### BVA11.4: Model Rotation Typical Value (Inside)
 - **Boundary**: Middle of valid range
 - **Test Value**: Rotation = `180` degrees
 - **Description**: Testing model rotation with typical middle value
@@ -591,7 +591,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Controls, AR Model Rotation
 - **Priority**: Low
 
-### BVA6.5: Model Rotation Negative (Inside - Normalized)
+### BVA11.5: Model Rotation Negative (Inside - Normalized)
 - **Boundary**: Negative rotation = -90 degrees
 - **Test Value**: Rotation = `-90` degrees
 - **Description**: Testing model rotation with negative value (should normalize to 270 degrees)
@@ -603,7 +603,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA12: AR Model Loading Progress Boundaries
 
-### BVA7.1: Model Loading Progress Minimum Boundary (Inside)
+### BVA12.1: Model Loading Progress Minimum Boundary (Inside)
 - **Boundary**: Minimum valid progress = 0%
 - **Test Value**: Progress = `0%`
 - **Description**: Testing model loading progress at start (0%)
@@ -611,7 +611,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Loading
 - **Priority**: High
 
-### BVA7.2: Model Loading Progress Maximum Boundary (Inside)
+### BVA12.2: Model Loading Progress Maximum Boundary (Inside)
 - **Boundary**: Maximum valid progress = 100%
 - **Test Value**: Progress = `100%`
 - **Description**: Testing model loading progress at completion (100%)
@@ -619,7 +619,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Loading
 - **Priority**: High
 
-### BVA7.3: Model Loading Progress Maximum Boundary + 1 (Outside)
+### BVA12.3: Model Loading Progress Maximum Boundary + 1 (Outside)
 - **Boundary**: Just above maximum = 101%
 - **Test Value**: Progress = `101%`
 - **Description**: Testing model loading progress above 100% (should not occur)
@@ -627,7 +627,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Loading
 - **Priority**: Medium
 
-### BVA7.4: Model Loading Progress Typical Value (Inside)
+### BVA12.4: Model Loading Progress Typical Value (Inside)
 - **Boundary**: Middle of valid range
 - **Test Value**: Progress = `50%`
 - **Description**: Testing model loading progress at midpoint
@@ -635,7 +635,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Loading
 - **Priority**: Low
 
-### BVA7.5: Model Loading Progress Negative (Outside)
+### BVA12.5: Model Loading Progress Negative (Outside)
 - **Boundary**: Negative progress = -1%
 - **Test Value**: Progress = `-1%`
 - **Description**: Testing model loading progress with negative value (invalid)
@@ -647,7 +647,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA13: AR Model Position Boundaries
 
-### BVA8.1: Model Position Minimum Boundary (Inside)
+### BVA13.1: Model Position Minimum Boundary (Inside)
 - **Boundary**: Minimum valid position coordinates
 - **Test Value**: Position = `[0, 0, 0]` (origin)
 - **Description**: Testing model position at world origin
@@ -655,7 +655,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Placement, AR Model Position
 - **Priority**: High
 
-### BVA8.2: Model Position Negative Coordinates (Inside)
+### BVA13.2: Model Position Negative Coordinates (Inside)
 - **Boundary**: Negative position coordinates
 - **Test Value**: Position = `[-1.0, -0.5, -2.0]`
 - **Description**: Testing model position with negative coordinates (valid in 3D space)
@@ -663,7 +663,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Placement, AR Model Position
 - **Priority**: Medium
 
-### BVA8.3: Model Position Large Positive Coordinates (Inside)
+### BVA13.3: Model Position Large Positive Coordinates (Inside)
 - **Boundary**: Large positive position coordinates
 - **Test Value**: Position = `[10.0, 5.0, 10.0]`
 - **Description**: Testing model position with large positive coordinates
@@ -671,7 +671,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Model Placement, AR Model Position
 - **Priority**: Medium
 
-### BVA8.4: Model Position Typical Value (Inside)
+### BVA13.4: Model Position Typical Value (Inside)
 - **Boundary**: Typical position coordinates
 - **Test Value**: Position = `[0, 0, -1.0]` (1 meter in front of camera)
 - **Description**: Testing model position with typical placement distance
@@ -683,7 +683,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA14: AR Tracking Quality Boundaries
 
-### BVA9.1: AR Tracking Quality Ready (Inside)
+### BVA14.1: AR Tracking Quality Ready (Inside)
 - **Boundary**: Tracking quality = ready/optimal
 - **Test Value**: Tracking state = `ready`, Reason = `none`
 - **Description**: Testing AR tracking at optimal quality
@@ -691,7 +691,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Tracking, AR Model Placement
 - **Priority**: High
 
-### BVA9.2: AR Tracking Quality Limited - Insufficient Features (Inside)
+### BVA14.2: AR Tracking Quality Limited - Insufficient Features (Inside)
 - **Boundary**: Tracking quality = limited due to insufficient features
 - **Test Value**: Tracking state = `limited`, Reason = `insufficient-features`
 - **Description**: Testing AR tracking with limited quality due to featureless environment
@@ -699,7 +699,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Tracking, AR Model Placement
 - **Priority**: High
 
-### BVA9.3: AR Tracking Quality Limited - Excessive Motion (Inside)
+### BVA14.3: AR Tracking Quality Limited - Excessive Motion (Inside)
 - **Boundary**: Tracking quality = limited due to excessive motion
 - **Test Value**: Tracking state = `limited`, Reason = `excessive-motion`
 - **Description**: Testing AR tracking with limited quality due to device movement
@@ -707,7 +707,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Tracking, AR Model Placement
 - **Priority**: High
 
-### BVA9.4: AR Tracking Quality Limited - Insufficient Light (Inside)
+### BVA14.4: AR Tracking Quality Limited - Insufficient Light (Inside)
 - **Boundary**: Tracking quality = limited due to insufficient light
 - **Test Value**: Tracking state = `limited`, Reason = `insufficient-light`
 - **Description**: Testing AR tracking with limited quality due to poor lighting
@@ -715,7 +715,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: AR Tracking, AR Model Placement
 - **Priority**: High
 
-### BVA9.5: AR Tracking Quality Unavailable (Outside)
+### BVA14.5: AR Tracking Quality Unavailable (Outside)
 - **Boundary**: Tracking quality = unavailable
 - **Test Value**: Tracking state = `unavailable`, Reason = `error` or `not-available`
 - **Description**: Testing AR tracking when it's completely unavailable
@@ -727,7 +727,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA15: User Name Length Boundaries
 
-### BVA10.1: User Name Minimum Boundary (Inside)
+### BVA15.1: User Name Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing user name with exactly the minimum length
@@ -735,7 +735,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Sign Up, Update Name
 - **Priority**: High
 
-### BVA10.2: User Name Minimum Boundary - 1 (Outside)
+### BVA15.2: User Name Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing user name with no characters
@@ -743,7 +743,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Sign Up, Update Name
 - **Priority**: High
 
-### BVA10.3: User Name Minimum Boundary + 1 (Inside)
+### BVA15.3: User Name Minimum Boundary + 1 (Inside)
 - **Boundary**: Just above minimum = 2 characters
 - **Test Value**: `AB` (2 characters)
 - **Description**: Testing user name with one character more than minimum
@@ -751,7 +751,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Sign Up, Update Name
 - **Priority**: Medium
 
-### BVA10.4: User Name Typical Value (Inside)
+### BVA15.4: User Name Typical Value (Inside)
 - **Boundary**: Typical name length
 - **Test Value**: `John Doe` (8 characters)
 - **Description**: Testing user name with a typical value
@@ -763,7 +763,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA16: Product Title Length Boundaries
 
-### BVA11.1: Product Title Minimum Boundary (Inside)
+### BVA16.1: Product Title Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing product title with exactly the minimum length
@@ -771,7 +771,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: High
 
-### BVA11.2: Product Title Minimum Boundary - 1 (Outside)
+### BVA16.2: Product Title Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing product title with no characters
@@ -779,7 +779,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: High
 
-### BVA11.3: Product Title Minimum Boundary + 1 (Inside)
+### BVA16.3: Product Title Minimum Boundary + 1 (Inside)
 - **Boundary**: Just above minimum = 2 characters
 - **Test Value**: `AB` (2 characters)
 - **Description**: Testing product title with one character more than minimum
@@ -787,7 +787,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: Medium
 
-### BVA11.4: Product Title Typical Value (Inside)
+### BVA16.4: Product Title Typical Value (Inside)
 - **Boundary**: Typical title length
 - **Test Value**: `Samsung Galaxy S21 Ultra` (23 characters)
 - **Description**: Testing product title with a typical value
@@ -799,7 +799,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA17: Category Name Length Boundaries
 
-### BVA12.1: Category Name Minimum Boundary (Inside)
+### BVA17.1: Category Name Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing category name with exactly the minimum length
@@ -807,7 +807,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Category, Edit Category
 - **Priority**: High
 
-### BVA12.2: Category Name Minimum Boundary - 1 (Outside)
+### BVA17.2: Category Name Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing category name with no characters
@@ -815,7 +815,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Category, Edit Category
 - **Priority**: High
 
-### BVA12.3: Category Name Minimum Boundary + 1 (Inside)
+### BVA17.3: Category Name Minimum Boundary + 1 (Inside)
 - **Boundary**: Just above minimum = 2 characters
 - **Test Value**: `AB` (2 characters)
 - **Description**: Testing category name with one character more than minimum
@@ -823,7 +823,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Category, Edit Category
 - **Priority**: Medium
 
-### BVA12.4: Category Name Typical Value (Inside)
+### BVA17.4: Category Name Typical Value (Inside)
 - **Boundary**: Typical category name length
 - **Test Value**: `Electronics` (11 characters)
 - **Description**: Testing category name with a typical value
@@ -835,7 +835,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA18: Support Ticket Message Length Boundaries
 
-### BVA13.1: Ticket Message Minimum Boundary (Inside)
+### BVA18.1: Ticket Message Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing ticket message with exactly the minimum length
@@ -843,7 +843,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Submit Support Ticket
 - **Priority**: High
 
-### BVA13.2: Ticket Message Minimum Boundary - 1 (Outside)
+### BVA18.2: Ticket Message Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing ticket message with no characters
@@ -851,7 +851,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Submit Support Ticket
 - **Priority**: High
 
-### BVA13.3: Ticket Message Minimum Boundary + 1 (Inside)
+### BVA18.3: Ticket Message Minimum Boundary + 1 (Inside)
 - **Boundary**: Just above minimum = 2 characters
 - **Test Value**: `AB` (2 characters)
 - **Description**: Testing ticket message with one character more than minimum
@@ -859,7 +859,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Submit Support Ticket
 - **Priority**: Medium
 
-### BVA13.4: Ticket Message Typical Value (Inside)
+### BVA18.4: Ticket Message Typical Value (Inside)
 - **Boundary**: Typical message length
 - **Test Value**: `I need help with my order` (25 characters)
 - **Description**: Testing ticket message with a typical value
@@ -871,7 +871,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA19: Address Field Length Boundaries
 
-### BVA14.1: Address Name Minimum Boundary (Inside)
+### BVA19.1: Address Name Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing address name with exactly the minimum length
@@ -879,7 +879,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add Address, Edit Address
 - **Priority**: High
 
-### BVA14.2: Address Name Minimum Boundary - 1 (Outside)
+### BVA19.2: Address Name Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing address name with no characters
@@ -887,7 +887,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add Address, Edit Address
 - **Priority**: High
 
-### BVA14.3: Street Address Minimum Boundary (Inside)
+### BVA19.3: Street Address Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing street address with exactly the minimum length
@@ -895,7 +895,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add Address, Edit Address
 - **Priority**: High
 
-### BVA14.4: Street Address Minimum Boundary - 1 (Outside)
+### BVA19.4: Street Address Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing street address with no characters
@@ -903,7 +903,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add Address, Edit Address
 - **Priority**: High
 
-### BVA14.5: City Minimum Boundary (Inside)
+### BVA19.5: City Minimum Boundary (Inside)
 - **Boundary**: Minimum valid length = 1 character
 - **Test Value**: `A` (exactly 1 character)
 - **Description**: Testing city with exactly the minimum length
@@ -911,7 +911,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add Address, Edit Address
 - **Priority**: High
 
-### BVA14.6: City Minimum Boundary - 1 (Outside)
+### BVA19.6: City Minimum Boundary - 1 (Outside)
 - **Boundary**: Just below minimum = 0 characters (empty)
 - **Test Value**: `""` (empty string)
 - **Description**: Testing city with no characters
@@ -923,7 +923,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA20: Quantity vs Stock Relationship Boundaries
 
-### BVA15.1: Quantity Equal to Stock (Inside)
+### BVA20.1: Quantity Equal to Stock (Inside)
 - **Boundary**: Quantity exactly equals stock
 - **Test Value**: Stock = `5`, Quantity = `5`
 - **Description**: Testing quantity when it exactly matches available stock
@@ -931,7 +931,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add to Cart, Update Cart Quantity
 - **Priority**: High
 
-### BVA15.2: Quantity One Less Than Stock (Inside)
+### BVA20.2: Quantity One Less Than Stock (Inside)
 - **Boundary**: Quantity = stock - 1
 - **Test Value**: Stock = `5`, Quantity = `4`
 - **Description**: Testing quantity when it is one less than stock
@@ -939,7 +939,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add to Cart, Update Cart Quantity
 - **Priority**: Medium
 
-### BVA15.3: Quantity One More Than Stock (Outside)
+### BVA20.3: Quantity One More Than Stock (Outside)
 - **Boundary**: Quantity = stock + 1
 - **Test Value**: Stock = `5`, Quantity = `6`
 - **Description**: Testing quantity when it exceeds stock by one
@@ -947,7 +947,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Add to Cart, Update Cart Quantity
 - **Priority**: High
 
-### BVA15.4: Quantity Much Greater Than Stock (Outside)
+### BVA20.4: Quantity Much Greater Than Stock (Outside)
 - **Boundary**: Quantity >> stock
 - **Test Value**: Stock = `5`, Quantity = `100`
 - **Description**: Testing quantity when it greatly exceeds stock
@@ -959,7 +959,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA21: Price Decimal Precision Boundaries
 
-### BVA16.1: Price with Maximum Decimal Places (Inside)
+### BVA21.1: Price with Maximum Decimal Places (Inside)
 - **Boundary**: Price with 2 decimal places (standard)
 - **Test Value**: Price = `99.99`
 - **Description**: Testing price with exactly 2 decimal places
@@ -967,7 +967,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: Medium
 
-### BVA16.2: Price with Integer Value (Inside)
+### BVA21.2: Price with Integer Value (Inside)
 - **Boundary**: Price with 0 decimal places
 - **Test Value**: Price = `100` (integer)
 - **Description**: Testing price with no decimal places
@@ -975,7 +975,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: Medium
 
-### BVA16.3: Price with One Decimal Place (Inside)
+### BVA21.3: Price with One Decimal Place (Inside)
 - **Boundary**: Price with 1 decimal place
 - **Test Value**: Price = `99.9`
 - **Description**: Testing price with one decimal place
@@ -983,7 +983,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product
 - **Priority**: Medium
 
-### BVA16.4: Price with Minimum Decimal Value (Inside)
+### BVA21.4: Price with Minimum Decimal Value (Inside)
 - **Boundary**: Price with smallest decimal increment
 - **Test Value**: Price = `0.01`
 - **Description**: Testing price with the smallest valid decimal value
@@ -995,7 +995,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 
 ## BVA22: Stock Integer Boundaries
 
-### BVA17.1: Stock as Integer Zero (Inside)
+### BVA22.1: Stock as Integer Zero (Inside)
 - **Boundary**: Stock = 0 (valid integer)
 - **Test Value**: Stock = `0`
 - **Description**: Testing stock with exactly zero
@@ -1003,7 +1003,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product, Update Stock
 - **Priority**: High
 
-### BVA17.2: Stock as Integer One (Inside)
+### BVA22.2: Stock as Integer One (Inside)
 - **Boundary**: Stock = 1 (minimum positive integer)
 - **Test Value**: Stock = `1`
 - **Description**: Testing stock with exactly one
@@ -1011,7 +1011,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product, Update Stock
 - **Priority**: High
 
-### BVA17.3: Stock as Negative Integer (Outside)
+### BVA22.3: Stock as Negative Integer (Outside)
 - **Boundary**: Stock = -1 (invalid integer)
 - **Test Value**: Stock = `-1`
 - **Description**: Testing stock with negative integer
@@ -1019,7 +1019,7 @@ Boundary Value Analysis (BVA) is a black-box testing technique that focuses on t
 - **Test Cases**: Create Product, Edit Product, Update Stock
 - **Priority**: High
 
-### BVA17.4: Stock as Decimal (Outside)
+### BVA22.4: Stock as Decimal (Outside)
 - **Boundary**: Stock with decimal value (invalid)
 - **Test Value**: Stock = `10.5`
 - **Description**: Testing stock with decimal value

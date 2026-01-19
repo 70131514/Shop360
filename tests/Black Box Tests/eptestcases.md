@@ -518,7 +518,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP11: AR Camera Permission State
 
-### EP7.1: Camera Permission Granted
+### EP11.1: Camera Permission Granted
 - **Partition**: Camera permission has been granted by user
 - **Description**: User has allowed camera access for AR functionality
 - **Valid Examples**: 
@@ -526,7 +526,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: AR view can initialize, camera feed is displayed, AR tracking begins (ARCore for Android)
 - **Test Cases**: Access AR View, AR Product Preview
 
-### EP7.2: Camera Permission Denied
+### EP11.2: Camera Permission Denied
 - **Partition**: Camera permission has been denied by user
 - **Description**: User has denied camera access
 - **Invalid Examples**: 
@@ -535,7 +535,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: AR view cannot initialize, error message displayed: "Camera permission is required for AR view", user is redirected back
 - **Test Cases**: Access AR View, AR Product Preview
 
-### EP7.3: Camera Permission Not Requested
+### EP11.3: Camera Permission Not Requested
 - **Partition**: Camera permission has not been requested yet
 - **Description**: Permission request dialog has not been shown
 - **Valid Examples**: 
@@ -548,7 +548,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP12: AR Tracking State
 
-### EP8.1: AR Tracking Ready
+### EP12.1: AR Tracking Ready
 - **Partition**: AR tracking is ready and working properly
 - **Description**: AR system has successfully initialized and is tracking the environment
 - **Valid Examples**: 
@@ -557,7 +557,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: AR tracking is active, plane detection works, model placement is enabled
 - **Test Cases**: AR View, AR Model Placement
 
-### EP8.2: AR Tracking Limited
+### EP12.2: AR Tracking Limited
 - **Partition**: AR tracking is limited due to poor conditions
 - **Description**: AR tracking quality is degraded due to environmental factors
 - **Valid Examples**: 
@@ -566,7 +566,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Warning message displayed, plane detection may be less accurate, model placement may be disabled until tracking improves
 - **Test Cases**: AR View, AR Model Placement
 
-### EP8.3: AR Tracking Unavailable
+### EP12.3: AR Tracking Unavailable
 - **Partition**: AR tracking is not available
 - **Description**: AR tracking cannot initialize or has failed
 - **Invalid Examples**: 
@@ -576,7 +576,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Error message displayed, AR view cannot function, user is notified of the issue
 - **Test Cases**: AR View, AR Model Placement
 
-### EP8.4: AR Tracking Unknown
+### EP12.4: AR Tracking Unknown
 - **Partition**: AR tracking state is unknown or initializing
 - **Description**: AR tracking is still initializing or state is not yet determined
 - **Valid Examples**: 
@@ -589,7 +589,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP13: AR Model Loading State
 
-### EP9.1: Model Loaded Successfully
+### EP13.1: Model Loaded Successfully
 - **Partition**: 3D model has been successfully loaded
 - **Description**: Model file downloaded and loaded without errors
 - **Valid Examples**: 
@@ -599,7 +599,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Model is ready for placement, "Place Model" button is enabled, model can be placed in AR space
 - **Test Cases**: AR Model Loading, AR Model Placement
 
-### EP9.2: Model Loading in Progress
+### EP13.2: Model Loading in Progress
 - **Partition**: 3D model is currently being loaded
 - **Description**: Model file is being downloaded or processed
 - **Valid Examples**: 
@@ -608,7 +608,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Loading indicator is displayed, progress is shown, "Place Model" button is disabled
 - **Test Cases**: AR Model Loading
 
-### EP9.3: Model Loading Error
+### EP13.3: Model Loading Error
 - **Partition**: Error occurred while loading 3D model
 - **Description**: Model failed to load due to network error, invalid URL, or corrupted file
 - **Invalid Examples**: 
@@ -617,7 +617,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Error message displayed, retry button shown, model cannot be placed
 - **Test Cases**: AR Model Loading
 
-### EP9.4: Model Not Loaded
+### EP13.4: Model Not Loaded
 - **Partition**: 3D model has not been loaded yet
 - **Description**: Model loading has not started or product has no model
 - **Valid Examples**: 
@@ -630,7 +630,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP14: AR Plane Detection State
 
-### EP10.1: Plane Detected
+### EP14.1: Plane Detected
 - **Partition**: AR system has detected a valid plane/surface
 - **Description**: A suitable surface has been identified for model placement
 - **Valid Examples**: 
@@ -639,7 +639,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Reticle appears on detected surface, "Place Model" button becomes enabled, user can place model
 - **Test Cases**: AR Plane Detection, AR Model Placement
 
-### EP10.2: Plane Detecting
+### EP14.2: Plane Detecting
 - **Partition**: AR system is actively detecting planes
 - **Description**: System is analyzing camera feed to find surfaces
 - **Valid Examples**: 
@@ -648,7 +648,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Reticle appears when potential surface is detected, user is prompted to move camera slowly
 - **Test Cases**: AR Plane Detection
 
-### EP10.3: Plane Not Detected
+### EP14.3: Plane Not Detected
 - **Partition**: No plane/surface has been detected yet
 - **Description**: System has not found a suitable surface for placement
 - **Valid Examples**: 
@@ -657,7 +657,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Reticle is not shown, "Place Model" button is disabled, user is prompted to scan environment
 - **Test Cases**: AR Plane Detection
 
-### EP10.4: Plane Locked
+### EP14.4: Plane Locked
 - **Partition**: Plane detection is locked after model placement
 - **Description**: Plane detection has been locked to prevent jitter after model is placed
 - **Valid Examples**: 
@@ -791,7 +791,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP16: Product Search Input
 
-### EP12.1: Valid Search Term (With Results)
+### EP16.1: Valid Search Term (With Results)
 - **Partition**: Search terms that return matching products
 - **Description**: Search queries that find products in the database
 - **Valid Examples**: 
@@ -802,7 +802,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Search returns matching products successfully
 - **Test Cases**: Search Products
 
-### EP12.2: Valid Search Term (No Results)
+### EP16.2: Valid Search Term (No Results)
 - **Partition**: Search terms that return no matching products
 - **Description**: Search queries that do not find any products
 - **Valid Examples**: 
@@ -811,7 +811,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Search returns empty results with message "No products found"
 - **Test Cases**: Search Products
 
-### EP12.3: Empty Search Term
+### EP16.3: Empty Search Term
 - **Partition**: Empty search query
 - **Description**: No search term provided
 - **Valid Examples**: 
@@ -820,7 +820,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: System displays all products or clears search filter
 - **Test Cases**: Search Products
 
-### EP12.4: Valid Search Term (Special Characters)
+### EP16.4: Valid Search Term (Special Characters)
 - **Partition**: Search terms containing special characters
 - **Description**: Search queries with special characters that are handled properly
 - **Valid Examples**: 
@@ -834,7 +834,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP17: Product Title/Name Input
 
-### EP13.1: Valid Product Title
+### EP17.1: Valid Product Title
 - **Partition**: Valid product titles
 - **Description**: Non-empty product titles
 - **Valid Examples**: 
@@ -844,7 +844,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Product title is accepted and saved successfully
 - **Test Cases**: Create Product, Edit Product
 
-### EP13.2: Invalid Product Title (Empty)
+### EP17.2: Invalid Product Title (Empty)
 - **Partition**: Empty product title field
 - **Description**: No product title provided
 - **Invalid Examples**: 
@@ -857,7 +857,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP18: Product Category Input
 
-### EP14.1: Valid Category (Existing)
+### EP18.1: Valid Category (Existing)
 - **Partition**: Categories that exist in the system
 - **Description**: Categories that are already created
 - **Valid Examples**: 
@@ -867,7 +867,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Category is accepted and product is assigned successfully
 - **Test Cases**: Create Product, Edit Product
 
-### EP14.2: Invalid Category (Non-Existent)
+### EP18.2: Invalid Category (Non-Existent)
 - **Partition**: Categories that do not exist in the system
 - **Description**: Categories that have not been created
 - **Invalid Examples**: 
@@ -876,7 +876,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: System rejects input with error message "Category does not exist" or prompts to create category
 - **Test Cases**: Create Product, Edit Product
 
-### EP14.3: Invalid Category (Empty)
+### EP18.3: Invalid Category (Empty)
 - **Partition**: Empty category field
 - **Description**: No category selected
 - **Invalid Examples**: 
@@ -946,7 +946,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP21: User Role Input
 
-### EP17.1: Valid User Role (User)
+### EP21.1: Valid User Role (User)
 - **Partition**: Valid user role values
 - **Description**: Roles that are valid in the system
 - **Valid Examples**: 
@@ -955,7 +955,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: User role is accepted and updated successfully
 - **Test Cases**: Update User Role
 
-### EP17.2: Invalid User Role (Invalid Value)
+### EP21.2: Invalid User Role (Invalid Value)
 - **Partition**: User role values that are not valid
 - **Description**: Roles that are not in the allowed list
 - **Invalid Examples**: 
@@ -993,7 +993,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP23: Category Name Input
 
-### EP19.1: Valid Category Name
+### EP23.1: Valid Category Name
 - **Partition**: Valid category names
 - **Description**: Non-empty category names
 - **Valid Examples**: 
@@ -1003,7 +1003,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Category name is accepted and category is created successfully
 - **Test Cases**: Create Category, Edit Category
 
-### EP19.2: Invalid Category Name (Empty)
+### EP23.2: Invalid Category Name (Empty)
 - **Partition**: Empty category name field
 - **Description**: No category name provided
 - **Invalid Examples**: 
@@ -1012,7 +1012,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: System rejects input with error message "Category name is required"
 - **Test Cases**: Create Category, Edit Category
 
-### EP19.3: Invalid Category Name (Duplicate)
+### EP23.3: Invalid Category Name (Duplicate)
 - **Partition**: Category names that already exist
 - **Description**: Categories with names that are already in the system
 - **Invalid Examples**: 
@@ -1025,7 +1025,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 
 ## EP24: AR Model Scale Input
 
-### EP20.1: Valid Model Scale (Within Range)
+### EP24.1: Valid Model Scale (Within Range)
 - **Partition**: Model scale values within valid range (0.1 to 10)
 - **Description**: Scale multiplier values that are within acceptable bounds
 - **Valid Examples**: 
@@ -1036,7 +1036,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: Model scale is applied successfully, model size changes accordingly
 - **Test Cases**: AR Model Controls, AR Model Scaling
 
-### EP20.2: Invalid Model Scale (Too Small)
+### EP24.2: Invalid Model Scale (Too Small)
 - **Partition**: Model scale values below minimum (less than 0.1)
 - **Description**: Scale values that are too small
 - **Invalid Examples**: 
@@ -1046,7 +1046,7 @@ Equivalence Partitioning is a black-box testing technique where input data is di
 - **Expected Result**: System clamps scale to minimum (0.1) or rejects input
 - **Test Cases**: AR Model Controls, AR Model Scaling
 
-### EP20.3: Invalid Model Scale (Too Large)
+### EP24.3: Invalid Model Scale (Too Large)
 - **Partition**: Model scale values above maximum (greater than 10)
 - **Description**: Scale values that are too large
 - **Invalid Examples**: 
