@@ -126,6 +126,9 @@
 - FR19.1: View Notifications
 - FR19.2: Mark Notifications as Read
 
+### FR20: Product Reviews
+- **Note**: Product Reviews functionality is not currently implemented in the app. The app has product ratings (0-5) but does not support user-submitted reviews.
+
 ## Non-Functional Requirements
 
 ### NFR1: Performance
