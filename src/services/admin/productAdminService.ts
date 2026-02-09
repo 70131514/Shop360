@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
   writeBatch,
 } from '@react-native-firebase/firestore';
 import { firebaseDb } from '../firebase';
@@ -220,11 +219,11 @@ export async function deleteProduct(id: string): Promise<void> {
 
   // Step 1: Check if product is in any active orders (processing or shipped)
   // We cannot delete products that are in active orders
-  const activeOrdersQuery = query(
-    collectionGroup(firebaseDb, 'orders'),
-    where('status', 'in', ['processing', 'shipped']),
-    limit(1000),
-  );
+  // NOTE:
+  // We intentionally avoid filtered collection-group queries here to prevent
+  // runtime failures when indexes are missing or still building.
+  // For this project scale, we read and filter in memory for reliability.
+  const activeOrdersQuery = query(collectionGroup(firebaseDb, 'orders'), limit(2000));
   const activeOrdersSnap = await getDocs(activeOrdersQuery);
 
   // Check if we hit the limit (potential edge case)
@@ -250,17 +249,19 @@ export async function deleteProduct(id: string): Promise<void> {
   }
 
   // Step 2: Find all users who have this product in their cart (Firestore)
-  const cartsQuery = query(
-    collectionGroup(firebaseDb, 'cart'),
-    where('id', '==', idTrimmed),
-  );
+  // Query all cart docs (index-independent), then filter by product id.
+  const cartsQuery = query(collectionGroup(firebaseDb, 'cart'));
   const cartsSnap = await getDocs(cartsQuery);
 
   // Collect user IDs who have this product in their cart
   const affectedUserIds = new Set<string>();
   const cartDocsToDelete: Array<{ userId: string; productId: string }> = [];
 
-  cartsSnap.docs.forEach((cartDoc) => {
+  cartsSnap.docs.forEach((cartDoc: any) => {
+    const cartData = cartDoc.data() as any;
+    if (String(cartData?.id ?? '') !== idTrimmed) {
+      return;
+    }
     // Extract userId from the document path: users/{userId}/cart/{productId}
     const pathParts = cartDoc.ref.path.split('/');
     if (pathParts.length >= 2 && pathParts[0] === 'users') {
@@ -271,15 +272,17 @@ export async function deleteProduct(id: string): Promise<void> {
   });
 
   // Step 3: Find all users who have this product in their wishlist (Firestore)
-  const wishlistsQuery = query(
-    collectionGroup(firebaseDb, 'wishlist'),
-    where('id', '==', idTrimmed),
-  );
+  // Query all wishlist docs (index-independent), then filter by product id.
+  const wishlistsQuery = query(collectionGroup(firebaseDb, 'wishlist'));
   const wishlistsSnap = await getDocs(wishlistsQuery);
 
   const wishlistDocsToDelete: Array<{ userId: string; productId: string }> = [];
 
-  wishlistsSnap.docs.forEach((wishlistDoc) => {
+  wishlistsSnap.docs.forEach((wishlistDoc: any) => {
+    const wishlistData = wishlistDoc.data() as any;
+    if (String(wishlistData?.id ?? '') !== idTrimmed) {
+      return;
+    }
     // Extract userId from the document path: users/{userId}/wishlist/{productId}
     const pathParts = wishlistDoc.ref.path.split('/');
     if (pathParts.length >= 2 && pathParts[0] === 'users') {

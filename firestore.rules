@@ -104,7 +104,7 @@ service cloud.firestore {
 
       // ✅ Cart subcollection (per-user)
       match /cart/{productId} {
-        allow get, list: if isOwner(uid) && isEmailVerified();
+        allow get, list: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
 
         allow create, update: if isOwner(uid) && isEmailVerified()
           && request.resource.data.keys().hasOnly([
@@ -112,12 +112,12 @@ service cloud.firestore {
           ])
           && request.resource.data.id == productId;
 
-        allow delete: if isOwner(uid) && isEmailVerified();
+        allow delete: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
       }
 
       // ✅ Wishlist subcollection (per-user)
       match /wishlist/{productId} {
-        allow get, list: if isOwner(uid) && isEmailVerified();
+        allow get, list: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
 
         // Create/update wishlist item (only allow safe fields)
         allow create, update: if isOwner(uid) && isEmailVerified()
@@ -127,7 +127,7 @@ service cloud.firestore {
           && request.resource.data.id == productId;
 
         // Remove wishlist item
-        allow delete: if isOwner(uid) && isEmailVerified();
+        allow delete: if (isOwner(uid) && isEmailVerified()) || (isAdmin() && isEmailVerified());
       }
 
       // ✅ Addresses subcollection (per-user)
@@ -450,6 +450,16 @@ service cloud.firestore {
     // Allow admins to query orders collection group (for admin dashboard)
     match /{path=**}/orders/{orderId} {
       allow read: if isAdmin() && isEmailVerified();
+    }
+
+    // Allow admins to query and cleanup cart items across users
+    match /{path=**}/cart/{productId} {
+      allow read, delete: if isAdmin() && isEmailVerified();
+    }
+
+    // Allow admins to query and cleanup wishlist items across users
+    match /{path=**}/wishlist/{productId} {
+      allow read, delete: if isAdmin() && isEmailVerified();
     }
 
     // Everything else locked down
