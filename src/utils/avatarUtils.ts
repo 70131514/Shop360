@@ -4,7 +4,6 @@
  * Avatar ID is synced with Firestore, images are stored locally in AsyncStorage
  */
 
-import { Image } from 'react-native';
 import { AVATAR_SOURCES, type AvatarId, resolveAvatarId } from '../constants/avatars';
 import { getAvatarImage } from './storage';
 
@@ -50,12 +49,14 @@ export async function getAvatarSourceAsync(
 ): Promise<any> {
   // Use fallback if no avatarId provided
   if (!avatarId) {
-    return getAvatarSourceFromStorage(fallbackId) || AVATAR_SOURCES[fallbackId];
+    const storedFallback = await getAvatarSourceFromStorage(fallbackId);
+    return storedFallback ?? AVATAR_SOURCES[fallbackId];
   }
 
   const trimmedId = avatarId.trim() as AvatarId;
   if (!trimmedId || !(trimmedId in AVATAR_SOURCES)) {
-    return getAvatarSourceFromStorage(fallbackId) || AVATAR_SOURCES[fallbackId];
+    const storedFallback = await getAvatarSourceFromStorage(fallbackId);
+    return storedFallback ?? AVATAR_SOURCES[fallbackId];
   }
 
   // Try to load from AsyncStorage first

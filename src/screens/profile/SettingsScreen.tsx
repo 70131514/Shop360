@@ -25,6 +25,7 @@ import {
   getNotificationPreferences,
   clearAllStorage,
 } from '../../utils/storage';
+import { clearAvatarCache } from '../../utils/avatarUtils';
 import { PermissionsAndroid } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
 
@@ -209,6 +210,8 @@ const SettingsScreen = () => {
             try {
               setIsClearing(true);
               await clearAllStorage();
+              // Clear in-memory caches too (AsyncStorage.clear() won't touch these).
+              clearAvatarCache();
               alert('Success', 'Cache cleared successfully');
             } catch (error) {
               console.error('Clear cache error:', error);

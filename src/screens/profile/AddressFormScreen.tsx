@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppAlert } from '../../contexts/AppAlertContext';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import Geolocation from 'react-native-geolocation-service';
 import { addAddress, updateAddress, type Address } from '../../services/addressService';
 
@@ -37,31 +37,37 @@ const AddressFormScreen = () => {
   const [isDefault, setIsDefault] = useState(editingAddress?.isDefault || false);
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [latitude, setLatitude] = useState<number | null>(editingAddress?.latitude || 31.5204); // Default to Lahore
-  const [longitude, setLongitude] = useState<number | null>(editingAddress?.longitude || 74.3587);
+  // Location is required for new addresses, so don't default to a random city.
+  const [latitude, setLatitude] = useState<number | null>(editingAddress?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(editingAddress?.longitude ?? null);
   const [locationStatus, setLocationStatus] = useState<string>('');
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [locationServicesEnabledInApp, setLocationServicesEnabledInApp] = useState(true);
+
+  const refreshLocationGate = useCallback(async () => {
+    try {
+      const { getNotificationPreferences } = await import('../../utils/storage');
+      const preferences = await getNotificationPreferences();
+      const enabled = preferences?.locationServices !== false;
+      setLocationServicesEnabledInApp(enabled);
+
+      if (!enabled) {
+        setLocationStatus('Location services disabled in settings');
+        setHasLocationPermission(false);
+        return;
+      }
+      // Only request permission if location services are enabled
+      await requestLocationPermission();
+    } catch (error) {
+      // If we can't check preferences, try to request permission anyway
+      setLocationServicesEnabledInApp(true);
+      await requestLocationPermission();
+    }
+  }, []);
 
   // Check location services setting and request permission on mount
   useEffect(() => {
-    const checkLocationServices = async () => {
-      try {
-        const { getNotificationPreferences } = await import('../../utils/storage');
-        const preferences = await getNotificationPreferences();
-        if (preferences && preferences.locationServices === false) {
-          setLocationStatus('Location services disabled in settings');
-          setHasLocationPermission(false);
-        } else {
-          // Only request permission if location services are enabled
-          await requestLocationPermission();
-        }
-      } catch (error) {
-        // If we can't check preferences, try to request permission anyway
-        await requestLocationPermission();
-      }
-    };
-    checkLocationServices();
-
+    refreshLocationGate();
     return () => {
       // Cleanup: stop watching location when component unmounts
       const watchId = watchIdRef.current;
@@ -72,6 +78,14 @@ const AddressFormScreen = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep in sync when returning from Settings screen.
+  useFocusEffect(
+    useCallback(() => {
+      refreshLocationGate();
+      return undefined;
+    }, [refreshLocationGate]),
+  );
 
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
@@ -310,6 +324,44 @@ const AddressFormScreen = () => {
   };
 
   const handleSave = async () => {
+    // Location is required for new delivery addresses.
+    if (!editingAddress) {
+      if (!locationServicesEnabledInApp) {
+        alert(
+          'Location required',
+          'Please enable Location Services in Profile > Settings to add a new delivery address.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => navigation.navigate('Settings'),
+            },
+          ],
+        );
+        return;
+      }
+
+      if (!hasLocationPermission) {
+        const ok = await requestLocationPermission();
+        if (!ok) {
+          setLocationStatus('Permission denied');
+          alert(
+            'Location required',
+            'Please allow location permission to add a new delivery address.',
+          );
+          return;
+        }
+      }
+
+      if (latitude == null || longitude == null) {
+        alert(
+          'Location required',
+          'Please tap "Get Current Location" to set your delivery location before saving.',
+        );
+        return;
+      }
+    }
+
     if (
       !name.trim() ||
       !street.trim() ||
@@ -378,7 +430,7 @@ const AddressFormScreen = () => {
           <TouchableOpacity
             style={[styles.locationButton, { backgroundColor: colors.primary }]}
             onPress={getCurrentLocation}
-            disabled={gettingLocation}
+            disabled={gettingLocation || !locationServicesEnabledInApp}
           >
             {gettingLocation ? (
               <ActivityIndicator size="small" color={colors.background} />
@@ -386,7 +438,11 @@ const AddressFormScreen = () => {
               <Ionicons name="navigate" size={20} color={colors.background} />
             )}
             <Text style={[styles.locationButtonText, { color: colors.background }]}>
-              {gettingLocation ? 'Locating...' : 'Get Current Location'}
+              {gettingLocation
+                ? 'Locating...'
+                : !locationServicesEnabledInApp
+                ? 'Enable Location Services in Settings'
+                : 'Get Current Location'}
             </Text>
           </TouchableOpacity>
 
@@ -411,6 +467,21 @@ const AddressFormScreen = () => {
             </View>
           )}
 
+          {!locationServicesEnabledInApp && (
+            <TouchableOpacity
+              style={[
+                styles.permissionPrompt,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Ionicons name="settings-outline" size={20} color={colors.primary} />
+              <Text style={[styles.permissionText, { color: colors.text }]}>
+                Location Services are disabled. Tap to enable.
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {!hasLocationPermission && (
             <TouchableOpacity
               style={[
@@ -418,6 +489,7 @@ const AddressFormScreen = () => {
                 { backgroundColor: colors.background, borderColor: colors.border },
               ]}
               onPress={requestLocationPermission}
+              disabled={!locationServicesEnabledInApp}
             >
               <Ionicons name="location-outline" size={20} color={colors.primary} />
               <Text style={[styles.permissionText, { color: colors.text }]}>

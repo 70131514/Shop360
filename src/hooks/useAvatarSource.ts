@@ -4,7 +4,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getAvatarSourceAsync, getAvatarSourceForUserAsync } from '../utils/avatarUtils';
+import {
+  getAvatarSource,
+  getAvatarSourceAsync,
+  getAvatarSourceForUser,
+  getAvatarSourceForUserAsync,
+} from '../utils/avatarUtils';
 import type { AvatarId } from '../constants/avatars';
 
 /**
@@ -17,13 +22,19 @@ export function useAvatarSource(
   avatarId: string | null | undefined,
   fallbackId: AvatarId = 'user',
 ): any {
-  const [source, setSource] = useState<any>(null);
+  // Always start with bundled asset so UI never renders blank.
+  const [source, setSource] = useState<any>(() => getAvatarSource(avatarId, fallbackId));
 
   useEffect(() => {
     let mounted = true;
 
     const loadAvatar = async () => {
       try {
+        // Immediately set bundled fallback for this render cycle.
+        if (mounted) {
+          setSource(getAvatarSource(avatarId, fallbackId));
+        }
+
         const avatarSource = await getAvatarSourceAsync(avatarId, fallbackId);
         if (mounted) {
           setSource(avatarSource);
@@ -32,7 +43,6 @@ export function useAvatarSource(
         console.error('Error loading avatar:', error);
         // Fallback to bundled asset
         if (mounted) {
-          const { getAvatarSource } = require('../utils/avatarUtils');
           setSource(getAvatarSource(avatarId, fallbackId));
         }
       }
@@ -58,13 +68,19 @@ export function useAvatarSourceForUser(params: {
   isGuest: boolean;
   isAdmin: boolean;
 }): any {
-  const [source, setSource] = useState<any>(null);
+  // Always start with bundled asset so UI never renders blank.
+  const [source, setSource] = useState<any>(() => getAvatarSourceForUser(params));
 
   useEffect(() => {
     let mounted = true;
 
     const loadAvatar = async () => {
       try {
+        // Immediately set bundled fallback for this render cycle.
+        if (mounted) {
+          setSource(getAvatarSourceForUser(params));
+        }
+
         const avatarSource = await getAvatarSourceForUserAsync(params);
         if (mounted) {
           setSource(avatarSource);
@@ -73,7 +89,6 @@ export function useAvatarSourceForUser(params: {
         console.error('Error loading avatar for user:', error);
         // Fallback to bundled asset
         if (mounted) {
-          const { getAvatarSourceForUser } = require('../utils/avatarUtils');
           setSource(getAvatarSourceForUser(params));
         }
       }

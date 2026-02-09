@@ -136,67 +136,24 @@ const ProfileScreen = () => {
     };
   }, [user]);
 
-  const allMenuItems: MenuItem[] = [
-    {
-      icon: 'person-outline',
-      title: 'Personal Information',
-      subtitle: 'Update your profile details',
-      route: 'PersonalInfo',
-    },
-    {
-      icon: 'image-outline',
-      title: 'Avatar',
-      subtitle: 'Choose or update your avatar',
-      route: 'AvatarPicker',
-    },
-    {
-      icon: 'location-outline',
-      title: 'Shipping Addresses',
-      subtitle: 'Manage your delivery addresses',
-      route: 'ShippingAddresses',
-    },
-    {
-      icon: 'card-outline',
-      title: 'Payment Methods',
-      subtitle: 'Manage your payment options',
-      route: 'PaymentMethods',
-    },
-    {
-      icon: 'heart-outline',
-      title: 'Wishlist',
-      subtitle: 'View your saved items',
-      route: 'Wishlist',
-    },
-    {
-      icon: 'time-outline',
-      title: 'Order History',
-      subtitle: 'View your past orders',
-      route: 'Orders',
-    },
-    {
-      icon: 'notifications-outline',
-      title: 'Notifications',
-      subtitle: 'Manage your notifications',
-      route: 'Notifications',
-    },
-    {
-      icon: 'settings-outline',
-      title: 'Settings',
-      subtitle: 'App preferences and settings',
-      route: 'Settings',
-    },
-    {
-      icon: 'help-circle-outline',
-      title: 'Help & Support',
-      subtitle: 'Get help and contact support',
-      route: 'HelpSupport',
-    },
+  const accountItems: MenuItem[] = [
+    { icon: 'person-outline', title: 'Personal Information', subtitle: 'Update your profile details', route: 'PersonalInfo' },
+    { icon: 'image-outline', title: 'Avatar', subtitle: 'Choose or update your avatar', route: 'AvatarPicker' },
+    { icon: 'location-outline', title: 'Shipping Addresses', subtitle: 'Manage your delivery addresses', route: 'ShippingAddresses' },
+    { icon: 'card-outline', title: 'Payment Methods', subtitle: 'Manage your payment options', route: 'PaymentMethods' },
   ];
 
-  // Filter menu items based on guest mode and admin status
-  // Guests can only see: Settings
-  // Admins should not see: Shipping Addresses, Payment Methods, Wishlist, Order History, Notifications, Help & Support
-  // All other items require authentication
+  const preferenceItems: MenuItem[] = [
+    { icon: 'heart-outline', title: 'Wishlist', subtitle: 'View your saved items', route: 'Wishlist' },
+    { icon: 'time-outline', title: 'Order History', subtitle: 'View your past orders', route: 'Orders' },
+    { icon: 'notifications-outline', title: 'Notifications', subtitle: 'Manage your notifications', route: 'Notifications' },
+    { icon: 'settings-outline', title: 'Settings', subtitle: 'App preferences and settings', route: 'Settings' },
+  ];
+
+  const helpItems: MenuItem[] = [
+    { icon: 'help-circle-outline', title: 'Help & Support', subtitle: 'Get help and contact support', route: 'HelpSupport' },
+  ];
+
   const guestAllowedRoutes = new Set(['Settings']);
   const adminExcludedRoutes = new Set([
     'ShippingAddresses',
@@ -207,11 +164,16 @@ const ProfileScreen = () => {
     'HelpSupport',
   ]);
 
-  const menuItems = isGuest
-    ? allMenuItems.filter((item) => guestAllowedRoutes.has(item.route))
-    : isAdmin
-    ? allMenuItems.filter((item) => !adminExcludedRoutes.has(item.route))
-    : allMenuItems;
+  const filterItems = (items: MenuItem[]) =>
+    isGuest
+      ? items.filter((item) => guestAllowedRoutes.has(item.route))
+      : isAdmin
+      ? items.filter((item) => !adminExcludedRoutes.has(item.route))
+      : items;
+
+  const accountFiltered = filterItems(accountItems);
+  const preferenceFiltered = filterItems(preferenceItems);
+  const helpFiltered = filterItems(helpItems);
 
   const handleLogout = async () => {
     if (loggingOut) {
@@ -550,28 +512,83 @@ const ProfileScreen = () => {
         )}
 
         <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.menuItem, { backgroundColor: colors.surface }]}
-              onPress={() => {
-                handleMenuPress(item.route);
-              }}
-            >
-              <View style={styles.menuItemLeft}>
-                <View style={[styles.menuIconContainer, { backgroundColor: colors.background }]}>
-                  <Ionicons name={item.icon} size={20} color={colors.icon} />
-                </View>
-                <View style={styles.menuItemText}>
-                  <Text style={[styles.menuItemTitle, { color: colors.text }]}>{item.title}</Text>
-                  <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>
-                    {item.subtitle}
-                  </Text>
-                </View>
+          {accountFiltered.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
+              <View style={styles.sectionItems}>
+                {accountFiltered.map((item, index) => (
+                  <TouchableOpacity
+                    key={`account-${index}`}
+                    style={[styles.menuItem, { backgroundColor: colors.surface }]}
+                    onPress={() => handleMenuPress(item.route)}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuIconContainer, { backgroundColor: colors.background }]}>
+                        <Ionicons name={item.icon as any} size={20} color={colors.icon} />
+                      </View>
+                      <View style={styles.menuItemText}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text }]}>{item.title}</Text>
+                        <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
+            </View>
+          )}
+
+          {preferenceFiltered.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Preferences</Text>
+              <View style={styles.sectionItems}>
+                {preferenceFiltered.map((item, index) => (
+                  <TouchableOpacity
+                    key={`pref-${index}`}
+                    style={[styles.menuItem, { backgroundColor: colors.surface }]}
+                    onPress={() => handleMenuPress(item.route)}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuIconContainer, { backgroundColor: colors.background }]}>
+                        <Ionicons name={item.icon as any} size={20} color={colors.icon} />
+                      </View>
+                      <View style={styles.menuItemText}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text }]}>{item.title}</Text>
+                        <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {helpFiltered.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Help & Support</Text>
+              <View style={styles.sectionItems}>
+                {helpFiltered.map((item, index) => (
+                  <TouchableOpacity
+                    key={`help-${index}`}
+                    style={[styles.menuItem, { backgroundColor: colors.surface }]}
+                    onPress={() => handleMenuPress(item.route)}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuIconContainer, { backgroundColor: colors.background }]}>
+                        <Ionicons name={item.icon as any} size={20} color={colors.icon} />
+                      </View>
+                      <View style={styles.menuItemText}>
+                        <Text style={[styles.menuItemTitle, { color: colors.text }]}>{item.title}</Text>
+                        <Text style={[styles.menuItemSubtitle, { color: colors.textSecondary }]}>{item.subtitle}</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -669,7 +686,20 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     paddingHorizontal: 20,
-    gap: 12,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+  sectionItems: {
+    gap: 10,
   },
   menuItem: {
     flexDirection: 'row',
