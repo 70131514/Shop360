@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dimensions,
   ScrollView,
@@ -18,12 +18,18 @@ import { ThemedText } from '../../components/ThemedText';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAppAlert } from '../../contexts/AppAlertContext';
 import {
   subscribeFeaturedProducts,
   subscribeNewArrivals,
   subscribeBestSellers,
   type StoreProduct,
 } from '../../services/productCatalogService';
+import {
+  subscribeNotifications,
+  subscribeUnreadNotificationCount,
+  type Notification,
+} from '../../services/notificationService';
 import { getAvatarSourceForUser } from '../../utils/avatarUtils';
 
 // Define types for props
@@ -137,12 +143,16 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user, profile, isAdmin } = useAuth();
+  const { alert } = useAppAlert();
   const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [newArrivals, setNewArrivals] = useState<StoreProduct[]>([]);
   const [loadingNewArrivals, setLoadingNewArrivals] = useState(true);
   const [bestSellers, setBestSellers] = useState<StoreProduct[]>([]);
   const [loadingBestSellers, setLoadingBestSellers] = useState(true);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set());
+  const notificationsInitializedRef = useRef(false);
 
   // Get avatar source for the user
   const avatarSource = getAvatarSourceForUser({
@@ -196,6 +206,57 @@ export default function HomeScreen() {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    if (!user || !user.emailVerified) {
+      setUnreadNotificationCount(0);
+      return;
+    }
+    const unsub = subscribeUnreadNotificationCount(
+      (count) => setUnreadNotificationCount(count),
+      () => setUnreadNotificationCount(0),
+    );
+    return unsub;
+  }, [user?.uid, user?.emailVerified]);
+
+  useEffect(() => {
+    if (!user || !user.emailVerified) {
+      knownNotificationIdsRef.current = new Set();
+      notificationsInitializedRef.current = false;
+      return;
+    }
+
+    const unsub = subscribeNotifications(
+      (notifications) => {
+        const currentIds = new Set(notifications.map((n) => n.id));
+
+        if (!notificationsInitializedRef.current) {
+          knownNotificationIdsRef.current = currentIds;
+          notificationsInitializedRef.current = true;
+          return;
+        }
+
+        const incoming = notifications.find(
+          (n: Notification) => !knownNotificationIdsRef.current.has(n.id) && !n.read,
+        );
+
+        if (incoming) {
+          alert(incoming.title || 'New notification', incoming.message || 'You have a new update.', [
+            { text: 'Later', style: 'cancel' },
+            {
+              text: 'View',
+              onPress: () => navigation.navigate('Notifications'),
+            },
+          ]);
+        }
+
+        knownNotificationIdsRef.current = currentIds;
+      },
+      () => {},
+    );
+
+    return unsub;
+  }, [user?.uid, user?.emailVerified, alert, navigation]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
@@ -234,6 +295,14 @@ export default function HomeScreen() {
               activeOpacity={0.7}
             >
               <Image source={avatarSource} style={styles.avatarImage} />
+              {unreadNotificationCount > 0 && (
+                <View style={[styles.alertBadge, { backgroundColor: '#FF3B30' }]}>
+                  <Ionicons name="notifications" size={10} color="#FFFFFF" />
+                  <ThemedText style={styles.alertBadgeText}>
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </ThemedText>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -487,6 +556,26 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+  },
+  alertBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 2,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  alertBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   bannerContainer: {
     marginHorizontal: 20,

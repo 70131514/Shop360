@@ -8,7 +8,13 @@ service cloud.firestore {
     }
 
     function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn() && (
+        request.auth.token.email_verified == true
+        || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isEmailVerified == true
+        )
+      );
     }
 
     function isOwner(uid) {
@@ -39,43 +45,58 @@ service cloud.firestore {
       // Admins can read any user profile
       allow get: if isAdmin() && isEmailVerified();
 
-      function profileKeysOk() {
-        return request.resource.data.keys().hasOnly(['uid','name','email','role','avatarId','isEmailVerified','createdAt']);
-      }
-
-      function profileBaseUnchanged() {
-        return request.resource.data.uid == resource.data.uid
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.createdAt == resource.data.createdAt;
-      }
-
-      // Normal profile updates (e.g., name) only after email verification
+      // Normal owner profile edits after verification (name/avatar only).
+      // Uses diff-based checks so legacy/extra fields in docs won't break updates.
       function safeVerifiedProfileUpdate() {
-        return isEmailVerified()
-          && profileKeysOk()
-          && profileBaseUnchanged()
+        return isOwner(uid)
+          && isEmailVerified()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.email == resource.data.email
-          && request.resource.data.isEmailVerified == resource.data.isEmailVerified;
+          && request.resource.data.isEmailVerified == resource.data.isEmailVerified
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'avatarId'])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name'])
+            || (request.resource.data.name is string && request.resource.data.name.size() > 0)
+          )
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['avatarId'])
+            || request.resource.data.avatarId is string
+          );
       }
 
       // Allow flipping Firestore flag false -> true after email verification (best-effort sync)
       function verifyFlagUpdate() {
-        return isEmailVerified()
-          && profileKeysOk()
-          && profileBaseUnchanged()
+        return isOwner(uid)
+          && isEmailVerified()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isEmailVerified'])
           && request.resource.data.email == resource.data.email
           && resource.data.isEmailVerified == false
-          && request.resource.data.isEmailVerified == true
-          && request.resource.data.name == resource.data.name;
+          && request.resource.data.isEmailVerified == true;
       }
 
       // Allow changing email in Firestore immediately after Firebase Auth `updateEmail()`.
       // At this point, `request.auth.token.email` is the NEW email but `email_verified` is false.
       function emailChangeUpdate() {
         return isOwner(uid)
-          && profileKeysOk()
-          && profileBaseUnchanged()
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.name == resource.data.name
+          && (
+            request.resource.data.keys().hasAny(['avatarId']) == resource.data.keys().hasAny(['avatarId'])
+          )
+          && (
+            !request.resource.data.keys().hasAny(['avatarId'])
+            || request.resource.data.avatarId == resource.data.avatarId
+          )
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email', 'isEmailVerified'])
           && resource.data.isEmailVerified == true
           && request.resource.data.isEmailVerified == false
           && request.resource.data.email == request.auth.token.email
@@ -92,7 +113,14 @@ service cloud.firestore {
         && request.resource.data.email == resource.data.email
         && request.resource.data.isEmailVerified == resource.data.isEmailVerified
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.avatarId == resource.data.avatarId
+        // avatarId may be absent on legacy docs; if present on either side, it must be unchanged
+        && (
+          request.resource.data.keys().hasAny(['avatarId']) == resource.data.keys().hasAny(['avatarId'])
+        )
+        && (
+          !request.resource.data.keys().hasAny(['avatarId'])
+          || request.resource.data.avatarId == resource.data.avatarId
+        )
         && request.resource.data.role is string
         && request.resource.data.role != resource.data.role;
 
@@ -235,9 +263,9 @@ service cloud.firestore {
         // Users can only read/list their own notifications (must be verified)
         allow get, list: if isOwner(uid) && isEmailVerified();
 
-        // System can create notifications for users (via admin or server-side)
-        // Users cannot create their own notifications
-        allow create: if isAdmin() && isEmailVerified()
+        // System (admin) or owner can create notifications.
+        // Owner create is needed for in-app order placement notification writes.
+        allow create: if isEmailVerified()
           && request.resource.data.keys().hasOnly([
             'title',
             'message',
@@ -250,7 +278,8 @@ service cloud.firestore {
           && request.resource.data.message is string
           && request.resource.data.type in ['product_removed', 'order_update', 'promotion', 'general']
           && request.resource.data.read is bool
-          && request.resource.data.read == false;
+          && request.resource.data.read == false
+          && (isAdmin() || isOwner(uid));
 
         // Users can update their own notifications (mark as read)
         allow update: if isOwner(uid) && isEmailVerified()
@@ -394,11 +423,14 @@ service cloud.firestore {
     // ✅ Role assignments collection (pre-assigned roles by email)
     match /roleAssignments/{email} {
       // Admins manage assignments
-      allow create, delete, list: if isAdmin() && isEmailVerified();
+      allow create, update: if isAdmin() && isEmailVerified()
+        && request.resource.data.keys().hasOnly(['email','role','assignedAt'])
+        && request.resource.data.email is string
+        && request.resource.data.role in ['admin','user'];
+      allow delete, list: if isAdmin() && isEmailVerified();
       // Users can read ONLY their own assignment doc (docId == their auth email)
       // This enables signup to apply pre-assigned roles safely.
       allow get: if isSignedIn() && request.auth.token.email == email;
-      allow update: if false; // Role assignments are immutable, delete and recreate to change
     }
 
     // ✅ Tickets collection (support inquiries)

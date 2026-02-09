@@ -115,12 +115,14 @@ const NotificationsScreen = () => {
   };
 
   const handleNotificationPress = async (notification: Notification) => {
-    if (!notification.read) {
-      try {
+    try {
+      if (!notification.read) {
         await markNotificationAsRead(notification.id);
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
       }
+      // Remove notifications once they are seen/opened.
+      await deleteNotification(notification.id);
+    } catch (error) {
+      console.error('Failed to handle notification open:', error);
     }
   };
 

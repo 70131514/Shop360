@@ -297,35 +297,38 @@ export const signUp = async (
   role: string = 'user',
 ): Promise<FirebaseAuthTypes.UserCredential> => {
   try {
-    // Check for pre-assigned role by email
-    let finalRole = role;
-    try {
-      const normalizedEmail = email.trim().toLowerCase();
-      // Assignments are stored at roleAssignments/{email} where docId is normalized email.
-      const snap = await getDoc(doc(firebaseDb, 'roleAssignments', normalizedEmail));
-      if (snap.exists()) {
-        const assignedRole = (snap.data() as any)?.role;
-        if (assignedRole) {
-          finalRole = assignedRole;
-        }
-        // Do not delete from client (admins manage cleanup); avoids permission issues.
-      }
-    } catch (error) {
-      // If role assignment check fails, continue with default role
-      console.warn('Failed to check role assignment:', error);
-    }
-
     // 1. Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
     const { uid } = userCredential.user;
+    const authEmail = String(userCredential.user.email ?? email).trim();
 
     try {
+      // 2. Resolve pre-assigned role (now signed in, so rules can allow get)
+      let finalRole = role;
+      try {
+        // Try exact email key first (matches rules), then lowercase fallback for legacy docs.
+        const exactSnap = await getDoc(doc(firebaseDb, 'roleAssignments', authEmail));
+        const normalizedEmail = authEmail.toLowerCase();
+        const normalizedSnap =
+          !exactSnap.exists() && normalizedEmail !== authEmail
+            ? await getDoc(doc(firebaseDb, 'roleAssignments', normalizedEmail))
+            : null;
+
+        const assignment = exactSnap.exists() ? exactSnap.data() : normalizedSnap?.data();
+        const assignedRole = assignment?.role;
+        if (assignedRole === 'admin' || assignedRole === 'user') {
+          finalRole = assignedRole;
+        }
+      } catch (error) {
+        // If role assignment check fails, continue with default role
+        console.warn('Failed to check role assignment:', error);
+      }
+
       // 2. Update display name in Auth
       await updateProfile(userCredential.user, { displayName: name });
 
       // 3. Create user document in Firestore
       // Use the email from Auth to match rules like `request.auth.token.email`
-      const authEmail = userCredential.user.email ?? email;
       await setDoc(doc(firebaseDb, 'users', uid), {
         uid,
         name,
