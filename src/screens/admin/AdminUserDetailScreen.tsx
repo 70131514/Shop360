@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-  TextInput,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,20 +25,30 @@ import type { Ticket } from '../../services/ticketService';
 
 export default function AdminUserDetailScreen() {
   const { colors } = useTheme();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: authUser } = useAuth();
   const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const userId = route.params?.userId;
 
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<(AdminUserRow & { createdAt?: any }) | null>(null);
-  const [roleInput, setRoleInput] = useState('');
+  const [user, setUser] = useState<
+    (AdminUserRow & { createdAt?: any; isEmailVerified?: boolean }) | null
+  >(null);
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'user'>('user');
   const [updating, setUpdating] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [loadingTickets, setLoadingTickets] = useState(true);
+  const isEditingOwnAccount =
+    !!user &&
+    !!authUser &&
+    (authUser.uid === user.uid ||
+      (authUser.email ?? '').trim().toLowerCase() === (user.email ?? '').trim().toLowerCase());
+  const hasValidEmail = !!user?.email?.trim();
+  const isVerifiedUser = user?.isEmailVerified === true;
+  const canShowRoleToggle = !!user && hasValidEmail && isVerifiedUser && !isEditingOwnAccount;
 
   useEffect(() => {
     if (!isAdmin || !userId) {
@@ -52,7 +61,7 @@ export default function AdminUserDetailScreen() {
         const userData = await getUserByUid(userId);
         setUser(userData);
         if (userData) {
-          setRoleInput(userData.role || 'user');
+          setSelectedRole(userData.role === 'admin' ? 'admin' : 'user');
         }
 
         // Load addresses
@@ -85,25 +94,71 @@ export default function AdminUserDetailScreen() {
     loadUser();
   }, [userId, isAdmin]);
 
-  const handleUpdateRole = async () => {
-    if (!user || !roleInput.trim()) {
-      alert('Error', 'Please enter a valid role.');
+  const updateRoleConfirmed = async () => {
+    if (!user) {
       return;
     }
-
     setUpdating(true);
     try {
-      await updateUserRole(user.uid, roleInput.trim());
-      // Reload user data
+      await updateUserRole(user.uid, selectedRole);
       const updatedUser = await getUserByUid(user.uid);
       setUser(updatedUser);
-      alert('Success', 'User role updated successfully.');
+      if (updatedUser) {
+        setSelectedRole(updatedUser.role === 'admin' ? 'admin' : 'user');
+      }
+      alert('Success', `Role updated to ${selectedRole.toUpperCase()}.`);
     } catch (error: any) {
       console.error('Failed to update role:', error);
       alert('Error', error?.message || 'Failed to update user role.');
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleUpdateRole = () => {
+    if (!user) {
+      alert('Error', 'User not found.');
+      return;
+    }
+
+    if (!user.email?.trim()) {
+      alert('Email missing', 'This user has no valid email address, so role cannot be changed.');
+      return;
+    }
+
+    if (!user.isEmailVerified) {
+      alert(
+        'Email not verified',
+        'This user must verify their email before their role can be changed.',
+      );
+      return;
+    }
+
+    const currentRole = user.role === 'admin' ? 'admin' : 'user';
+    if (selectedRole === currentRole) {
+      return;
+    }
+    if (selectedRole === 'user' && isEditingOwnAccount) {
+      alert(
+        'Action not allowed',
+        'You cannot change your own role from ADMIN to USER. Ask another admin to do this if needed.',
+      );
+      return;
+    }
+
+    alert(
+      'Confirm role change',
+      `Change role for ${user.email} from ${currentRole.toUpperCase()} to ${selectedRole.toUpperCase()}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            void updateRoleConfirmed();
+          },
+        },
+      ],
+    );
   };
 
   const formatDate = (timestamp: any) => {
@@ -220,6 +275,17 @@ export default function AdminUserDetailScreen() {
               </Text>
             </View>
           </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>Email Verified</Text>
+            <Text
+              style={[
+                styles.value,
+                { color: user.isEmailVerified ? colors.primary : colors.textSecondary },
+              ]}
+            >
+              {user.isEmailVerified ? 'Yes' : 'No'}
+            </Text>
+          </View>
           {user.createdAt && (
             <View style={styles.infoRow}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>Account Created</Text>
@@ -317,49 +383,93 @@ export default function AdminUserDetailScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Update Role</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Role Access</Text>
           <Text style={[styles.sectionHint, { color: colors.textSecondary }]}>
-            Change the user's role (e.g., 'user', 'admin', 'moderator')
+            Choose one role and confirm. Roles are synced to Firebase immediately.
           </Text>
 
-          <View style={styles.roleInputContainer}>
-            <TextInput
+          {canShowRoleToggle ? (
+            <View style={styles.roleInputContainer}>
+              <View
+                style={[
+                  styles.toggleContainer,
+                  {
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                {(['user', 'admin'] as const).map((role) => {
+                  const isSelected = selectedRole === role;
+                  return (
+                    <TouchableOpacity
+                      key={role}
+                      activeOpacity={0.85}
+                      disabled={updating}
+                      onPress={() => setSelectedRole(role)}
+                      style={[
+                        styles.toggleOption,
+                        {
+                          backgroundColor: isSelected ? colors.primary : colors.background,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.toggleOptionText,
+                          { color: isSelected ? colors.background : colors.text },
+                        ]}
+                      >
+                        {role.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                onPress={handleUpdateRole}
+                disabled={
+                  updating || selectedRole === (user.role === 'admin' ? 'admin' : 'user')
+                }
+                style={[
+                  styles.updateButton,
+                  {
+                    backgroundColor:
+                      updating || selectedRole === (user.role === 'admin' ? 'admin' : 'user')
+                        ? colors.border
+                        : colors.primary,
+                  },
+                ]}
+              >
+                {updating ? (
+                  <ActivityIndicator size="small" color={colors.background} />
+                ) : (
+                  <Text style={[styles.updateButtonText, { color: colors.background }]}>
+                    Save Role
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View
               style={[
-                styles.roleInput,
+                styles.roleGuardNote,
                 {
                   backgroundColor: colors.background,
-                  color: colors.text,
                   borderColor: colors.border,
                 },
               ]}
-              placeholder="Enter role"
-              placeholderTextColor={colors.textSecondary}
-              value={roleInput}
-              onChangeText={setRoleInput}
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              onPress={handleUpdateRole}
-              disabled={updating || roleInput.trim() === (user.role || 'user')}
-              style={[
-                styles.updateButton,
-                {
-                  backgroundColor:
-                    updating || roleInput.trim() === (user.role || 'user')
-                      ? colors.border
-                      : colors.primary,
-                },
-              ]}
             >
-              {updating ? (
-                <ActivityIndicator size="small" color={colors.background} />
-              ) : (
-                <Text style={[styles.updateButtonText, { color: colors.background }]}>
-                  Update
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              <Text style={[styles.roleGuardTitle, { color: colors.text }]}>Role change unavailable</Text>
+              <Text style={[styles.roleGuardText, { color: colors.textSecondary }]}>
+                {!hasValidEmail
+                  ? 'Guest account detected. Guests must register and verify their email before they can be assigned as ADMIN.'
+                  : !isVerifiedUser
+                  ? 'This account is not email-verified. Only verified users can be assigned as ADMIN.'
+                  : 'You cannot change your own ADMIN status.'}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -413,11 +523,38 @@ const styles = StyleSheet.create({
   roleInputContainer: {
     gap: 12,
   },
-  roleInput: {
+  toggleContainer: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 4,
+    gap: 8,
+  },
+  toggleOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleOptionText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  roleGuardNote: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    fontSize: 14,
+    gap: 6,
+  },
+  roleGuardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  roleGuardText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   updateButton: {
     padding: 14,

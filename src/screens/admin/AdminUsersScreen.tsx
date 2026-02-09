@@ -6,7 +6,6 @@ import {
   View,
   TouchableOpacity,
   TextInput,
-  ScrollView,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,23 +15,17 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import {
   subscribeAllUsers,
-  assignRoleByEmail,
   type AdminUserRow,
 } from '../../services/admin/adminService';
 import { subscribeUnreadTicketCount } from '../../services/ticketService';
-import { useAppAlert } from '../../contexts/AppAlertContext';
 
 export default function AdminUsersScreen() {
   const { colors } = useTheme();
   const { isAdmin } = useAuth();
-  const { alert } = useAppAlert();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [assignEmail, setAssignEmail] = useState('');
-  const [assignRole, setAssignRole] = useState('');
-  const [assigning, setAssigning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -58,30 +51,6 @@ export default function AdminUsersScreen() {
     );
     return unsub;
   }, [isAdmin]);
-
-  const handleAssignRole = async () => {
-    if (!assignEmail.trim()) {
-      alert('Error', 'Please enter an email address.');
-      return;
-    }
-    if (!assignRole.trim()) {
-      alert('Error', 'Please enter a role.');
-      return;
-    }
-
-    setAssigning(true);
-    try {
-      await assignRoleByEmail(assignEmail.trim(), assignRole.trim());
-      setAssignEmail('');
-      setAssignRole('');
-      alert('Success', 'Role assigned successfully. The user will have this role when they sign up or log in.');
-    } catch (error: any) {
-      console.error('Failed to assign role:', error);
-      alert('Error', error?.message || 'Failed to assign role. Please try again.');
-    } finally {
-      setAssigning(false);
-    }
-  };
 
   // Filter users based on search query (by email, name, or ID)
   const filteredUsers = React.useMemo(() => {
@@ -128,62 +97,10 @@ export default function AdminUsersScreen() {
           </TouchableOpacity>
 
           <View style={[styles.roleAssignmentCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.roleAssignmentTitle, { color: colors.text }]}>Assign Role by Email</Text>
+            <Text style={[styles.roleAssignmentTitle, { color: colors.text }]}>Role Management</Text>
             <Text style={[styles.roleAssignmentHint, { color: colors.textSecondary }]}>
-              Assign a role to a user by email. If the user doesn't exist yet, the role will be applied when they sign up.
+              Open a user to change role with confirmation and verification checks.
             </Text>
-            <View style={styles.roleInputRow}>
-              <TextInput
-                style={[
-                  styles.roleInput,
-                  {
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    borderColor: colors.border,
-                  },
-                ]}
-                placeholder="Email address"
-                placeholderTextColor={colors.textSecondary}
-                value={assignEmail}
-                onChangeText={setAssignEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-              <TextInput
-                style={[
-                  styles.roleInput,
-                  {
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    borderColor: colors.border,
-                  },
-                ]}
-                placeholder="Role (e.g., admin, user)"
-                placeholderTextColor={colors.textSecondary}
-                value={assignRole}
-                onChangeText={setAssignRole}
-                autoCapitalize="none"
-              />
-            </View>
-            <TouchableOpacity
-              onPress={handleAssignRole}
-              disabled={assigning || !assignEmail.trim() || !assignRole.trim()}
-              style={[
-                styles.assignButton,
-                {
-                  backgroundColor:
-                    assigning || !assignEmail.trim() || !assignRole.trim()
-                      ? colors.border
-                      : colors.primary,
-                },
-              ]}
-            >
-              {assigning ? (
-                <ActivityIndicator size="small" color={colors.background} />
-              ) : (
-                <Text style={[styles.assignButtonText, { color: colors.background }]}>Assign Role</Text>
-              )}
-            </TouchableOpacity>
           </View>
 
           <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -340,25 +257,6 @@ const styles = StyleSheet.create({
   roleAssignmentHint: {
     fontSize: 12,
     lineHeight: 18,
-  },
-  roleInputRow: {
-    gap: 12,
-  },
-  roleInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-  },
-  assignButton: {
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  assignButtonText: {
-    fontSize: 14,
-    fontWeight: '800',
   },
   searchContainer: {
     marginHorizontal: 16,

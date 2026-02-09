@@ -326,7 +326,9 @@ export default function AdminProductEditScreen() {
 
     alert(
       'Delete Product?',
-      `Are you sure you want to delete "${title || 'this product'}"? This action cannot be undone.`,
+      `"${title || 'this product'}" will be removed from the app, Firestore, and Firebase Storage. ` +
+        `Users who had it in cart or wishlist will be notified. ` +
+        `Deletion is blocked if the product is in an active (processing/shipped) order. This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -336,7 +338,7 @@ export default function AdminProductEditScreen() {
             try {
               setDeleting(true);
               await deleteProduct(id);
-              alert('Deleted', 'Product has been deleted.');
+              alert('Deleted', 'Product has been deleted from the app, Firestore, and Storage.');
               navigation.goBack();
             } catch (e: any) {
               alert('Delete failed', e?.message ?? 'Please try again.');

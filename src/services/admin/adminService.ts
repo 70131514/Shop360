@@ -23,6 +23,7 @@ export type AdminUserRow = {
   name?: string;
   email?: string;
   role?: string;
+  isEmailVerified?: boolean;
 };
 
 export type AdminOrderRow = {
@@ -105,6 +106,7 @@ export function subscribeAllUsers(
           name: data?.name,
           email: data?.email,
           role: data?.role,
+          isEmailVerified: Boolean(data?.isEmailVerified),
         } as AdminUserRow;
       });
       onUsers(rows);
@@ -241,6 +243,7 @@ export function subscribeRecentUsers(
           name: data?.name,
           email: data?.email,
           role: data?.role,
+          isEmailVerified: Boolean(data?.isEmailVerified),
         } as AdminUserRow;
       });
       onUsers(rows);
@@ -335,21 +338,36 @@ export async function assignRoleByEmail(email: string, role: string): Promise<vo
   const usersSnapshot = await getDocs(usersQuery);
 
   if (usersSnapshot.empty) {
-    // User doesn't exist yet - create a role assignment document
-    // This will be checked during signup
-    await setDoc(doc(firebaseDb, 'roleAssignments', normalizedEmail), {
-      email: normalizedEmail,
+    throw new Error('No registered user found for this email.');
+  }
+
+  const userDoc = usersSnapshot.docs[0];
+  const userData = userDoc.data() as any;
+  const userEmail = String(userData?.email ?? '').trim().toLowerCase();
+  const isEmailVerified = userData?.isEmailVerified === true;
+
+  if (!userEmail) {
+    throw new Error('User email is missing. Cannot assign role.');
+  }
+  if (!isEmailVerified) {
+    throw new Error('User email is not verified. Verify the account before assigning a role.');
+  }
+
+  await updateDoc(doc(firebaseDb, 'users', userDoc.id), {
+    role: normalizedRole,
+    updatedAt: serverTimestamp(),
+  } as any);
+
+  // Keep role assignment mirror in sync for consistency.
+  await setDoc(
+    doc(firebaseDb, 'roleAssignments', userEmail),
+    {
+      email: userEmail,
       role: normalizedRole,
       assignedAt: serverTimestamp(),
-    });
-  } else {
-    // User exists - update their role
-    const userDoc = usersSnapshot.docs[0];
-    await updateDoc(doc(firebaseDb, 'users', userDoc.id), {
-      role: normalizedRole,
-      updatedAt: serverTimestamp(),
-    } as any);
-  }
+    },
+    { merge: true },
+  );
 }
 
 /**
@@ -381,10 +399,32 @@ export async function updateUserRole(uid: string, role: string): Promise<void> {
     throw new Error('User not found');
   }
 
+  const userData = userSnap.data() as any;
+  const userEmail = String(userData?.email ?? '').trim().toLowerCase();
+  const isEmailVerified = userData?.isEmailVerified === true;
+
+  if (!userEmail) {
+    throw new Error('User email is missing. Cannot update role.');
+  }
+  if (!isEmailVerified) {
+    throw new Error('User email is not verified. Verify the account before changing role.');
+  }
+
   await updateDoc(userRef, {
     role: normalizedRole,
     updatedAt: serverTimestamp(),
   } as any);
+
+  // Keep role assignment mirror in sync for consistency.
+  await setDoc(
+    doc(firebaseDb, 'roleAssignments', userEmail),
+    {
+      email: userEmail,
+      role: normalizedRole,
+      assignedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 /**
@@ -422,6 +462,7 @@ export async function getUserByUid(
     name: data?.name,
     email: data?.email,
     role: data?.role,
+    isEmailVerified: Boolean(data?.isEmailVerified),
     createdAt: data?.createdAt,
   };
 }

@@ -192,6 +192,17 @@ export async function upsertProduct(input: {
   return ref.id;
 }
 
+/**
+ * Permanently delete a product from the app, Firestore, and Firebase Storage.
+ *
+ * Checks in place:
+ * - Product must exist; deletion is blocked if product is in any active order (processing or shipped).
+ * - Removes product from all users' Firestore carts and wishlists (batch delete).
+ * - Removes product from guest cart/wishlist on this device (AsyncStorage).
+ * - Notifies every user who had the product in cart or wishlist (Firestore notifications).
+ * - Deletes all product assets from Firebase Storage (thumbnail, images, 3D model).
+ * - Finally deletes the product document from Firestore products collection.
+ */
 export async function deleteProduct(id: string): Promise<void> {
   const idTrimmed = String(id || '').trim();
   if (!idTrimmed) {
