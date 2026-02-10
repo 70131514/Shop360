@@ -1,0 +1,26 @@
+# Project-wide Gradle settings.
+# Copy this file to gradle.properties and fill in the release signing values at the bottom.
+# gradle.properties is in .gitignore so your passwords are never committed.
+
+# Specifies the JVM arguments used for the daemon process.
+org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=1024m
+
+# AndroidX
+android.useAndroidX=true
+android.enableJetifier=true
+
+# Flipper
+FLIPPER_VERSION=0.125.0
+
+# React Native
+reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+newArchEnabled=false
+
+# -----------------------------------------------------------------------------
+# Release signing (required for Google Play). Replace with your keystore path and passwords.
+# Keystore lives at android/app/shop360-release.keystore (create with keytool; see FIRST_PLAY_SUBMISSION_STEPS.md).
+# -----------------------------------------------------------------------------
+MYAPP_RELEASE_STORE_FILE=shop360-release.keystore
+MYAPP_RELEASE_STORE_PASSWORD=***
+MYAPP_RELEASE_KEY_ALIAS=shop360
+MYAPP_RELEASE_KEY_PASSWORD=***

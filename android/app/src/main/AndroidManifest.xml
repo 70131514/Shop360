@@ -20,12 +20,6 @@
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme">
-      
-      <!-- Google Maps API Key - REQUIRED for release: replace with your key from Google Cloud Console -->
-      <!-- Restrict key to Android app (com.shop360) and Maps/Geocoding APIs to avoid abuse -->
-      <meta-data
-        android:name="com.google.android.geo.API_KEY"
-        android:value="YOUR_GOOGLE_MAPS_API_KEY" />
 
       <!-- ARCore (Google Play Services for AR). Optional so the app can still install on non-AR devices. -->
       <meta-data

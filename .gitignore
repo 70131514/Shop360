@@ -43,6 +43,8 @@ buck-out/
 \.buckd/
 *.keystore
 !debug.keystore
+# Release signing secrets (use gradle.properties.example as template, copy to gradle.properties locally)
+android/gradle.properties
 
 # fastlane
 #

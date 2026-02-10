@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "294453693408-d2gs1i51m5c5i8nj5nf475hrrccprbmt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shop360",
+            "certificate_hash": "db4a5daab90f42f9751ec5a689c27f60ba675aaf"
+          }
+        },
+        {
           "client_id": "294453693408-5j2vttrgnm7tk5dhe8ai9j74uco85b4l.apps.googleusercontent.com",
           "client_type": 3
         }
