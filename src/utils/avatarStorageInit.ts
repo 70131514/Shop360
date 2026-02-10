@@ -93,11 +93,9 @@ export async function initializeAvatarStorage(): Promise<void> {
     // Check if already initialized
     const initialized = await areAvatarsInitialized();
     if (initialized) {
-      console.log('Avatars already initialized in AsyncStorage');
       return;
     }
 
-    console.log('Initializing avatar storage...');
     const avatarMap: Record<string, string> = {};
 
     // Try to convert each avatar to base64
@@ -106,26 +104,19 @@ export async function initializeAvatarStorage(): Promise<void> {
         const base64 = await imageToBase64(imageSource);
         if (base64) {
           avatarMap[avatarId] = base64;
-          console.log(`✓ Stored avatar: ${avatarId}`);
-        } else {
-          console.warn(`⚠ Could not convert avatar ${avatarId} to base64, will use bundled asset`);
         }
-      } catch (error) {
-        console.error(`Error processing avatar ${avatarId}:`, error);
+      } catch {
+        // Continue with other avatars; fallback to bundled assets if needed
       }
     }
 
-    // Store all successfully converted avatars
+    // Store all successfully converted avatars (or empty to mark initialized and avoid repeated attempts)
     if (Object.keys(avatarMap).length > 0) {
       await storeAllAvatars(avatarMap);
-      console.log(`✓ Initialized ${Object.keys(avatarMap).length} avatars in AsyncStorage`);
     } else {
-      console.warn('⚠ No avatars could be converted to base64. Using bundled assets as fallback.');
-      // Mark as initialized anyway to avoid repeated attempts
       await storeAllAvatars({});
     }
-  } catch (error) {
-    console.error('Error initializing avatar storage:', error);
+  } catch {
     // Don't throw - allow app to continue with bundled assets
   }
 }
@@ -137,5 +128,4 @@ export async function initializeAvatarStorage(): Promise<void> {
  */
 export async function storeAvatarManually(avatarId: AvatarId, base64Data: string): Promise<void> {
   await storeAvatarImage(avatarId, base64Data);
-  console.log(`✓ Manually stored avatar: ${avatarId}`);
 }

@@ -32,7 +32,7 @@ const ProfileScreen = () => {
   const { colors } = useTheme();
   // Safe check for useAuth just in case it's not fully ready
   const auth = useAuth();
-  const logout = auth?.logout || (() => console.log('Logout not implemented'));
+  const logout = auth?.logout || (() => Promise.resolve());
   const user = auth?.user;
   const isAdmin = auth?.isAdmin === true;
   const profile = auth?.profile ?? null;

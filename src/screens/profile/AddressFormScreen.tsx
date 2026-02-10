@@ -257,16 +257,12 @@ const AddressFormScreen = () => {
 
       const geocodeData = await reverseGeocode(lat, lon);
 
-      // Debug: Log the response to see what fields are available
-      console.log('Geocode response:', JSON.stringify(geocodeData, null, 2));
-
       if (geocodeData && geocodeData.address) {
         const addr = geocodeData.address;
 
         // Only use the 'city' field for city (not town, village, etc.)
         if (addr.city) {
           setCity(addr.city);
-          console.log('City set to:', addr.city);
         }
 
         if (addr.state) {

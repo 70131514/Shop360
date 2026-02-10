@@ -33,6 +33,16 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            // For Play Store: set MYAPP_RELEASE_STORE_FILE, MYAPP_RELEASE_STORE_PASSWORD,
+            // MYAPP_RELEASE_KEY_ALIAS, MYAPP_RELEASE_KEY_PASSWORD in gradle.properties (or ~/.gradle/gradle.properties).
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(MYAPP_RELEASE_STORE_FILE)
+                storePassword MYAPP_RELEASE_STORE_PASSWORD
+                keyAlias MYAPP_RELEASE_KEY_ALIAS
+                keyPassword MYAPP_RELEASE_KEY_PASSWORD
+            }
+        }
     }
 
     buildTypes {
@@ -40,7 +50,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
+            signingConfig project.hasProperty('MYAPP_RELEASE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"

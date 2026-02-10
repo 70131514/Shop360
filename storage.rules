@@ -1,8 +1,10 @@
 rules_version = '2';
 
+// Firebase Storage rules for Shop360 (Play Store production).
+// Only product images and 3D models are stored; no user PII. All writes require verified admin.
 service firebase.storage {
   match /b/{bucket}/o {
-    
+
     // Helper function to check if user is authenticated
     function isSignedIn() {
       return request.auth != null;

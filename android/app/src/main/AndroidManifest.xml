@@ -21,8 +21,8 @@
       android:allowBackup="false"
       android:theme="@style/AppTheme">
       
-      <!-- Google Maps API Key - Replace YOUR_API_KEY with your actual Google Maps API key -->
-      <!-- Get your API key from: https://console.cloud.google.com/google/maps-apis -->
+      <!-- Google Maps API Key - REQUIRED for release: replace with your key from Google Cloud Console -->
+      <!-- Restrict key to Android app (com.shop360) and Maps/Geocoding APIs to avoid abuse -->
       <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="YOUR_GOOGLE_MAPS_API_KEY" />
