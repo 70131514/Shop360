@@ -31,7 +31,7 @@ type NotificationPreference = {
 };
 
 const NotificationsScreen = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'notifications' | 'preferences'>('notifications');
@@ -227,11 +227,25 @@ const NotificationsScreen = () => {
           >
             Notifications
           </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.tabBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
+          <View
+            style={[
+              styles.tabBadge,
+              {
+                backgroundColor: isDark ? colors.surface : colors.primary,
+                borderWidth: 1,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.tabBadgeText,
+                { color: isDark ? colors.text : colors.background },
+              ]}
+            >
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
@@ -473,7 +487,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   tabBadgeText: {
-    color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },

@@ -240,13 +240,16 @@ export default function HomeScreen() {
         );
 
         if (incoming) {
-          alert(incoming.title || 'New notification', incoming.message || 'You have a new update.', [
-            { text: 'Later', style: 'cancel' },
-            {
-              text: 'View',
-              onPress: () => navigation.navigate('Notifications'),
-            },
-          ]);
+          // Don't show alert for "Order Placed" – user already sees the Order Placed screen
+          if (incoming.title !== 'Order Placed') {
+            alert(incoming.title || 'New notification', incoming.message || 'You have a new update.', [
+              { text: 'Later', style: 'cancel' },
+              {
+                text: 'View',
+                onPress: () => navigation.navigate('Notifications'),
+              },
+            ]);
+          }
         }
 
         knownNotificationIdsRef.current = currentIds;
@@ -283,18 +286,26 @@ export default function HomeScreen() {
                 Shop360°
               </ThemedText>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.profileButton,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={() => navigation.navigate('Profile')}
-              activeOpacity={0.7}
-            >
-              <Image source={avatarSource} style={styles.avatarImage} />
+            <View style={styles.profileButtonWrapper}>
+              <TouchableOpacity
+                style={[
+                  styles.profileButton,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+                onPress={() => {
+                  if (unreadNotificationCount > 0) {
+                    navigation.navigate('Notifications');
+                  } else {
+                    navigation.navigate('Profile');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Image source={avatarSource} style={styles.avatarImage} />
+              </TouchableOpacity>
               {unreadNotificationCount > 0 && (
                 <View style={[styles.alertBadge, { backgroundColor: '#FF3B30' }]}>
                   <Ionicons name="notifications" size={10} color="#FFFFFF" />
@@ -303,7 +314,7 @@ export default function HomeScreen() {
                   </ThemedText>
                 </View>
               )}
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -519,11 +530,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,
+    overflow: 'visible',
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    overflow: 'visible',
   },
   greetingContainer: {
     flex: 1,
@@ -540,6 +553,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.5,
     marginTop: 2,
+  },
+  profileButtonWrapper: {
+    position: 'relative',
+    width: 48,
+    height: 48,
+    overflow: 'visible',
   },
   profileButton: {
     width: 48,
@@ -571,6 +590,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderWidth: 1,
     borderColor: '#FFFFFF',
+    zIndex: 10,
+    elevation: 10,
   },
   alertBadgeText: {
     color: '#FFFFFF',
