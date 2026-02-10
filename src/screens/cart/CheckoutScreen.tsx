@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,11 +15,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { useAppAlert } from '../../contexts/AppAlertContext';
 import { subscribeMyAddresses, type Address } from '../../services/addressService';
 import { placeOrderFromCart, type PaymentMethod } from '../../services/orderService';
-import {
-  subscribePaymentMethods,
-  getDefaultPaymentMethod,
-  type SavedCard,
-} from '../../services/paymentMethodService';
+import { subscribePaymentMethods, type SavedCard } from '../../services/paymentMethodService';
 import type { CartItem } from '../../services/cartService';
 
 const CheckoutScreen = () => {
@@ -57,6 +53,27 @@ const CheckoutScreen = () => {
         (error) => {
           console.error('Error loading addresses:', error);
           setLoading(false);
+        },
+      );
+
+      return () => {
+        unsubscribe();
+      };
+    }, []),
+  );
+
+  // Subscribe to saved payment methods (cards) so they load on checkout
+  useFocusEffect(
+    React.useCallback(() => {
+      setLoadingCards(true);
+      const unsubscribe = subscribePaymentMethods(
+        (methods) => {
+          setSavedCards(methods);
+          setLoadingCards(false);
+        },
+        (error) => {
+          console.error('Error loading payment methods:', error);
+          setLoadingCards(false);
         },
       );
 

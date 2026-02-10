@@ -335,6 +335,7 @@ service cloud.firestore {
             'createdAt',
             'updatedAt',
             'timeline',
+            'viewedByAdmin',
             'items',
             'itemCount',
             'subtotal',
@@ -433,9 +434,9 @@ service cloud.firestore {
       allow get: if isSignedIn() && request.auth.token.email == email;
     }
 
-    // ✅ Tickets collection (support inquiries)
+    // ✅ Tickets collection (support inquiries) - verified users create/read own; admins read all and update
     match /tickets/{ticketId} {
-      // Only verified users can create tickets (guests cannot)
+      // Verified users only: create ticket (same pattern as orders)
       allow create: if isSignedIn() && isEmailVerified()
         && request.resource.data.keys().hasOnly([
           'userId',
@@ -455,15 +456,14 @@ service cloud.firestore {
         && request.resource.data.message.size() > 0
         && request.resource.data.viewedByAdmin == false;
 
-      // Users can read their own tickets (must be verified)
+      // Verified users: read only their own tickets (resource.data.userId == request.auth.uid)
       allow get, list: if isSignedIn() && isEmailVerified()
         && resource.data.userId == request.auth.uid;
 
-      // Admins can read all tickets
+      // Admins: read all tickets (inquiries list and user detail)
       allow get, list: if isAdmin() && isEmailVerified();
 
-      // Only admins can update tickets (to change status, mark as viewed, etc.)
-      // Timeline is optional and can be added/updated
+      // Admins only: update ticket (mark as viewed, or update status/timeline); immutable fields must stay same
       function validTicketUpdate() {
         return request.resource.data.userId == resource.data.userId
           && request.resource.data.userEmail == resource.data.userEmail
@@ -474,22 +474,16 @@ service cloud.firestore {
       }
       allow update: if isAdmin() && isEmailVerified() && validTicketUpdate();
 
-      // No one can delete tickets (for record keeping)
       allow delete: if false;
     }
 
-    // ✅ Collection Group Queries
-    // Allow admins to query orders collection group (for admin dashboard)
+    // ✅ Collection group queries (admin dashboard: orders, cart, wishlist)
     match /{path=**}/orders/{orderId} {
       allow read: if isAdmin() && isEmailVerified();
     }
-
-    // Allow admins to query and cleanup cart items across users
     match /{path=**}/cart/{productId} {
       allow read, delete: if isAdmin() && isEmailVerified();
     }
-
-    // Allow admins to query and cleanup wishlist items across users
     match /{path=**}/wishlist/{productId} {
       allow read, delete: if isAdmin() && isEmailVerified();
     }
