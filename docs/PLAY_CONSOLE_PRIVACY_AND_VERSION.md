@@ -23,9 +23,10 @@ Google Play **requires a privacy policy URL** in the store listing when your app
 | Permission | Why used |
 |------------|----------|
 | `android.permission.CAMERA` | Viro AR (try-on / AR scene) |
-| `android.permission.ACCESS_FINE_LOCATION` | Location / recommendations |
-| `android.permission.ACCESS_COARSE_LOCATION` | Location |
-| `android.permission.ACCESS_BACKGROUND_LOCATION` | Background location (if used) |
+| `android.permission.ACCESS_FINE_LOCATION` | Delivery address: "Get Current Location" when adding a shipping address |
+| `android.permission.ACCESS_COARSE_LOCATION` | Same as above (used with FINE for address detection) |
+
+*Background location is not used; only when-in-use for the address form.*
 
 Until a valid **privacy policy URL** is set in Play Console, uploads can be rejected for these permissions.
 
@@ -53,11 +54,72 @@ Use that **exact** URL in Play Console → App content → Privacy policy. No co
 
 ---
 
-## 3. Checklist before each new AAB upload
+## 3. Declaring location permissions (undeclared permissions error)
+
+**Error:** *Your app uses the following undeclared Location permissions: ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION.*
+
+Google Play requires you to **declare** why the app uses these permissions (in App content or the permissions declaration step during release).
+
+**What we use location for:** Only when the user adds a delivery address and taps **"Get Current Location"** — to auto-fill city/region. We do **not** use background location.
+
+**What to do in Play Console:**
+
+1. Go to **Policy** → **App content** (or the step where it asks about sensitive permissions).
+2. Find the section for **Location** / **Sensitive permissions**.
+3. Declare that the app uses **Approximate location** and/or **Precise location**.
+4. When asked "Why does your app need this?", use wording like:  
+   **"To help users add delivery addresses quickly by detecting their current location when they tap 'Get Current Location' on the address form. Location is only used when the user is actively adding an address (when-in-use); not in background."**
+
+The app no longer requests `ACCESS_BACKGROUND_LOCATION`; only FINE and COARSE are in the manifest.
+
+---
+
+## 3b. Play Console location form – copy-paste answers
+
+**Important:** Upload an AAB built **after** removing `ACCESS_BACKGROUND_LOCATION` (run `./gradlew clean && ./gradlew bundleRelease` and upload that AAB). Then the “background location” part of the form may no longer be required. If you already uploaded an older AAB, upload a new version (higher versionCode) with the updated manifest.
+
+### App purpose (main purpose of your app) — up to 500 characters
+
+```
+Shop360 is a shopping app that lets users browse products and view them in Augmented Reality (AR) in their own space. Users can add items to a wishlist, leave reviews, and manage delivery addresses. Location is used only when adding a delivery address: the user can tap "Get Current Location" to auto-fill their city/region. The app is a university Final Year Project (Bachelors CS & IT).
+```
+
+### Location access (foreground / when-in-use)
+
+If the form asks why the app uses location (and not specifically “in the background”):
+
+```
+Location is used only when the user is adding a delivery address. They can tap "Get Current Location" on the address form to auto-fill city and region. Access is when-in-use only; the app does not use background location.
+```
+
+### Background location (if the form still asks)
+
+The app **does not** use background location. We removed `ACCESS_BACKGROUND_LOCATION` from the manifest.
+
+- **Describe one location-based feature that needs access to location in the background:**  
+  **"This app does not use location in the background. Location is only used when the user is actively on the address form and taps Get Current Location (when-in-use). We do not request or use ACCESS_BACKGROUND_LOCATION."**
+
+- **Video instructions:**  
+  If the field is optional, leave blank or enter **N/A**. If it is required, upload a new AAB (built after removing background location) and resubmit; the background section may then disappear. If you must provide a link, you can upload a short video (e.g. to YouTube) showing: user opening Profile → Shipping Addresses → Add address → tapping “Get Current Location” and the permission prompt, with an on-screen or spoken line: “We only use location when you add an address; we do not use it in the background.” Then paste that video URL.
+
+---
+
+## 4. Checklist before each new AAB upload
 
 - [ ] **Version code:** In `android/app/build.gradle`, `versionCode` is **greater** than the last uploaded version (e.g. 2, 3, 4 …).
 - [ ] **Version name:** `versionName` updated if you want (e.g. `"1.0.1"`, `"1.0.2"`).
 - [ ] **Privacy policy:** In Play Console → App content → Privacy policy, a valid public URL is set and the section is complete.
+- [ ] **Location permissions:** Declared in Play Console with reason (delivery address / Get Current Location). See section 3 above.
+- [ ] **Kotlin fix:** After `npm install`, the postinstall script applies the removeLast() → removeAt(lastIndex) fix in react-native-screens. Ensure you’ve run `npm install` before building the AAB so the fix is in place.
 - [ ] Build release AAB:  
   `cd android && ./gradlew clean && ./gradlew bundleRelease`  
   Upload the new AAB from `android/app/build/outputs/bundle/release/app-release.aab`.
+
+---
+
+## 5. Other permissions from dependencies (Viro AR)
+
+The merged manifest may include permissions added by **Viro/AR** libraries (e.g. `READ_EXTERNAL_STORAGE`, `RECORD_AUDIO`, `VIBRATE`, `NFC`). If Play Console asks you to declare or justify them:
+
+- Declare them in **App content** / **Data safety** with the purpose (e.g. “AR/VR features from the Viro library; microphone/storage used only when the app’s AR feature is in use”).
+- You cannot remove these from the app without removing or replacing the Viro dependency; declaring them is the correct approach.

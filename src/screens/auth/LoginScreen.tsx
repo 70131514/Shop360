@@ -5,11 +5,13 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StatusBar,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
@@ -32,6 +34,11 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = height < 640 || width < 360;
+  const spacing = isSmallScreen ? { logo: 16, title: 12, input: 12, button: 16 } : { logo: 32, title: 20, input: 20, button: 24 };
+  const logoSize = isSmallScreen ? { width: 160, height: 96 } : { width: 200, height: 120 };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -161,138 +168,158 @@ const LoginScreen = () => {
           backgroundColor={colors.background}
           translucent={false}
         />
-
-        <View style={styles.logoContainer}>
-          <Image
-            source={
-              isDark
-                ? require('../../assets/images/Shop360White.png')
-                : require('../../assets/images/Shop360Black.png')
-            }
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
-
-        <Text style={[styles.welcomeText, { color: colors.text }]}>Shop360°</Text>
-        <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
-          Sign in to your account
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isEmailFocused && { borderColor: colors.primary },
-            ]}
-          >
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your email"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!submitting}
-              onFocus={() => setIsEmailFocused(true)}
-              onBlur={() => setIsEmailFocused(false)}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 24 + (isSmallScreen ? 20 : 0) },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.logoContainer, { marginBottom: spacing.logo }]}>
+            <Image
+              source={
+                isDark
+                  ? require('../../assets/images/Shop360White.png')
+                  : require('../../assets/images/Shop360Black.png')
+              }
+              style={[styles.logoImage, logoSize]}
+              resizeMode="contain"
             />
           </View>
 
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-          <View
+          <Text style={[styles.welcomeText, { color: colors.text }, isSmallScreen && styles.welcomeTextSmall]}>
+            Shop360°
+          </Text>
+          <Text
             style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isPasswordFocused && { borderColor: colors.primary },
+              styles.subtitleText,
+              { color: colors.textSecondary },
+              { marginBottom: spacing.title },
             ]}
           >
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your password"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!submitting}
-              onFocus={() => setIsPasswordFocused(true)}
-              onBlur={() => setIsPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
+            Sign in to your account
+          </Text>
+
+          <View style={[styles.inputContainer, { marginBottom: spacing.input }]}>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isEmailFocused && { borderColor: colors.primary },
+                isSmallScreen && styles.inputWrapperSmall,
+              ]}
+            >
               <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
+                name="mail-outline"
+                size={isSmallScreen ? 18 : 20}
                 color={colors.textSecondary}
+                style={styles.inputIcon}
               />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Enter your email"
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!submitting}
+                onFocus={() => setIsEmailFocused(true)}
+                onBlur={() => setIsEmailFocused(false)}
+              />
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isPasswordFocused && { borderColor: colors.primary },
+                isSmallScreen && styles.inputWrapperSmall,
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={isSmallScreen ? 18 : 20}
+                color={colors.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Enter your password"
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!submitting}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => setIsPasswordFocused(false)}
+              />
+              <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
+                <Ionicons
+                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                  size={isSmallScreen ? 18 : 20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.forgotPasswordContainer}
+              onPress={() => navigation.navigate('ForgotPassword', { email })}
+              disabled={submitting}
+            >
+              <Text style={[styles.forgotPasswordText, { color: colors.textSecondary }]}>
+                Forgot Password?
+              </Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={styles.forgotPasswordContainer}
-            onPress={() => navigation.navigate('ForgotPassword', { email })}
+            style={[styles.loginButton, { backgroundColor: colors.primary }, { marginBottom: spacing.button }, isSmallScreen && styles.buttonSmall]}
+            onPress={handleLogin}
             disabled={submitting}
           >
-            <Text style={[styles.forgotPasswordText, { color: colors.textSecondary }]}>
-              Forgot Password?
+            {submitting ? (
+              <ActivityIndicator color={colors.background} />
+            ) : (
+              <Text style={[styles.loginButtonText, { color: colors.background }]}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          </View>
+
+          <View style={styles.socialLoginContainer}>
+            <TouchableOpacity
+              style={[
+                styles.socialButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                isSmallScreen && styles.buttonSmall,
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={submitting}
+            >
+              <Ionicons name="logo-google" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} />
+              <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.signupContainer}>
+            <Text style={[styles.signupText, { color: colors.textSecondary }]}>
+              Don't have an account?{' '}
             </Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.loginButton, { backgroundColor: colors.primary }]}
-          onPress={handleLogin}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={[styles.loginButtonText, { color: colors.background }]}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        </View>
-
-        <View style={styles.socialLoginContainer}>
-          <TouchableOpacity
-            style={[
-              styles.socialButton,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={handleGoogleSignIn}
-            disabled={submitting}
-          >
-            <Ionicons name="logo-google" size={20} color={colors.textSecondary} />
-            <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.signupContainer}>
-          <Text style={[styles.signupText, { color: colors.textSecondary }]}>
-            Don't have an account?{' '}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-            <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+              <Text style={[styles.signupLink, { color: colors.primary }]}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
@@ -301,12 +328,17 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight ?? 0) + 20,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
   },
   logoImage: {
     width: 200,
@@ -320,9 +352,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
+  welcomeTextSmall: {
+    fontSize: 24,
+    marginTop: 12,
+  },
   subtitleText: {
     fontSize: 16,
-    marginBottom: 32,
     fontWeight: '300',
     letterSpacing: 0.3,
     textAlign: 'center',
@@ -345,6 +380,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
   },
+  inputWrapperSmall: {
+    height: 48,
+    marginBottom: 12,
+  },
   inputIcon: {
     marginRight: 12,
   },
@@ -354,6 +393,9 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 0.3,
     height: '100%',
+  },
+  inputSmall: {
+    fontSize: 15,
   },
   eyeIcon: {
     padding: 8,
@@ -372,7 +414,9 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+  },
+  buttonSmall: {
+    height: 48,
   },
   loginButtonText: {
     fontSize: 16,

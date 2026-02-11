@@ -5,11 +5,13 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StatusBar,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { AppText as Text } from '../../components/common/AppText';
@@ -38,6 +40,11 @@ const SignupScreen = () => {
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
+
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = height < 640 || width < 360;
+  const spacing = isSmallScreen ? { logo: 16, title: 12, input: 12, button: 16 } : { logo: 32, title: 20, input: 20, button: 24 };
+  const logoSize = isSmallScreen ? { width: 160, height: 96 } : { width: 200, height: 120 };
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
@@ -139,6 +146,13 @@ const SignupScreen = () => {
     }
   };
 
+  const inputWrapperStyle = (focused: boolean) => [
+    styles.inputWrapper,
+    { backgroundColor: colors.surface, borderColor: colors.border },
+    focused && { borderColor: colors.primary, borderWidth: 1.5 },
+    isSmallScreen && styles.inputWrapperSmall,
+  ];
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
@@ -150,191 +164,143 @@ const SignupScreen = () => {
           backgroundColor={colors.background}
           translucent={false}
         />
-
-        <View style={styles.logoContainer}>
-          <Image
-            source={
-              isDark
-                ? require('../../assets/images/Shop360White.png')
-                : require('../../assets/images/Shop360Black.png')
-            }
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
-
-        <Text style={[styles.welcomeText, { color: colors.text }]}>Create Account</Text>
-        <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
-          Sign up to get started
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isNameFocused && { borderColor: colors.primary, borderWidth: 1.5 },
-            ]}
-          >
-            <Ionicons
-              name="person-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your full name"
-              placeholderTextColor={colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              editable={!submitting}
-              onFocus={() => setIsNameFocused(true)}
-              onBlur={() => setIsNameFocused(false)}
-            />
-          </View>
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isEmailFocused && { borderColor: colors.primary, borderWidth: 1.5 },
-            ]}
-          >
-            <Ionicons
-              name="mail-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your email"
-              placeholderTextColor={colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              editable={!submitting}
-              onFocus={() => setIsEmailFocused(true)}
-              onBlur={() => setIsEmailFocused(false)}
-            />
-          </View>
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 },
-            ]}
-          >
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Enter your password"
-              placeholderTextColor={colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              editable={!submitting}
-              onFocus={() => setIsPasswordFocused(true)}
-              onBlur={() => setIsPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
-              <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              isConfirmPasswordFocused && { borderColor: colors.primary, borderWidth: 1.5 },
-            ]}
-          >
-            <Ionicons
-              name="lock-closed-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={[styles.input, { color: colors.text }]}
-              placeholder="Confirm your password"
-              placeholderTextColor={colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              editable={!submitting}
-              onFocus={() => setIsConfirmPasswordFocused(true)}
-              onBlur={() => setIsConfirmPasswordFocused(false)}
-            />
-            <TouchableOpacity onPress={toggleShowConfirmPassword} style={styles.eyeIcon}>
-              <Ionicons
-                name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.signupButton, { backgroundColor: colors.primary }]}
-          onPress={handleSignup}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={[styles.signupButtonText, { color: colors.background }]}>
-              Create Account
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.dividerContainer}>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.googleButton,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 32 + (isSmallScreen ? 24 : 0) },
           ]}
-          onPress={handleGoogleSignup}
-          disabled={submitting}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Ionicons name="logo-google" size={20} color={colors.textSecondary} />
-          <Text style={[styles.googleButtonText, { color: colors.text }]}>
-            Continue with Google
-          </Text>
-        </TouchableOpacity>
+          <View style={[styles.logoContainer, { marginBottom: spacing.logo }]}>
+            <Image
+              source={
+                isDark
+                  ? require('../../assets/images/Shop360White.png')
+                  : require('../../assets/images/Shop360Black.png')
+              }
+              style={[styles.logoImage, logoSize]}
+              resizeMode="contain"
+            />
+          </View>
 
-        <View style={styles.loginContainer}>
-          <Text style={[styles.loginText, { color: colors.textSecondary }]}>
-            Already have an account?{' '}
+          <Text style={[styles.welcomeText, { color: colors.text }, isSmallScreen && styles.welcomeTextSmall]}>
+            Create Account
           </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login', route.params ?? {})}>
-            <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
+          <Text
+            style={[styles.subtitleText, { color: colors.textSecondary }, { marginBottom: spacing.title }]}
+          >
+            Sign up to get started
+          </Text>
+
+          <View style={[styles.inputContainer, { marginBottom: spacing.input }]}>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
+            <View style={inputWrapperStyle(isNameFocused)}>
+              <Ionicons name="person-outline" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Enter your full name"
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                editable={!submitting}
+                onFocus={() => setIsNameFocused(true)}
+                onBlur={() => setIsNameFocused(false)}
+              />
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Email</Text>
+            <View style={inputWrapperStyle(isEmailFocused)}>
+              <Ionicons name="mail-outline" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Enter your email"
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                editable={!submitting}
+                onFocus={() => setIsEmailFocused(true)}
+                onBlur={() => setIsEmailFocused(false)}
+              />
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Password</Text>
+            <View style={inputWrapperStyle(isPasswordFocused)}>
+              <Ionicons name="lock-closed-outline" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Enter your password"
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                editable={!submitting}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => setIsPasswordFocused(false)}
+              />
+              <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
+                <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={isSmallScreen ? 18 : 20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Confirm Password</Text>
+            <View style={inputWrapperStyle(isConfirmPasswordFocused)}>
+              <Ionicons name="lock-closed-outline" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.text }, isSmallScreen && styles.inputSmall]}
+                placeholder="Confirm your password"
+                placeholderTextColor={colors.textSecondary}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                editable={!submitting}
+                onFocus={() => setIsConfirmPasswordFocused(true)}
+                onBlur={() => setIsConfirmPasswordFocused(false)}
+              />
+              <TouchableOpacity onPress={toggleShowConfirmPassword} style={styles.eyeIcon}>
+                <Ionicons name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={isSmallScreen ? 18 : 20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.signupButton, { backgroundColor: colors.primary }, { marginBottom: spacing.button }, isSmallScreen && styles.buttonSmall]}
+            onPress={handleSignup}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color={colors.background} />
+            ) : (
+              <Text style={[styles.signupButtonText, { color: colors.background }]}>Create Account</Text>
+            )}
           </TouchableOpacity>
-        </View>
+
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleButton, { backgroundColor: colors.surface, borderColor: colors.border }, isSmallScreen && styles.buttonSmall]}
+            onPress={handleGoogleSignup}
+            disabled={submitting}
+          >
+            <Ionicons name="logo-google" size={isSmallScreen ? 18 : 20} color={colors.textSecondary} />
+            <Text style={[styles.googleButtonText, { color: colors.text }]}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          <View style={styles.loginContainer}>
+            <Text style={[styles.loginText, { color: colors.textSecondary }]}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login', route.params ?? {})}>
+              <Text style={[styles.loginLink, { color: colors.primary }]}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
@@ -343,12 +309,17 @@ const SignupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: Platform.OS === 'ios' ? 60 : (StatusBar.currentHeight ?? 0) + 20,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
   },
   logoImage: {
     width: 200,
@@ -362,9 +333,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
+  welcomeTextSmall: {
+    fontSize: 24,
+    marginTop: 12,
+  },
   subtitleText: {
     fontSize: 16,
-    marginBottom: 32,
     fontWeight: '300',
     letterSpacing: 0.3,
     textAlign: 'center',
@@ -387,6 +361,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
   },
+  inputWrapperSmall: {
+    height: 48,
+    marginBottom: 12,
+  },
   inputIcon: {
     marginRight: 12,
   },
@@ -397,6 +375,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     height: '100%',
   },
+  inputSmall: {
+    fontSize: 15,
+  },
   eyeIcon: {
     padding: 8,
   },
@@ -405,7 +386,9 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+  },
+  buttonSmall: {
+    height: 48,
   },
   signupButtonText: {
     fontSize: 16,
