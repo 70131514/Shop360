@@ -32,6 +32,10 @@ Shop360° aims to reduce the need for large physical showrooms by helping busine
 
 - No user data is shared with any third party or used outside this project.  
 - No confidentiality is breached. Data (e.g. Firebase) is used only for app functionality within the scope of this academic project.
+- **Payment / card data:** Card input fields in the app are for demonstration purposes only; no real payment is collected or processed.
+- **User IDs & account info:** User IDs and account information are used internally for login and account management and are not shared with third parties.
+
+*For full details and Google Play Data Safety alignment, see the [Privacy Policy](https://70131514.github.io/Shop360/).*
 
 ---
 
