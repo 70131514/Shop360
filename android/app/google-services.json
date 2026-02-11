@@ -7,6 +7,51 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:294453693408:android:20c387886b0b103d71f985",
+        "android_client_info": {
+          "package_name": "com.fyp.shop360"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "294453693408-78j2abg9qjpi7pm7rksrop4ij7iup5ap.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fyp.shop360",
+            "certificate_hash": "db4a5daab90f42f9751ec5a689c27f60ba675aaf"
+          }
+        },
+        {
+          "client_id": "294453693408-fv2ngbos25q9v544ohtbds4a6t7foele.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fyp.shop360",
+            "certificate_hash": "6a3645388242d1043f06f9fd7c5a0dfac50a56b4"
+          }
+        },
+        {
+          "client_id": "294453693408-5j2vttrgnm7tk5dhe8ai9j74uco85b4l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqr9YDs7UcDx6rjbgjH-qceF6EXDFBVBU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "294453693408-5j2vttrgnm7tk5dhe8ai9j74uco85b4l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:294453693408:android:2b9a5faa06eb4ea971f985",
         "android_client_info": {
           "package_name": "com.shop360"

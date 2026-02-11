@@ -1,4 +1,4 @@
-package com.shop360.newarchitecture;
+package com.fyp.shop360.newarchitecture;
 
 import android.app.Application;
 import androidx.annotation.NonNull;
@@ -19,9 +19,9 @@ import com.facebook.react.fabric.CoreComponentsRegistry;
 import com.facebook.react.fabric.FabricJSIModuleProvider;
 import com.facebook.react.fabric.ReactNativeConfig;
 import com.facebook.react.uimanager.ViewManagerRegistry;
-import com.shop360.BuildConfig;
-import com.shop360.newarchitecture.components.MainComponentsRegistry;
-import com.shop360.newarchitecture.modules.MainApplicationTurboModuleManagerDelegate;
+import com.fyp.shop360.BuildConfig;
+import com.fyp.shop360.newarchitecture.components.MainComponentsRegistry;
+import com.fyp.shop360.newarchitecture.modules.MainApplicationTurboModuleManagerDelegate;
 import java.util.ArrayList;
 import java.util.List;
 

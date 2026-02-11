@@ -8,11 +8,11 @@ project.ext.react = [
 ]
 
 android {
-    namespace "com.shop360"
+    namespace "com.fyp.shop360"
     compileSdk rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.shop360"
+        applicationId "com.fyp.shop360"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
         versionCode 1

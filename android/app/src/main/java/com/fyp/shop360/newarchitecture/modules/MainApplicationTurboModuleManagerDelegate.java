@@ -1,4 +1,4 @@
-package com.shop360.newarchitecture.modules;
+package com.fyp.shop360.newarchitecture.modules;
 
 import com.facebook.jni.HybridData;
 import com.facebook.react.ReactPackage;

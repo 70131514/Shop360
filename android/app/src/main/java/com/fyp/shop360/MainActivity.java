@@ -1,4 +1,4 @@
-package com.shop360;
+package com.fyp.shop360;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
