@@ -15,7 +15,7 @@ android {
         applicationId "com.fyp.shop360"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 2
+        versionCode 8
         versionName "1.0.1"
         multiDexEnabled true
     }
